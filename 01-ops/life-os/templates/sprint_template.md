@@ -2,16 +2,25 @@
 
 ## Top Priorities
 
-### [Domain 1]
+### Career (Uber + DeepMind prep)
 1.
 2.
 3.
 
-### [Domain 2]
+### Marovi AI
+1.
+2.
+3.
+
+### NavIRL
 1.
 2.
 
-### Personal (fitness, hobbies, social, admin)
+### Consulting
+1.
+2.
+
+### Personal (fitness, music, social, life admin)
 1.
 2.
 3.
@@ -20,15 +29,15 @@
 
 ## Daily Log
 
-| Day | Deep work hrs | Workout | Habits hit | Notes |
-|-----|--------------|---------|------------|-------|
-| Mon | | | | |
-| Tue | | | | |
-| Wed | | | | |
-| Thu | | | | |
-| Fri | | | | |
-| Sat | | | | |
-| Sun | | | | |
+| Day | Deep work hrs | Workout | Music | Leetcode | Notes |
+|-----|--------------|---------|-------|----------|-------|
+| Mon | | | | | |
+| Tue | | | | | |
+| Wed | | | | | |
+| Thu | | | | | |
+| Fri | | | | | |
+| Sat | | | | | |
+| Sun | | | | | |
 
 ---
 
@@ -43,7 +52,8 @@
 **What will I do differently next week?**
 
 
-**Key wins to log?**
+**Key wins to log in wins.md?**
 
 
 **Blockers or decisions needed?**
+

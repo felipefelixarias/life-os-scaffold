@@ -2,6 +2,10 @@
 
 You are operating inside a personal life operating system. The workspace uses a numbered directory structure for organization.
 
+## First Run
+
+If `01-ops/life-os/config/profile.json` does NOT exist, the user hasn't set up yet. Immediately run `/setup` to walk them through the onboarding questionnaire. Do not proceed with any other command until setup is complete.
+
 ## Directory Map
 
 - `00-inbox/` — intake, scratch, quick captures

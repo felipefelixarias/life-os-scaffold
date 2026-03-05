@@ -2,6 +2,13 @@
 
 All interactions are slash commands in Claude Code. **Commands** are single-purpose tools — they do one thing and return a result. **Agents** are multi-step workflows that read multiple data sources, make decisions, update files, and optionally interact with external services.
 
+## Onboarding
+
+### `/setup` — First-Time Setup Questionnaire
+**When:** First time running Claude Code in the repo (triggered automatically if no profile.json exists)
+**What it does:** Walks you through a conversational questionnaire to build your profile, energy curve, domains, priority tiers, habits, first tasks, and optional goals. Writes all data files as you go.
+**Writes:** profile.json, habits.csv, tasks.csv, goals.csv
+
 ## Daily Operations
 
 ### `/daily` — Morning Dashboard

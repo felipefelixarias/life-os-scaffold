@@ -6,108 +6,73 @@ Track goals, habits, tasks, calendar, and sprints from your terminal. Plan your 
 
 **This is not an app.** It's a scaffold -- a numbered directory structure, a set of CSV schemas, and Claude Code commands that turn your terminal into a life dashboard. Fork it, fill in your data, and run it.
 
-## Why
-
-Most productivity tools lock your data in someone else's database, hide it behind a GUI, and charge you monthly. This is the opposite:
-
-- **Plain CSV files** -- your data is yours, version-controlled, portable
-- **Claude Code as the interface** -- talk to your system in natural language
-- **Google Calendar sync** -- read/write events directly from your terminal
-- **No app to maintain** -- it's just files, scripts, and an AI that understands them
-
-## Quickstart
+## Setup (2 minutes)
 
 ```bash
-# 1. Fork and clone
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
-
-# 2. Run setup
-make setup
-
-# 3. Edit your profile
-# Edit 01-ops/life-os/config/profile.json with your timezone, energy curve, domains
-
-# 4. Set up Google Calendar (optional)
-pip install gcalcli
-gcalcli list  # Follow OAuth flow
-
-# 5. Start using it
 claude
-# Then: /turbo, /add-task, /status, or just talk to it
 ```
+
+That's it. On first run, Claude detects you haven't set up yet and walks you through a questionnaire:
+
+1. **Name and timezone** (auto-detected)
+2. **Schedule** -- wake time, work hours, bedtime
+3. **Energy curve** -- when you're sharpest, when you crash
+4. **Life domains** -- what areas you want to track (career, health, hobbies, etc.)
+5. **Priority tiers** -- what's sacred, what gets cut when time is short
+6. **Habits** -- what you want to do regularly
+7. **First tasks** -- what's on your plate right now
+8. **Goals** (optional) -- what you're working toward
+
+Your answers populate `01-ops/life-os/config/profile.json` and the CSV data files. After setup:
+
+```
+/turbo          # morning dashboard + day plan + push to Google Calendar
+/add-task       # "buy groceries, low priority"
+/status         # quick pulse check
+```
+
+### Google Calendar (optional)
+
+```bash
+pip install gcalcli
+gcalcli list    # opens browser for OAuth
+```
+
+Once authenticated, `/turbo` and `/plan-day` can push time blocks directly to your calendar.
 
 ## Directory Structure
 
 ```
 life-os/
-├── 00-inbox/                      # Quick captures, scratch, intake
+├── 00-inbox/                      # Quick captures, scratch
 ├── 01-ops/                        # Operations
 │   ├── life-os/                   # Core engine
-│   │   ├── config/
-│   │   │   ├── profile.json       # Timezone, energy curve, planning prefs
-│   │   │   └── calendar_feeds.json
+│   │   ├── config/profile.json    # Your timezone, energy curve, domains
 │   │   ├── data/canonical/        # Source of truth CSVs
-│   │   │   ├── tasks.csv
-│   │   │   ├── goals.csv
-│   │   │   ├── habits.csv
-│   │   │   ├── projects.csv
-│   │   │   ├── calendar_events.csv
-│   │   │   ├── time_logs.csv
-│   │   │   └── time_blocks.csv
-│   │   ├── logs/
-│   │   │   ├── daily_log.csv
-│   │   │   └── activity_log.csv
+│   │   ├── logs/                  # Daily + activity logs
 │   │   ├── outputs/               # Generated plans, reports
-│   │   ├── scripts/
-│   │   │   └── gcal.py            # Google Calendar API wrapper
-│   │   └── templates/
-│   │       ├── sprint_template.md
-│   │       └── daily_checkin.md
-│   ├── goals/                     # Goal definitions
-│   │   └── areas/                 # Per-domain goal tracking
+│   │   ├── scripts/gcal.py        # Google Calendar API wrapper
+│   │   └── templates/             # Sprint + daily check-in templates
+│   ├── goals/areas/               # Per-domain goal tracking
 │   ├── todo/                      # Ad-hoc todo lists
-│   └── reviews/                   # Weekly/monthly review outputs
-├── 02-career/                     # Career management
-│   ├── applications/              # Job applications tracker
-│   ├── interviews/                # Interview prep by company
-│   └── resume/                    # Resume source files
-├── 03-study/                      # Learning
-│   ├── notes/                     # Study notes
-│   └── drills/                    # Practice problems, exercises
+│   └── reviews/                   # Weekly/monthly reviews
+├── 02-career/                     # Applications, interviews, resume
+├── 03-study/                      # Notes, drills, learning
 ├── 04-repos/                      # Code projects (gitignored)
-├── 05-assets/                     # Media, documents, files
-├── 06-admin/                      # Admin, finance, legal
-├── 99-archive/                    # Completed/retired items
-├── .claude/
-│   └── commands/                  # Claude Code slash commands & agents
-├── docs/                          # Documentation
-├── CLAUDE.md                      # Instructions for Claude Code
-└── Makefile                       # Convenience targets
+├── 05-assets/                     # Media, documents
+├── 06-admin/                      # Finance, legal, admin
+├── 99-archive/                    # Done / retired
+├── .claude/commands/              # Slash commands & agents
+└── CLAUDE.md                      # Instructions for Claude Code
 ```
 
-## The Numbered System
-
-Directories are numbered for sort order and quick navigation:
-
-| Prefix | Purpose | Examples |
-|--------|---------|---------|
-| `00` | Intake | Scratch notes, quick captures, unsorted files |
-| `01` | Operations | Life-os engine, goals, todos, reviews |
-| `02` | Career | Applications, interviews, resume, wins |
-| `03` | Study | Notes, drills, cheatsheets, learning materials |
-| `04` | Repos | Independent code projects (gitignored) |
-| `05` | Assets | Media, documents, reference files |
-| `06` | Admin | Finance, legal, insurance, housing |
-| `99` | Archive | Anything completed or no longer active |
-
-The numbering ensures `ls` always shows directories in logical order. `01-ops` comes before `02-career` because operations are the foundation everything else runs on.
+Directories are numbered so `ls` shows them in logical order. Rename, add, or remove them to match your life.
 
 ## Commands & Agents
 
-All interactions are slash commands in `.claude/commands/`. **Commands** are single-purpose tools. **Agents** are multi-step workflows that make decisions and update multiple files autonomously.
-
-### Commands
+### Commands (single-purpose)
 | Command | What it does |
 |---------|-------------|
 | `/daily` | Morning dashboard: calendar, tasks, habits, suggested focus |
@@ -119,86 +84,38 @@ All interactions are slash commands in `.claude/commands/`. **Commands** are sin
 | `/status` | Quick snapshot of all domains |
 | `/weekly-review` | Guided weekly reflection and planning |
 
-### Agents
+### Agents (multi-step, autonomous)
 | Agent | What it does |
 |-------|-------------|
-| `/turbo` | Full morning startup: calendar + dashboard + day plan + gcal push, one shot |
-| `/shutdown` | End of day: review planned vs actual, update tasks/habits, preview tomorrow |
-| `/triage` | Scan backlog, flag overdue/stale tasks, suggest drops and priority changes |
-| `/sprint-plan` | Generate a full weekly sprint with daily themes and habit scheduling |
-| `/audit` | System health check: find stale data, dead habits, missed goals |
+| `/turbo` | Full morning startup: dashboard + plan + gcal push, one shot |
+| `/shutdown` | End of day: review, update tasks/habits, preview tomorrow |
+| `/triage` | Scan backlog, flag stale/overdue, suggest drops |
+| `/sprint-plan` | Weekly sprint with daily themes and habit scheduling |
+| `/audit` | System health check: find rot, propose cleanup |
 | `/content` | Plan and draft social media posts from recent activity |
-| `/improve` | Analyze system usage, identify friction, suggest and implement improvements |
+| `/improve` | Analyze usage, suggest and implement system improvements |
+
+### Onboarding
+| Command | What it does |
+|---------|-------------|
+| `/setup` | First-time questionnaire: builds your profile, habits, tasks, goals |
 
 ## Core Concepts
 
-### CSV as Source of Truth
+**CSV as source of truth.** All structured data lives in `01-ops/life-os/data/canonical/`. No database, no sync conflicts. Git tracks history.
 
-Every piece of structured data lives in a CSV file under `01-ops/life-os/data/canonical/`. No databases, no APIs, no sync conflicts. Git tracks history. Claude Code reads and writes them directly.
+**Energy curve.** Your profile includes when you're sharpest and when you crash. The planner schedules deep work during peaks.
 
-### Energy Curve
+**Priority tiers.** When the day gets shorter, the system cuts from the bottom up: Tier 5 (admin) goes first, Tier 1 (sleep, health) never gets cut.
 
-Your `profile.json` includes an energy curve -- when you're sharpest, when you crash, when you recover. The planner uses this to schedule deep work during peaks and admin during valleys.
-
-### Priority Tiers
-
-When the day gets shorter than planned, the system cuts from the bottom up:
-1. **Non-negotiable** -- sleep, health essentials, critical deadlines
-2. **Core build** -- main project, exercise, deep work
-3. **Growth** -- learning, content, networking
-4. **Nice to have** -- extra hobbies, cleanup, journaling
-5. **Cut first** -- extended sessions, low-priority admin
-
-### Google Calendar Integration
-
-Optional but powerful. Once authenticated via `gcalcli`, Claude Code can read your agenda, create events, push day plans, and clean up stale blocks. See [docs/google-calendar.md](docs/google-calendar.md).
-
-## Schemas
-
-### tasks.csv
-```
-task_id, project_id, title, domain, status, priority, effort_mins,
-due_date, energy, context, source, next_step, scheduled_date,
-scheduled_start, scheduled_end, last_updated, notes
-```
-
-### habits.csv
-```
-habit_id, area, name, frequency, target_per_week, min_value,
-unit, active, notes, last_updated
-```
-
-### goals.csv
-```
-goal_id, area, title, horizon, target_date, metric_name,
-metric_target, metric_current, status, last_updated, notes
-```
-
-### time_blocks.csv
-```
-block_id, date, start, end, title, domain, task_id,
-source, status, notes
-```
-
-## Customization
-
-This scaffold is intentionally minimal. Adapt it to your life:
-
-- **Domains**: Edit `profile.json` to reflect your life areas (career, health, hobbies, etc.)
-- **Habits**: Add/remove rows in `habits.csv`
-- **Energy curve**: Tune the times and levels to match your actual rhythm
-- **Commands**: Write new commands in `.claude/commands/` for your workflow
-- **Numbered dirs**: Add, rename, or remove numbered directories to match your life
-- **Templates**: Modify sprint and check-in templates to ask questions that matter to you
-
-See [docs/customization.md](docs/customization.md) for details.
+**Google Calendar.** Optional. Once set up, Claude can read your agenda, push day plans, and clean up stale blocks.
 
 ## Philosophy
 
 1. **Own your data.** CSVs in a git repo beat any SaaS.
-2. **AI as interface, not oracle.** Claude Code reads your files and helps you act on them. You make the decisions.
-3. **Minimum viable structure.** Start with tasks and habits. Add complexity only when you need it.
-4. **Compound, don't grind.** The system should help you double-dip -- a workout that's also a screen break, a content post that's also interview prep.
+2. **AI as interface, not oracle.** Claude reads your files and helps you act. You decide.
+3. **Start minimal.** Tasks and habits first. Add complexity when you need it.
+4. **Compound, don't grind.** A workout that's also a screen break. A content post that's also interview prep.
 
 ## License
 
