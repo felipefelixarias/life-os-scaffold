@@ -2,7 +2,7 @@
 
 life-os is a scaffold, not a product. It's designed to be shaped around your actual life. Here's how to make it yours.
 
-## Profile (`config/profile.json`)
+## Profile (`01-ops/life-os/config/profile.json`)
 
 This is the single most important file. It tells the planner who you are.
 
@@ -58,7 +58,16 @@ When the day gets shorter than planned, the planner cuts from the bottom up. Def
 ]
 ```
 
-## Habits (`data/canonical/habits.csv`)
+## Numbered Directories
+
+The top-level structure uses numbered prefixes for sort order. Customize these to match your life:
+
+- Rename `02-career/` to `02-music/` if you're a musician, not a job-seeker
+- Add `07-health/` if health tracking deserves its own top-level bucket
+- Remove directories you don't need (but keep `01-ops/life-os/` as the engine)
+- The numbers just control sort order in `ls`. Pick whatever makes sense.
+
+## Habits (`01-ops/life-os/data/canonical/habits.csv`)
 
 Add rows for anything you want to track regularly. Fields:
 - `habit_id`: unique slug (e.g., `workout`, `read_30m`)
@@ -109,14 +118,13 @@ Name the file to match the command: `.claude/commands/my-skill.md` → `/my-skil
 - `/study` — Study session with spaced repetition prompts
 - `/budget` — Monthly spending review from a transactions CSV
 - `/workout` — Generate a workout plan based on available equipment and goals
-- `/content` — Draft content for social platforms from a topic queue
 - `/journal` — Guided evening reflection prompts
 
-## Templates (`templates/`)
+## Templates (`01-ops/life-os/templates/`)
 
 Templates are markdown files used for recurring documents (sprints, check-ins). Modify them to ask the questions that matter to you.
 
-## Calendar Feeds (`config/calendar_feeds.json`)
+## Calendar Feeds (`01-ops/life-os/config/calendar_feeds.json`)
 
 If you have ICS feed URLs (from Google Calendar, Outlook, etc.), add them here for automatic import:
 

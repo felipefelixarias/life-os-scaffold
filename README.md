@@ -4,16 +4,16 @@ A personal operating system powered by [Claude Code](https://docs.anthropic.com/
 
 Track goals, habits, tasks, calendar, and sprints from your terminal. Plan your day with AI. Push time blocks to Google Calendar. Review your week. All backed by plain CSV files you own.
 
-**This is not an app.** It's a scaffold — a directory structure, a set of CSV schemas, and Claude Code skills that turn your terminal into a life dashboard. Fork it, fill in your data, and run it.
+**This is not an app.** It's a scaffold -- a numbered directory structure, a set of CSV schemas, and Claude Code commands that turn your terminal into a life dashboard. Fork it, fill in your data, and run it.
 
 ## Why
 
 Most productivity tools lock your data in someone else's database, hide it behind a GUI, and charge you monthly. This is the opposite:
 
-- **Plain CSV files** — your data is yours, version-controlled, portable
-- **Claude Code as the interface** — talk to your system in natural language
-- **Google Calendar sync** — read/write events directly from your terminal
-- **No app to maintain** — it's just files, scripts, and an AI that understands them
+- **Plain CSV files** -- your data is yours, version-controlled, portable
+- **Claude Code as the interface** -- talk to your system in natural language
+- **Google Calendar sync** -- read/write events directly from your terminal
+- **No app to maintain** -- it's just files, scripts, and an AI that understands them
 
 ## Quickstart
 
@@ -22,82 +22,92 @@ Most productivity tools lock your data in someone else's database, hide it behin
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
 
-# 2. Configure your profile
-cp config/profile.example.json config/profile.json
-# Edit with your timezone, preferences, and energy curve
+# 2. Run setup
+make setup
 
-# 3. Set up Google Calendar (optional)
+# 3. Edit your profile
+# Edit 01-ops/life-os/config/profile.json with your timezone, energy curve, domains
+
+# 4. Set up Google Calendar (optional)
 pip install gcalcli
 gcalcli list  # Follow OAuth flow
-# See docs/google-calendar.md for details
 
-# 4. Start using it with Claude Code
+# 5. Start using it
 claude
-# Then: "show me my tasks" / "plan my day" / "add a habit"
+# Then: /turbo, /add-task, /status, or just talk to it
 ```
 
 ## Directory Structure
 
 ```
 life-os/
-├── config/
-│   ├── profile.json          # Your timezone, planning prefs, energy curve
-│   └── calendar_feeds.json   # Google Calendar ICS feed URLs
-├── data/
-│   └── canonical/            # Source of truth CSVs
-│       ├── tasks.csv
-│       ├── goals.csv
-│       ├── habits.csv
-│       ├── projects.csv
-│       ├── calendar_events.csv
-│       ├── time_logs.csv
-│       └── time_blocks.csv
-├── logs/
-│   ├── activity_log.csv      # System event log
-│   └── daily_log.csv         # Daily check-in tracking
-├── outputs/                  # Generated plans, reports, reviews
-├── scripts/
-│   └── gcal.py               # Google Calendar API wrapper
+├── 00-inbox/                      # Quick captures, scratch, intake
+├── 01-ops/                        # Operations
+│   ├── life-os/                   # Core engine
+│   │   ├── config/
+│   │   │   ├── profile.json       # Timezone, energy curve, planning prefs
+│   │   │   └── calendar_feeds.json
+│   │   ├── data/canonical/        # Source of truth CSVs
+│   │   │   ├── tasks.csv
+│   │   │   ├── goals.csv
+│   │   │   ├── habits.csv
+│   │   │   ├── projects.csv
+│   │   │   ├── calendar_events.csv
+│   │   │   ├── time_logs.csv
+│   │   │   └── time_blocks.csv
+│   │   ├── logs/
+│   │   │   ├── daily_log.csv
+│   │   │   └── activity_log.csv
+│   │   ├── outputs/               # Generated plans, reports
+│   │   ├── scripts/
+│   │   │   └── gcal.py            # Google Calendar API wrapper
+│   │   └── templates/
+│   │       ├── sprint_template.md
+│   │       └── daily_checkin.md
+│   ├── goals/                     # Goal definitions
+│   │   └── areas/                 # Per-domain goal tracking
+│   ├── todo/                      # Ad-hoc todo lists
+│   └── reviews/                   # Weekly/monthly review outputs
+├── 02-career/                     # Career management
+│   ├── applications/              # Job applications tracker
+│   ├── interviews/                # Interview prep by company
+│   └── resume/                    # Resume source files
+├── 03-study/                      # Learning
+│   ├── notes/                     # Study notes
+│   └── drills/                    # Practice problems, exercises
+├── 04-repos/                      # Code projects (gitignored)
+├── 05-assets/                     # Media, documents, files
+├── 06-admin/                      # Admin, finance, legal
+├── 99-archive/                    # Completed/retired items
 ├── .claude/
-│   └── commands/             # Claude Code slash commands
-│       ├── daily.md          # /daily — morning dashboard
-│       ├── plan-day.md       # /plan-day — generate time blocks
-│       ├── replan.md         # /replan — rebuild today's plan
-│       ├── turbo.md          # /turbo — full morning startup (agent)
-│       ├── shutdown.md       # /shutdown — end of day wrap-up (agent)
-│       ├── weekly-review.md  # /weekly-review — week reflection
-│       ├── sprint-plan.md    # /sprint-plan — weekly sprint setup (agent)
-│       ├── add-task.md       # /add-task — quick task capture
-│       ├── log-time.md       # /log-time — log time spent
-│       ├── gcal-create.md    # /gcal-create — create calendar event
-│       ├── status.md         # /status — quick snapshot
-│       ├── triage.md         # /triage — backlog cleanup (agent)
-│       ├── audit.md          # /audit — system health check (agent)
-│       ├── content.md        # /content — social media planning (agent)
-│       └── improve.md        # /improve — system self-improvement (agent)
-├── templates/
-│   ├── sprint_template.md    # Weekly sprint planning
-│   └── daily_checkin.md      # Daily check-in prompts
-├── docs/
-│   ├── getting-started.md    # Setup guide
-│   ├── google-calendar.md    # Calendar integration guide
-│   ├── skills-reference.md   # All available skills
-│   └── customization.md      # How to adapt to your life
-├── CLAUDE.md                 # Instructions for Claude Code
-└── Makefile                  # Convenience targets
+│   └── commands/                  # Claude Code slash commands & agents
+├── docs/                          # Documentation
+├── CLAUDE.md                      # Instructions for Claude Code
+└── Makefile                       # Convenience targets
 ```
 
-## Core Concepts
+## The Numbered System
 
-### CSV as Source of Truth
+Directories are numbered for sort order and quick navigation:
 
-Every piece of structured data lives in a CSV file under `data/canonical/`. No databases, no APIs, no sync conflicts. Git tracks history. Claude Code reads and writes them directly.
+| Prefix | Purpose | Examples |
+|--------|---------|---------|
+| `00` | Intake | Scratch notes, quick captures, unsorted files |
+| `01` | Operations | Life-os engine, goals, todos, reviews |
+| `02` | Career | Applications, interviews, resume, wins |
+| `03` | Study | Notes, drills, cheatsheets, learning materials |
+| `04` | Repos | Independent code projects (gitignored) |
+| `05` | Assets | Media, documents, reference files |
+| `06` | Admin | Finance, legal, insurance, housing |
+| `99` | Archive | Anything completed or no longer active |
 
-### Commands & Agents
+The numbering ensures `ls` always shows directories in logical order. `01-ops` comes before `02-career` because operations are the foundation everything else runs on.
+
+## Commands & Agents
 
 All interactions are slash commands in `.claude/commands/`. **Commands** are single-purpose tools. **Agents** are multi-step workflows that make decisions and update multiple files autonomously.
 
-#### Commands
+### Commands
 | Command | What it does |
 |---------|-------------|
 | `/daily` | Morning dashboard: calendar, tasks, habits, suggested focus |
@@ -109,7 +119,7 @@ All interactions are slash commands in `.claude/commands/`. **Commands** are sin
 | `/status` | Quick snapshot of all domains |
 | `/weekly-review` | Guided weekly reflection and planning |
 
-#### Agents
+### Agents
 | Agent | What it does |
 |-------|-------------|
 | `/turbo` | Full morning startup: calendar + dashboard + day plan + gcal push, one shot |
@@ -120,23 +130,28 @@ All interactions are slash commands in `.claude/commands/`. **Commands** are sin
 | `/content` | Plan and draft social media posts from recent activity |
 | `/improve` | Analyze system usage, identify friction, suggest and implement improvements |
 
+## Core Concepts
+
+### CSV as Source of Truth
+
+Every piece of structured data lives in a CSV file under `01-ops/life-os/data/canonical/`. No databases, no APIs, no sync conflicts. Git tracks history. Claude Code reads and writes them directly.
+
 ### Energy Curve
 
-Your `profile.json` includes an energy curve — when you're sharpest, when you crash, when you recover. The planner uses this to schedule deep work during peaks and admin during valleys.
+Your `profile.json` includes an energy curve -- when you're sharpest, when you crash, when you recover. The planner uses this to schedule deep work during peaks and admin during valleys.
 
-### Habit Tracking
+### Priority Tiers
 
-Habits are defined in `habits.csv` with frequency targets and minimum values. The daily dashboard shows streaks and gaps. No gamification, no streaks-for-streaks-sake — just data.
+When the day gets shorter than planned, the system cuts from the bottom up:
+1. **Non-negotiable** -- sleep, health essentials, critical deadlines
+2. **Core build** -- main project, exercise, deep work
+3. **Growth** -- learning, content, networking
+4. **Nice to have** -- extra hobbies, cleanup, journaling
+5. **Cut first** -- extended sessions, low-priority admin
 
 ### Google Calendar Integration
 
-Optional but powerful. Once authenticated via `gcalcli`, Claude Code can:
-- Read your agenda for any date range
-- Create events with location and reminders
-- Push a full day plan as calendar blocks
-- Import events from ICS feeds
-
-See [docs/google-calendar.md](docs/google-calendar.md) for setup.
+Optional but powerful. Once authenticated via `gcalcli`, Claude Code can read your agenda, create events, push day plans, and clean up stale blocks. See [docs/google-calendar.md](docs/google-calendar.md).
 
 ## Schemas
 
@@ -172,19 +187,18 @@ This scaffold is intentionally minimal. Adapt it to your life:
 - **Domains**: Edit `profile.json` to reflect your life areas (career, health, hobbies, etc.)
 - **Habits**: Add/remove rows in `habits.csv`
 - **Energy curve**: Tune the times and levels to match your actual rhythm
-- **Skills**: Write new skills for your workflow (study sessions, meal planning, workout tracking)
+- **Commands**: Write new commands in `.claude/commands/` for your workflow
+- **Numbered dirs**: Add, rename, or remove numbered directories to match your life
 - **Templates**: Modify sprint and check-in templates to ask questions that matter to you
+
+See [docs/customization.md](docs/customization.md) for details.
 
 ## Philosophy
 
 1. **Own your data.** CSVs in a git repo beat any SaaS.
 2. **AI as interface, not oracle.** Claude Code reads your files and helps you act on them. You make the decisions.
 3. **Minimum viable structure.** Start with tasks and habits. Add complexity only when you need it.
-4. **Compound, don't grind.** The system should help you double-dip — a workout that's also a screen break, a content post that's also interview prep.
-
-## Credits
-
-Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code) from Anthropic.
+4. **Compound, don't grind.** The system should help you double-dip -- a workout that's also a screen break, a content post that's also interview prep.
 
 ## License
 

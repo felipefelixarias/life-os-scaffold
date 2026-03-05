@@ -21,11 +21,11 @@ cd life-os
 make setup
 ```
 
-This creates `config/profile.json` and `config/calendar_feeds.json` from the example templates.
+This creates `01-ops/life-os/config/profile.json` and `01-ops/life-os/config/calendar_feeds.json` from the example templates.
 
 ### 3. Edit your profile
 
-Open `config/profile.json` and customize:
+Open `01-ops/life-os/config/profile.json` and customize:
 - Your timezone
 - Wake/sleep times
 - Work hours
@@ -50,11 +50,12 @@ See [google-calendar.md](google-calendar.md).
 Start each day with:
 ```
 claude
-/daily
+/turbo
 ```
 
-Plan your day:
+Or step by step:
 ```
+/daily
 /plan-day
 ```
 

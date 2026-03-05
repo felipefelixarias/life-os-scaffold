@@ -25,9 +25,17 @@ node_modules/
 *.pem
 *.key
 *credential*.csv
+*client_secret*.json
+
+# Independent repos (work on these separately)
+04-repos/**
+!04-repos/.gitkeep
 
 # User data (keep schemas, ignore personal data)
 # Uncomment these if you don't want to track your actual data in git:
-# data/canonical/*.csv
-# logs/*.csv
-# outputs/
+# 01-ops/life-os/data/canonical/*.csv
+# 01-ops/life-os/logs/*.csv
+# 01-ops/life-os/outputs/
+
+# Sensitive documents
+# 06-admin/finance/
