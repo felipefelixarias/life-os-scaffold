@@ -27,27 +27,34 @@ Run the full morning sequence in one shot: check the time, fetch the calendar, s
 
 ## Output Format
 
+Use box-drawing characters for a compact terminal dashboard. Four quadrants: calendar + tasks on top, habits + day plan on bottom. Energy bars on the day plan. Status line at the bottom.
+
 ```
-# [Day], [Month Date] — Turbo
+  ┌──────────────────────────────────────────────────────┐
+  │           life-os · /turbo · [Mon] [Date]            │
+  └──────────────────────────────────────────────────────┘
 
-## Calendar (fixed)
-- [time] Event
-- [time] Event
+  CALENDAR                          TASKS
+  HH:MM  Event name                 ■ P1 task description       today
+  HH:MM  Event name                 ■ P1 task description       today
+  HH:MM  Event name                 □ P2 task description       Thu
+  ...                               □ P3 task description       Fri
 
-## Top Tasks
-1. [domain] Task (priority X, effort Ym)
-2. ...
+  HABITS - wk NN                    DAY PLAN
+  Habit       ████████░░ X/Y        HH:MM  Activity              ████
+  Habit       ██████░░░░ X/Y        HH:MM  Activity              ██░░
+  Habit       ████░░░░░░ X/Y        HH:MM  Activity              ████
+  Habit       ██░░░░░░░░ X/Y        ...
+  ...                               HH:MM  Sleep
 
-## Habits Due
-- [ ] Habit (target)
-- [ ] ...
+  ✓ N events → Google Calendar  ✓ N due today  ✓ N habits left
+```
 
-## Day Plan
-**HH:MM - HH:MM** — Activity
-**HH:MM - HH:MM** — Activity
-...
-**[bedtime]** — Lights out
+Energy bars key: `████` = peak, `██░░` = medium, `░░░░` = low energy.
 
+After displaying the dashboard, ask once:
+
+```
 Push to calendar? (y/n)
 ```
 

@@ -12,13 +12,16 @@ Show a compact snapshot of where things stand across all domains.
 
 ## Output Format
 
-```
-# Status — [date, time]
+Compact box. Entire thing fits in one terminal view.
 
-Tasks: X active (Y overdue) | Z done this week
-Habits: X/Y on track | Z gaps
-Goals: [brief one-liner per active goal]
-Calendar: X events remaining today
+```
+  ┌─ status · HH:MM ──────────────────────────────────┐
+  │  Tasks   ██████████████░░░░░░  12 active  3 done   │
+  │  Habits  ████████░░░░░░░░░░░░  4/8 today            │
+  │  Goals   ██████████████░░░░░░  2 on track  1 due    │
+  │  Cal     3 events left today                        │
+  │  Overdue ■■ 2 tasks past due                        │
+  └─────────────────────────────────────────────────────┘
 ```
 
 Keep it to 5-10 lines max. This is a glance, not a report.

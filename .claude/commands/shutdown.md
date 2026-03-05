@@ -25,27 +25,36 @@ Close out the day: review what happened, update records, and set up tomorrow.
 
 ## Output Format
 
+Use box-drawing characters. Show the day's results at a glance, then tomorrow's preview.
+
 ```
-# Shutdown — [Day, Month Date]
+  ┌──────────────────────────────────────────────────────┐
+  │          life-os · /shutdown · [Day] [Date]          │
+  └──────────────────────────────────────────────────────┘
 
-## Planned vs Actual
-| Planned | Status |
-|---------|--------|
-| Task A  | Done   |
-| Task B  | Carried → tomorrow |
-| Habit X | Logged |
-| Habit Y | Missed |
+  TODAY                              RESULT
+  Task A                             ✓ done
+  Task B                             → carried
+  Task C                             ✗ dropped
+  Habit: Workout                     ✓ logged
+  Habit: LeetCode                    ✗ missed
 
-## Updated
-- tasks.csv: X tasks marked done, Y carried
-- daily_log.csv: Z habits logged
+  SCORECARD
+  Tasks    ████████████░░░░░░░░  3/5 done
+  Habits   ██████████░░░░░░░░░░  4/6 logged
 
-## Tomorrow Preview
-- [time] Calendar event
-- Top tasks: A, B, C
-- Habit gaps this week: [habit] at X/Y target
+  FILES UPDATED
+  tasks.csv       3 done · 1 carried · 1 dropped
+  daily_log.csv   4 habits logged
 
-Goodnight.
+  ┌─ tomorrow ─────────────────────────────────────────┐
+  │  09:00  Meeting                                     │
+  │  ■ P1  Finish eval framework              due tmrw  │
+  │  ■ P1  Carried: PR review                 from today│
+  │  ⚠ Habit gap: LeetCode 2/5 this week               │
+  └─────────────────────────────────────────────────────┘
+
+  Goodnight.
 ```
 
 ## Rules

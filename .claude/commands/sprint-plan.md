@@ -28,35 +28,34 @@ Generate a full weekly sprint plan with daily themes, task allocation, and habit
 
 ## Output Format
 
+Use box-drawing for the header and capacity bar, then a compact week grid.
+
 ```
-# Sprint: [Mon date] → [Sun date]
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║         life-os · sprint · [Mon date] → [Sun date]             ║
+  ╚══════════════════════════════════════════════════════════════════╝
 
-## Week Overview
-- Available hours: X
-- Committed to habits: Y hrs
-- Committed to tasks: Z hrs
-- Buffer: W hrs
+  CAPACITY
+  Available   ████████████████████████████████████████  42h
+  Habits      ████████████████░░░░░░░░░░░░░░░░░░░░░░░░  16h
+  Tasks       ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12h
+  Buffer      ██████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  14h
 
-## Daily Breakdown
+          MON         TUE         WED         THU         FRI         SAT         SUN
+  Theme   Deep Work   Build       Music Day   Deep Work   Ship It     Project     Review
+  ─────   ─────────   ─────────   ─────────   ─────────   ─────────   ─────────   ─────────
+  Task    Eval frmwk  PR review   —           Model doc   Deploy      Marovi v2   —
+  Task    —           Agent mem   —           LeetCode    —           navIRL      —
+  ─────   ─────────   ─────────   ─────────   ─────────   ─────────   ─────────   ─────────
+  Habit   Workout     Workout     Workout     Workout     Workout     Workout     Workout
+  Habit   Marovi      Marovi      Marovi      Marovi      Marovi      Marovi      Marovi
+  Habit   LeetCode    LeetCode    Singing     LeetCode    Singing     Guitar      Guitar
+  Habit   Interview   Guitar      Drums       Interview   Drums       Singing     Drums
+  Habit   —           —           —           —           Guitar      navIRL      Review
 
-### Monday — [theme]
-- [ ] Task A (priority 1, 60m)
-- [ ] Habit: workout (45m)
-- [ ] Habit: deep work (90m)
-Fixed: [calendar events]
-
-### Tuesday — [theme]
-...
-
-## Habit Schedule
-| Habit | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
-|-------|-----|-----|-----|-----|-----|-----|-----|
-| Workout | X | | X | | X | X | |
-| ...     | | | | | | | |
-
-## Risk Flags
-- [task] due Friday but only 1 available slot — start by Wednesday
-- [habit] at 2/5 target last week — schedule extra session
+  ⚠ RISKS
+  ■ Eval framework due Fri — only 2 deep work slots before then
+  ■ Singing at 1/4 last week — extra session added Wed + Fri
 ```
 
 ## Rules

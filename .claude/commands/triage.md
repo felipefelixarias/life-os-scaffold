@@ -24,26 +24,36 @@ Autonomously scan, prioritize, and clean up the task backlog.
 
 ## Output Format
 
+Compact triage board with clear action symbols.
+
 ```
-# Triage — [date]
+  ┌──────────────────────────────────────────────────────┐
+  │            life-os · /triage · [date]                │
+  └──────────────────────────────────────────────────────┘
 
-## Overdue (X tasks)
-- [ ] Task title (due: date, X days late) → **reschedule / drop / done?**
+  OVERDUE ■■■                                    3 tasks
+  ✗ Submit expense report           5d late     → reschedule
+  ✗ Review ML paper                 3d late     → reschedule
+  ✗ Fix login redirect              2d late     → done already?
 
-## Stale (X tasks)
-- [ ] Task title (last touched: date) → **still relevant?**
+  STALE ░░░░░                                    5 tasks
+  ? Research caching layer          24d idle    → drop
+  ? Update deployment docs          18d idle    → drop
+  ? Explore new CI pipeline         15d idle    → keep?
 
-## Quick Wins (X tasks)
-- [ ] Task title (effort: Xm) → **schedule today?**
+  QUICK WINS ⚡                                  3 tasks
+  → Update .gitignore               10m  P3     → do today
+  → Reply to recruiter email        15m  P2     → do today
+  → Log last week's time            20m  P3     → do today
 
-## Priority Adjustments
-- Task title: priority 3 → 1 (blocks goal: "Goal Name")
-- Task title: priority 2 → drop (project deprioritized)
+  PRIORITY SHIFTS
+  ▲ Agent memory layer              P3 → P1     blocks "Launch Marovi beta"
+  ▼ Refactor auth module            P2 → drop   project deprioritized
 
-## Summary
-Total: X active tasks | Y flagged | Z proposed changes
+  ─────────────────────────────────────────────────────
+  25 active │ 11 flagged │ 8 proposed changes
 
-Apply these changes? (y/modify/n)
+  Apply? (y/modify/n)
 ```
 
 ## Rules

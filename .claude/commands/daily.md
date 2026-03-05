@@ -13,28 +13,29 @@ Show the user their daily operating dashboard. This is the primary entry point e
 
 ## Output Format
 
+Use box-drawing characters for a compact terminal dashboard. Lay out data in aligned columns so it reads like an instrument panel.
+
 ```
-# Dashboard — [Day, Month Date, Year]
+  ┌──────────────────────────────────────────────────────┐
+  │            life-os · /daily · [Day] [Date]           │
+  └──────────────────────────────────────────────────────┘
 
-## Calendar
-- [time] Event name
-- [time] Event name
+  CALENDAR                          TASKS
+  HH:MM  Event name                 ■ P1 task description       today
+  HH:MM  Event name                 ■ P1 task description       Wed
+  HH:MM  Event name                 □ P2 task description       Thu
+  ...                               □ P3 task description       Fri
 
-## Top Tasks (Priority 1-2)
-1. [domain] Task title (due: date, effort: Xm)
-2. ...
+  HABITS - wk NN                    GOALS
+  Habit       ████████░░ X/Y        Goal name        ██████░░░░ X%
+  Habit       ██████░░░░ X/Y        Goal name        ████░░░░░░ X%
+  Habit       ████░░░░░░ X/Y        Goal name        ██░░░░░░░░ X%
+  ...                               ...
 
-## Habits Due Today
-- [ ] Habit name (target: X unit, streak: Y days)
-- [ ] ...
-
-## Goals Check-in
-- Goal title — X% toward target (due: date)
-
-## Suggested Focus
-Based on your energy curve and open calendar windows, I'd suggest:
-- [time block] → [task/habit]
-- [time block] → [task/habit]
+  FOCUS WINDOWS
+  HH:MM-HH:MM  ████ peak   → [suggested task/habit]
+  HH:MM-HH:MM  ██░░ med    → [suggested task/habit]
+  HH:MM-HH:MM  ████ peak   → [suggested task/habit]
 ```
 
 Keep it scannable. No fluff. The user should be able to read this in 30 seconds and know what to do.

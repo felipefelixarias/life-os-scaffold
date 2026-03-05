@@ -13,37 +13,41 @@ Guided reflection and planning session. Run every Sunday (or whenever the user t
 
 ## Output Format
 
+Full-width terminal dashboard. The weekly review should feel like opening a report.
+
 ```
-# Weekly Review — Week of [date]
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║              life-os · weekly review · wk NN                   ║
+  ╚══════════════════════════════════════════════════════════════════╝
 
-## Habit Scorecard
-| Habit | Target | Actual | Streak |
-|-------|--------|--------|--------|
-| ...   | 5/wk   | 3/wk   | 2 days |
+  HABITS                        TARGET  ACTUAL  STREAK
+  Workout                        7/wk   ████████████░░  6/7    12d
+  Marovi                         7/wk   ██████████░░░░  5/7     5d
+  Interview prep                 7/wk   ████████░░░░░░  4/7     2d
+  LeetCode                       5/wk   ██████░░░░░░░░  3/5     3d
+  Guitar                         4/wk   ████████░░░░░░  3/4     —
+  Singing                        4/wk   ████░░░░░░░░░░  1/4     —
+  Drums                          3/wk   ██████░░░░░░░░  2/3     —
 
-## Tasks
-- Completed: X
-- Slipped: Y (list them)
-- Carried forward: Z
+  TASKS                                 TIME BY DOMAIN
+  ✓ Completed    12                     Career       ██████████  14h
+  → Carried       3                     Marovi       ████████░░  10h
+  ✗ Dropped       1                     Health       ██████░░░░   7h
+  + Added         5                     Study        ████░░░░░░   5h
+                                        Music        ████░░░░░░   4h
 
-## Time by Domain
-| Domain  | Hours |
-|---------|-------|
-| Career  | X     |
-| Project | Y     |
-| Health  | Z     |
+  ┌─ wins ──────────────────────────────────────────────┐
+  │  (ask the user to name 1-3 wins)                    │
+  └─────────────────────────────────────────────────────┘
 
-## Wins This Week
-- (ask the user to name 1-3 wins)
+  ┌─ what didn't work ─────────────────────────────────┐
+  │  (ask the user)                                     │
+  └─────────────────────────────────────────────────────┘
 
-## What Didn't Work
-- (ask the user)
-
-## Next Week Priorities
-Based on open tasks, upcoming deadlines, and habit gaps:
-1. ...
-2. ...
-3. ...
+  NEXT WEEK PRIORITIES
+  1. ...
+  2. ...
+  3. ...
 ```
 
 ## Rules

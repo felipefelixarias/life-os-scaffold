@@ -38,38 +38,42 @@ Find rot in the system: stale data, broken habits, missed goals, empty logs. Pro
 
 ## Output Format
 
+Health score as a big visual gauge. Each subsystem gets a status line.
+
 ```
-# System Audit — [date]
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║                life-os · audit · [date]                        ║
+  ╚══════════════════════════════════════════════════════════════════╝
 
-## Health Score: X/10
+  HEALTH    ████████████████░░░░  8 / 10
 
-### Tasks (X issues)
-- Stale: Y tasks untouched for 3+ weeks
-- Overdue: Z tasks past due date
-- Backlog size: N active tasks [OK / BLOATED]
-→ Proposed: drop A, B, C | reschedule D, E
+  SUBSYSTEM          STATUS    ISSUES
+  ─────────────────────────────────────────────────────────
+  Tasks              ██████░░  2 stale · 1 overdue · 18 active
+  Habits             ████████  all on track
+  Goals              ██████░░  1 stale progress · 1 uncelebrated win
+  Projects           ████░░░░  2 empty · 1 closeable
+  Daily log          ████████  7/7 days
+  Time logs          ░░░░░░░░  unused
 
-### Habits (X issues)
-- Dead: Y habits with no entries in 2 weeks
-- Struggling: Z habits below 50% target
-→ Proposed: deactivate A | reduce target for B
+  ┌─ findings ─────────────────────────────────────────────────────┐
+  │                                                                 │
+  │  TASKS                                                          │
+  │  ✗ "Update deployment docs"       stale 24d → drop?            │
+  │  ✗ "Research caching layer"       stale 18d → drop?            │
+  │  ⚠ "Submit expense report"        3d overdue → reschedule?     │
+  │                                                                 │
+  │  GOALS                                                          │
+  │  ⚠ "Launch Marovi beta"           no update in 32d             │
+  │  ★ "Hit 5 PR reviews/week"        at target! → close as done   │
+  │                                                                 │
+  │  PROJECTS                                                       │
+  │  ✗ "Old hackathon"                0 tasks → archive?           │
+  │  ✗ "Q1 planning"                  all done → close?            │
+  │                                                                 │
+  └─────────────────────────────────────────────────────────────────┘
 
-### Goals (X issues)
-- Missed: Y goals past deadline
-- Stale: Z goals with no progress update
-- Wins to close: W goals at target!
-→ Proposed: close A as done | extend deadline for B
-
-### Projects (X issues)
-- Empty: Y projects with no tasks
-- Closeable: Z projects with all tasks done
-→ Proposed: archive A, B
-
-### Logging
-- Daily log: [X/7 days this week]
-- Time logs: [active / unused]
-
-Apply cleanup? (y/modify/n)
+  Apply cleanup? (y/modify/n)
 ```
 
 ## Rules
