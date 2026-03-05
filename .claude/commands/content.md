@@ -55,10 +55,25 @@ Plan, draft, and queue social media content across platforms.
 Pick a number to draft, or describe what you want to post.
 ```
 
+## Voice & Tone
+
+The user's writing style is casual, direct, and nerdy-confident. Follow these rules:
+
+- **First person, conversational.** Write like talking to a friend, not presenting to a board. Stream-of-consciousness is fine.
+- **Specific over vague.** Say "16 commands" not "many commands". Say "CSV files on git" not "a structured system".
+- **Self-aware nerd energy.** Lead with "the nerdiest thing about me" not "I'm excited to announce". Embrace the weirdness of what you're building.
+- **No corporate buzzwords.** No "leveraging", "synergies", "excited to share", "thrilled to announce", "game-changer". Just say what it is.
+- **No em dashes in narrative.** Use commas and periods instead.
+- **Anti-overclaiming.** Don't say it changed your life. Say what it actually does and let people decide.
+- **Humble confidence.** The work speaks. No "I'm so proud" or "this is amazing". Just describe it matter-of-factly.
+- **End with the link, not a CTA.** Don't say "check it out!" or "let me know what you think!" Just drop the link.
+- **Emoji only if the user uses them first.** Default to no emoji.
+- **The :) is on brand.** Casual closers like "only Anthropic Max :)" are good.
+
 ## Rules
 
 - Draw content from real activity — don't invent accomplishments.
-- Match tone to platform (LinkedIn = professional insight, X = punchy takes, Instagram = visual/personal, TikTok = raw/authentic).
+- Match tone to platform but always keep the casual, direct voice above.
 - If there's no recent activity worth posting about, say so. Don't force content.
 - Keep drafts editable — present them as starting points, not final copy.
 - Track what gets posted so the user doesn't repeat the same topic across platforms.
