@@ -1,10 +1,12 @@
 # life-os
 
-Your life, in plain text. Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+Your life, version-controlled. Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ## What is this
 
-A personal operating system that runs from your terminal. Tasks, habits, goals, calendar, sprints -- all in CSV files you own. Claude Code is the interface. No app. No subscription. No database. Just files and AI.
+A personal operating system that runs from your terminal. Tasks, habits, goals, calendar, sprints -- all in CSV files, all in git. Every change is a commit. Every week is a diff. Your entire life history travels with you to any machine with `git clone`.
+
+No app. No subscription. No database. Just files and AI.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/life-os.git
@@ -20,9 +22,19 @@ First run walks you through setup. After that:
 /add-task    # "buy groceries, low priority"
 ```
 
+## Why git
+
+Your life data deserves the same rigor as your code. Git gives you:
+
+- **Full history** -- `git log` shows when you added a goal, changed a habit target, or completed a sprint
+- **Any machine** -- `git clone` on a new laptop and you're running in 30 seconds
+- **Branching** -- experiment with a new routine on a branch, merge it if it works
+- **Backup** -- your data lives on GitHub, not in some startup's database that might shut down
+- **Diffs** -- `git diff` shows exactly what changed in your task list this week
+
 ## How it works
 
-You talk to Claude. Claude reads your files, plans your day, tracks your habits, and writes everything back to CSVs. Git is your changelog. Google Calendar is optional but powerful.
+You talk to Claude. Claude reads your files, plans your day, tracks your habits, and writes everything back to CSVs. Google Calendar integration is optional but powerful.
 
 **Energy curve** -- tell it when you're sharpest. Deep work gets scheduled during peaks, admin during valleys.
 
@@ -50,6 +62,55 @@ You talk to Claude. Claude reads your files, plans your day, tracks your habits,
 | `/content` | Draft social posts from recent activity |
 | `/improve` | The system improves itself |
 | `/setup` | First-time onboarding (runs automatically) |
+
+## Setting up your fork safely
+
+Your life-os will contain personal data. Set it up right:
+
+### Option A: Private repo (recommended)
+
+1. Create a **private** repo on GitHub (don't fork -- forks of public repos can't be made private)
+2. Clone this scaffold, change the remote:
+```bash
+git clone https://github.com/felipefelixarias/life-os-scaffold.git life-os
+cd life-os
+git remote set-url origin https://github.com/YOUR_USERNAME/life-os.git
+git push -u origin main
+```
+
+### Option B: Public repo with gitignored data
+
+If you want your structure public but data private, uncomment these lines in `.gitignore`:
+```
+01-ops/life-os/data/canonical/*.csv
+01-ops/life-os/logs/*.csv
+01-ops/life-os/config/profile.json
+```
+
+### What's already protected
+
+The `.gitignore` already excludes:
+- `.env` files and secrets
+- Credential files (`*.pem`, `*.key`, `*credential*.csv`, `*client_secret*.json`)
+- `04-repos/` (independent code projects)
+- `06-admin/finance/` (uncomment if you use it)
+
+### Multiple machines
+
+Once your repo is on GitHub:
+```bash
+# New machine
+git clone https://github.com/YOUR_USERNAME/life-os.git
+cd life-os
+claude
+# /setup detects existing profile.json, skips onboarding. You're live.
+
+# Daily workflow
+git pull                    # start of day: sync from other machines
+claude                      # /turbo, work, /shutdown
+git add -A && git commit    # end of day: save state
+git push                    # sync for tomorrow
+```
 
 ## Structure
 
@@ -83,7 +144,7 @@ calendar_events.csv imported calendar data
 
 ## Philosophy
 
-Own your data. Start small. Compound, don't grind.
+Own your data. Version-control your life. Start small. Compound, don't grind.
 
 ## License
 
