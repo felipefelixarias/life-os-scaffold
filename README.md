@@ -62,12 +62,19 @@ life-os/
 │   └── commands/             # Claude Code slash commands
 │       ├── daily.md          # /daily — morning dashboard
 │       ├── plan-day.md       # /plan-day — generate time blocks
+│       ├── replan.md         # /replan — rebuild today's plan
+│       ├── turbo.md          # /turbo — full morning startup (agent)
+│       ├── shutdown.md       # /shutdown — end of day wrap-up (agent)
 │       ├── weekly-review.md  # /weekly-review — week reflection
+│       ├── sprint-plan.md    # /sprint-plan — weekly sprint setup (agent)
 │       ├── add-task.md       # /add-task — quick task capture
 │       ├── log-time.md       # /log-time — log time spent
 │       ├── gcal-create.md    # /gcal-create — create calendar event
-│       ├── replan.md         # /replan — rebuild today's plan
-│       └── status.md         # /status — quick snapshot
+│       ├── status.md         # /status — quick snapshot
+│       ├── triage.md         # /triage — backlog cleanup (agent)
+│       ├── audit.md          # /audit — system health check (agent)
+│       ├── content.md        # /content — social media planning (agent)
+│       └── improve.md        # /improve — system self-improvement (agent)
 ├── templates/
 │   ├── sprint_template.md    # Weekly sprint planning
 │   └── daily_checkin.md      # Daily check-in prompts
@@ -86,14 +93,32 @@ life-os/
 
 Every piece of structured data lives in a CSV file under `data/canonical/`. No databases, no APIs, no sync conflicts. Git tracks history. Claude Code reads and writes them directly.
 
-### Skills
+### Commands & Agents
 
-Skills are markdown files in `.claude/commands/` that register as slash commands in Claude Code:
+All interactions are slash commands in `.claude/commands/`. **Commands** are single-purpose tools. **Agents** are multi-step workflows that make decisions and update multiple files autonomously.
 
-- `/daily` — show today's dashboard: calendar, top tasks, habit streaks
-- `/plan-day` — generate a time-blocked plan and push to Google Calendar
-- `/weekly-review` — reflect on the week, close loops, set next targets
-- `/add-task` — capture a task with priority, effort, and domain
+#### Commands
+| Command | What it does |
+|---------|-------------|
+| `/daily` | Morning dashboard: calendar, tasks, habits, suggested focus |
+| `/plan-day` | Generate time-blocked plan, push to Google Calendar |
+| `/replan` | Rebuild today's plan from current time |
+| `/add-task` | Capture a task from natural language |
+| `/log-time` | Log time spent on an activity |
+| `/gcal-create` | Create a Google Calendar event |
+| `/status` | Quick snapshot of all domains |
+| `/weekly-review` | Guided weekly reflection and planning |
+
+#### Agents
+| Agent | What it does |
+|-------|-------------|
+| `/turbo` | Full morning startup: calendar + dashboard + day plan + gcal push, one shot |
+| `/shutdown` | End of day: review planned vs actual, update tasks/habits, preview tomorrow |
+| `/triage` | Scan backlog, flag overdue/stale tasks, suggest drops and priority changes |
+| `/sprint-plan` | Generate a full weekly sprint with daily themes and habit scheduling |
+| `/audit` | System health check: find stale data, dead habits, missed goals |
+| `/content` | Plan and draft social media posts from recent activity |
+| `/improve` | Analyze system usage, identify friction, suggest and implement improvements |
 
 ### Energy Curve
 

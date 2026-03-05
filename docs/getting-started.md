@@ -68,10 +68,12 @@ End of week:
 /weekly-review
 ```
 
-## Skills Reference
+## Commands & Agents Reference
 
-| Skill | What it does |
-|-------|-------------|
+### Commands (single-purpose)
+
+| Command | What it does |
+|---------|-------------|
 | `/daily` | Morning dashboard: calendar, tasks, habits |
 | `/plan-day` | Generate time-blocked plan, push to Google Calendar |
 | `/replan` | Rebuild today's plan from current time |
@@ -80,6 +82,18 @@ End of week:
 | `/log-time` | Log time spent on an activity |
 | `/gcal-create` | Create a Google Calendar event |
 | `/status` | Quick snapshot of all domains |
+
+### Agents (multi-step, autonomous)
+
+| Agent | What it does |
+|-------|-------------|
+| `/turbo` | Full morning startup: dashboard + plan + gcal push in one shot |
+| `/shutdown` | End of day: review, update tasks/habits, preview tomorrow |
+| `/triage` | Scan backlog, flag stale/overdue tasks, suggest drops |
+| `/sprint-plan` | Generate weekly sprint with daily themes and habit scheduling |
+| `/audit` | System health check: find rot, propose cleanup |
+| `/content` | Plan and draft social media posts from recent activity |
+| `/improve` | Analyze usage, identify friction, suggest system improvements |
 
 ## Tips
 

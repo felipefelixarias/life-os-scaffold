@@ -1,6 +1,6 @@
-# Skills Reference
+# Commands & Agents Reference
 
-Skills are slash commands you run inside Claude Code. Each one reads your data files, performs an action, and outputs a result.
+All interactions are slash commands in Claude Code. **Commands** are single-purpose tools — they do one thing and return a result. **Agents** are multi-step workflows that read multiple data sources, make decisions, update files, and optionally interact with external services.
 
 ## Daily Operations
 
@@ -74,14 +74,60 @@ Skills are slash commands you run inside Claude Code. Each one reads your data f
 **Reads:** habits.csv, tasks.csv, goals.csv, time_logs.csv, daily_log.csv, Google Calendar
 **Writes:** Outputs a review document to `outputs/`
 
-## Writing Your Own Skills
+## Agents
+
+Agents are autonomous workflows that chain multiple steps, make decisions, and update your data. They minimize back-and-forth — you trigger them, they execute, you approve the result.
+
+### `/turbo` — Morning Startup Agent
+**When:** Start of day (replaces running `/daily` then `/plan-day` separately)
+**What it does:** Fetches calendar, generates dashboard, builds day plan, and pushes to Google Calendar — all in one shot. Detects weekday vs weekend and applies the right planning template.
+**Reads:** profile.json, tasks.csv, habits.csv, goals.csv, daily_log.csv, Google Calendar
+**Writes:** time_blocks.csv, Google Calendar (if approved)
+
+### `/shutdown` — End of Day Agent
+**When:** End of day, before bed
+**What it does:** Reviews planned vs actual, asks what got done in a single batch, marks tasks complete/carried, logs habits, previews tomorrow. Keeps the interaction to 1-2 exchanges.
+**Reads:** tasks.csv, habits.csv, daily_log.csv, Google Calendar
+**Writes:** tasks.csv, daily_log.csv, activity_log.csv
+
+### `/triage` — Task Triage Agent
+**When:** Backlog feels overwhelming, or weekly during sprint planning
+**What it does:** Scans all tasks for overdue, stale (untouched 2+ weeks), orphaned, and duplicate items. Suggests priority adjustments based on active goals. Proposes drops aggressively — carrying dead weight is worse than fewer commitments.
+**Reads:** tasks.csv, goals.csv, projects.csv
+**Writes:** tasks.csv (after approval)
+
+### `/sprint-plan` — Weekly Sprint Planning Agent
+**When:** Sunday/Monday, to set up the week
+**What it does:** Reads goals, tasks, habits, and next week's calendar. Calculates capacity, allocates tasks to specific days, distributes habits by frequency, assigns daily themes. Flags if demand exceeds capacity and suggests cuts.
+**Reads:** profile.json, tasks.csv, goals.csv, habits.csv, projects.csv, daily_log.csv, Google Calendar
+**Writes:** `outputs/sprint_[date].md`
+
+### `/audit` — System Health Check Agent
+**When:** Monthly, or whenever the system feels stale
+**What it does:** Checks every data file for rot: stale tasks, dead habits (0 entries in 2 weeks), missed goal deadlines, empty projects, logging gaps. Assigns a health score out of 10 and proposes cleanup.
+**Reads:** All CSV files, all logs
+**Writes:** Affected files (after approval)
+
+### `/content` — Social Media Content Agent
+**When:** When you want to post or plan content for the week
+**What it does:** Scans recent activity (completed tasks, goal milestones, habit streaks, wins) for content opportunities. Generates 3-5 post ideas with hooks, key points, and platform recommendations. Drafts full posts on request.
+**Reads:** tasks.csv, goals.csv, daily_log.csv, content_pipeline.csv (if exists)
+**Writes:** content_pipeline.csv (if exists)
+
+### `/improve` — System Self-Improvement Agent
+**When:** When something feels off, or periodically to tune the system
+**What it does:** Analyzes which commands are used, which data files have data, which habits are consistently missed. Identifies friction points and proposes fixes: config tweaks, new commands, schema changes. Implements approved changes directly.
+**Reads:** All files
+**Writes:** Any file (after approval)
+
+## Writing Your Own
 
 Create a `.md` file in `.claude/commands/` with this structure:
 
 ```markdown
-# /skill-name — Short Description
+# /command-name — Short Description
 
-What this skill does.
+What this does.
 
 ## Steps
 1. ...
@@ -94,4 +140,6 @@ What the user sees.
 - Constraints and edge cases.
 ```
 
-See [customization.md](customization.md) for more details and skill ideas.
+The difference between a command and an agent is scope: commands do one thing, agents chain multiple steps and make decisions. Both use the same file format.
+
+See [customization.md](customization.md) for more details and ideas.
