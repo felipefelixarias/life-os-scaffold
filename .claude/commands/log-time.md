@@ -12,8 +12,8 @@ Log actual time spent on an activity to `data/canonical/time_logs.csv`.
 
 ## Examples
 
-User: "logged 45 min on Marovi"
-→ activity=marovi_build, domain=learning, duration=45, date=today
+User: "logged 45 min on my side project"
+→ activity=side_project, domain=learning, duration=45, date=today
 
 User: "just did a 30 min workout"
 → activity=workout, domain=health, duration=30, date=today
@@ -25,4 +25,4 @@ User: "spent 2 hours on interview prep this morning"
 
 - Match activity names to existing habits where possible.
 - Don't ask for domain if it can be inferred from the activity.
-- Keep confirmation brief: "Logged 45 min on Marovi. Total today: 90 min."
+- Keep confirmation brief: "Logged 45 min on side project. Total today: 90 min."

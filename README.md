@@ -159,7 +159,7 @@ This scaffold is intentionally minimal. Adapt it to your life:
 
 ## Credits
 
-Built by [Felipe Felix Arias](https://felipefelixarias.github.io). Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code) from Anthropic.
+Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code) from Anthropic.
 
 ## License
 

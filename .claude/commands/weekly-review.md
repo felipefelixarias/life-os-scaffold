@@ -30,7 +30,7 @@ Guided reflection and planning session. Run every Sunday (or whenever the user t
 | Domain  | Hours |
 |---------|-------|
 | Career  | X     |
-| Marovi  | Y     |
+| Project | Y     |
 | Health  | Z     |
 
 ## Wins This Week

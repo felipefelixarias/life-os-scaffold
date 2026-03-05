@@ -49,7 +49,7 @@ Skills are slash commands you run inside Claude Code. Each one reads your data f
 
 **Examples:**
 ```
-/log-time 45 min on Marovi
+/log-time 45 min on side project
 /log-time 30 min workout
 /log-time 2 hours interview prep
 ```
