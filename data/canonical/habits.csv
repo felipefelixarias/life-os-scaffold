@@ -1,0 +1,6 @@
+habit_id,area,name,frequency,target_per_week,min_value,unit,active,notes,last_updated
+sleep_7h,health,Sleep 7+ hours,daily,6,7,hours,true,Core recovery habit,
+workout_30m,health,Exercise 30+ minutes,daily,5,30,minutes,true,Strength or cardio,
+deep_work_90m,learning,Deep work block,daily,5,90,minutes,true,Focused work on main project,
+journal_10m,personal,Daily reflection,daily,5,10,minutes,true,Brief end-of-day reflection,
+weekly_review,operations,Weekly review and planning,weekly,1,45,minutes,true,Sunday: review progress and set next week targets,

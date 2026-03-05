@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Node
+node_modules/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+*credential*.csv
+
+# User data (keep schemas, ignore personal data)
+# Uncomment these if you don't want to track your actual data in git:
+# data/canonical/*.csv
+# logs/*.csv
+# outputs/

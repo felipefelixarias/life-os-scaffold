@@ -1,0 +1,2 @@
+task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes
+example_task,,Set up life-os and customize profile,operations,queued,1,30,,medium,operations,manual,Copy profile.example.json to profile.json and edit,,,,2026-01-01,Starter task

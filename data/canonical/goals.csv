@@ -1,0 +1,2 @@
+goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes
+example_goal,health,Run a 5K,quarter,2026-06-01,distance_km,5,0,active,,Starter goal — replace with your own

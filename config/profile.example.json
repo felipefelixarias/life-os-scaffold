@@ -1,0 +1,47 @@
+{
+  "owner": "Your Name",
+  "timezone": "America/New_York",
+  "planning": {
+    "weekday_wake": "07:00",
+    "weekend_earliest": "09:00",
+    "day_end": "23:00",
+    "bedtime": "23:00",
+    "workday_commute_start": "08:30",
+    "workday_start": "09:00",
+    "workday_end": "17:00",
+    "workday_commute_home_end": "17:30",
+    "default_task_block_mins": 60,
+    "deep_work_block_mins": 90,
+    "max_screen_block_mins": 90,
+    "break_mins": 15,
+    "max_major_tasks_per_day": 4,
+    "weekly_review_day": "Sunday"
+  },
+  "domains": [
+    {"id": "career", "name": "Career", "weight": 10},
+    {"id": "health", "name": "Health", "weight": 9},
+    {"id": "learning", "name": "Learning", "weight": 9},
+    {"id": "hobbies", "name": "Hobbies", "weight": 7},
+    {"id": "finance", "name": "Finance", "weight": 7},
+    {"id": "relationships", "name": "Relationships", "weight": 7},
+    {"id": "operations", "name": "Operations", "weight": 5},
+    {"id": "personal", "name": "Personal", "weight": 5}
+  ],
+  "energy_curve": [
+    {"time": "07:00", "energy": "low"},
+    {"time": "09:00", "energy": "high"},
+    {"time": "12:00", "energy": "medium"},
+    {"time": "14:00", "energy": "low"},
+    {"time": "16:00", "energy": "medium"},
+    {"time": "19:00", "energy": "high"},
+    {"time": "21:00", "energy": "medium"},
+    {"time": "22:00", "energy": "low"}
+  ],
+  "priority_tiers": [
+    {"tier": 1, "label": "Non-negotiable", "examples": "sleep, health essentials, critical deadlines"},
+    {"tier": 2, "label": "Core build", "examples": "main project, exercise, deep work"},
+    {"tier": 3, "label": "Growth", "examples": "learning, content, networking"},
+    {"tier": 4, "label": "Nice to have", "examples": "extra hobbies, cleanup, journaling"},
+    {"tier": 5, "label": "Cut first", "examples": "extended sessions, low-priority admin"}
+  ]
+}

@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""Google Calendar API wrapper using gcalcli's saved OAuth token."""
+
+import datetime as dt
+import json
+import pickle
+from pathlib import Path
+from typing import Dict, List, Optional
+
+OAUTH_PATH = Path.home() / ".gcalcli_oauth"
+PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
+
+
+def _load_profile() -> Dict:
+    if PROFILE_PATH.exists():
+        return json.loads(PROFILE_PATH.read_text())
+    return {}
+
+
+def _get_timezone() -> str:
+    return _load_profile().get("timezone", "America/New_York")
+
+
+def get_credentials():
+    """Load gcalcli's pickled OAuth credentials."""
+    if not OAUTH_PATH.exists():
+        raise FileNotFoundError(
+            f"No OAuth token at {OAUTH_PATH}. Run 'gcalcli list' to authenticate."
+        )
+    with open(OAUTH_PATH, "rb") as f:
+        return pickle.load(f)
+
+
+def get_service():
+    """Build a Google Calendar API service."""
+    from googleapiclient.discovery import build
+
+    return build("calendar", "v3", credentials=get_credentials())
+
+
+def list_calendars() -> List[Dict]:
+    """List all calendars."""
+    service = get_service()
+    result = service.calendarList().list().execute()
+    return result.get("items", [])
+
+
+def get_agenda(
+    start_date: dt.date,
+    end_date: dt.date,
+    calendar_id: str = "primary",
+) -> List[Dict]:
+    """Get events between two dates."""
+    tz = _get_timezone()
+    service = get_service()
+    events = (
+        service.events()
+        .list(
+            calendarId=calendar_id,
+            timeMin=f"{start_date.isoformat()}T00:00:00",
+            timeMax=f"{end_date.isoformat()}T23:59:59",
+            singleEvents=True,
+            orderBy="startTime",
+            timeZone=tz,
+        )
+        .execute()
+    )
+    return events.get("items", [])
+
+
+def create_event(
+    summary: str,
+    start_dt: dt.datetime,
+    end_dt: dt.datetime,
+    location: Optional[str] = None,
+    description: Optional[str] = None,
+    reminders: Optional[List[Dict]] = None,
+    calendar_id: str = "primary",
+) -> Dict:
+    """Create a Google Calendar event."""
+    tz = _get_timezone()
+    event = {
+        "summary": summary,
+        "start": {"dateTime": start_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": tz},
+        "end": {"dateTime": end_dt.strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": tz},
+    }
+    if location:
+        event["location"] = location
+    if description:
+        event["description"] = description
+    if reminders:
+        event["reminders"] = {
+            "useDefault": False,
+            "overrides": reminders,
+        }
+
+    service = get_service()
+    return service.events().insert(calendarId=calendar_id, body=event).execute()
+
+
+def update_event(
+    event_id: str,
+    calendar_id: str = "primary",
+    **kwargs,
+) -> Dict:
+    """Update fields on an existing event."""
+    service = get_service()
+    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    event.update(kwargs)
+    return (
+        service.events()
+        .update(calendarId=calendar_id, eventId=event_id, body=event)
+        .execute()
+    )
+
+
+def delete_event(event_id: str, calendar_id: str = "primary") -> None:
+    """Delete a Google Calendar event."""
+    service = get_service()
+    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+
+
+def search_events(
+    query: str,
+    start_date: dt.date,
+    end_date: dt.date,
+    calendar_id: str = "primary",
+) -> List[Dict]:
+    """Search events by text query."""
+    tz = _get_timezone()
+    service = get_service()
+    events = (
+        service.events()
+        .list(
+            calendarId=calendar_id,
+            timeMin=f"{start_date.isoformat()}T00:00:00",
+            timeMax=f"{end_date.isoformat()}T23:59:59",
+            q=query,
+            singleEvents=True,
+            orderBy="startTime",
+            timeZone=tz,
+        )
+        .execute()
+    )
+    return events.get("items", [])
+
+
+def push_day_plan(
+    blocks: List[Dict],
+    date: dt.date,
+    calendar_id: str = "primary",
+) -> List[str]:
+    """Push a list of time blocks to Google Calendar.
+
+    Each block: {"summary": str, "start": "HH:MM", "end": "HH:MM",
+                 "location": str (optional)}
+
+    Returns list of created event IDs.
+    """
+    tz = _get_timezone()
+    created_ids = []
+
+    # Clean up previously pushed life-os events for this date
+    existing = search_events("[life-os]", date, date, calendar_id)
+    for ev in existing:
+        delete_event(ev["id"], calendar_id)
+
+    for block in blocks:
+        start_dt = dt.datetime.combine(
+            date, dt.datetime.strptime(block["start"], "%H:%M").time()
+        )
+        end_dt = dt.datetime.combine(
+            date, dt.datetime.strptime(block["end"], "%H:%M").time()
+        )
+        event = create_event(
+            summary=block["summary"],
+            start_dt=start_dt,
+            end_dt=end_dt,
+            location=block.get("location"),
+            description="[life-os] Auto-generated by life-os day planner",
+            calendar_id=calendar_id,
+        )
+        created_ids.append(event["id"])
+
+    return created_ids

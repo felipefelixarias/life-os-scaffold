@@ -1,0 +1,18 @@
+{
+  "feeds": [
+    {
+      "name": "personal",
+      "enabled": true,
+      "url": "https://calendar.google.com/calendar/ical/YOUR_CALENDAR_ID/basic.ics",
+      "output_file": "personal.ics",
+      "timeout_seconds": 30
+    },
+    {
+      "name": "work",
+      "enabled": false,
+      "url": "https://outlook.office365.com/owa/calendar/YOUR_WORK_CALENDAR_ID/calendar.ics",
+      "output_file": "work.ics",
+      "timeout_seconds": 30
+    }
+  ]
+}
