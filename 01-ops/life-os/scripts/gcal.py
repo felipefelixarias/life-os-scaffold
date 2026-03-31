@@ -5,13 +5,77 @@ from __future__ import annotations
 import datetime as dt
 import json
 import pickle
+import time
+from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
 LIFE_OS_TAG = "[life-os]"
+
+T = TypeVar('T')
+
+
+def retry_api_call(
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    timeout_seconds: int = 30,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """Decorator to add retry logic with exponential backoff to API calls.
+
+    Args:
+        max_retries: Maximum number of retry attempts
+        backoff_factor: Base delay for exponential backoff (seconds)
+        timeout_seconds: Timeout for each individual API call attempt
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            from googleapiclient.errors import HttpError
+            from google.auth.exceptions import TransportError
+            import socket
+
+            last_exception = None
+
+            for attempt in range(max_retries + 1):
+                try:
+                    # Set timeout for this attempt
+                    import socket
+                    original_timeout = socket.getdefaulttimeout()
+                    socket.setdefaulttimeout(timeout_seconds)
+
+                    try:
+                        result = func(*args, **kwargs)
+                        return result
+                    finally:
+                        socket.setdefaulttimeout(original_timeout)
+
+                except (HttpError, TransportError, socket.timeout, ConnectionError) as e:
+                    last_exception = e
+
+                    # Don't retry on certain HTTP errors (4xx client errors except 429)
+                    if isinstance(e, HttpError):
+                        if 400 <= e.resp.status < 500 and e.resp.status != 429:
+                            raise e
+
+                    if attempt < max_retries:
+                        delay = backoff_factor * (2 ** attempt)
+                        print(f"API call failed (attempt {attempt + 1}/{max_retries + 1}), "
+                              f"retrying in {delay:.1f}s: {str(e)}")
+                        time.sleep(delay)
+                    else:
+                        print(f"API call failed after {max_retries + 1} attempts")
+                        raise e
+
+            # This should never be reached, but satisfy type checker
+            if last_exception:
+                raise last_exception
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
 
 
 def _load_timezone() -> str:
@@ -75,6 +139,7 @@ def list_calendars() -> List[Dict[str, Any]]:
     return result.get("items", [])
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def get_agenda(
     start_date: dt.date,
     end_date: Optional[dt.date] = None,
@@ -111,6 +176,7 @@ def get_agenda(
     return events
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def create_event(
     summary: str,
     start_dt: dt.datetime,
@@ -140,6 +206,7 @@ def create_event(
     return event["id"]
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def update_event(
     event_id: str,
     calendar_id: str = "primary",

@@ -41,7 +41,7 @@ You talk to Claude. Claude reads your files, follows the command specs in `.clau
 
 **Priority tiers** -- tell it what's sacred and what gets cut. When plans change, it cuts from the bottom up automatically.
 
-**17 slash commands** -- prompt files you can inspect and customize under `.claude/commands/`.
+**Starter command set** -- prompt files you can inspect and customize under `.claude/commands/`.
 
 ## Verification
 
@@ -51,6 +51,7 @@ make lint
 ```
 
 `make test` runs repo validation plus Python unit tests. `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace.
+`make clean` removes generated Python cache directories from the repo checkout.
 
 ## Commands
 

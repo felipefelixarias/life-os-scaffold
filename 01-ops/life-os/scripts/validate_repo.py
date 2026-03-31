@@ -48,6 +48,17 @@ def validate_required_paths() -> list[str]:
     for path in paths:
         if not path.exists():
             errors.append(f"Missing required path: {path.relative_to(REPO_ROOT)}")
+    command_dir = REPO_ROOT / ".claude" / "commands"
+    if command_dir.exists() and not any(command_dir.glob("*.md")):
+        errors.append("No command definitions found in .claude/commands")
+    return errors
+
+
+def validate_required_docs() -> list[str]:
+    errors = []
+    for path in DOCS:
+        if not path.exists():
+            errors.append(f"Missing required doc: {path.relative_to(REPO_ROOT)}")
     return errors
 
 
@@ -70,6 +81,8 @@ def validate_csv_headers() -> list[str]:
 def validate_markdown_links() -> list[str]:
     errors = []
     for doc_path in DOCS:
+        if not doc_path.exists():
+            continue
         content = doc_path.read_text(encoding="utf-8")
         for target in LINK_RE.findall(content):
             if (
@@ -89,9 +102,13 @@ def validate_markdown_links() -> list[str]:
 
 def validate_command_references() -> list[str]:
     command_dir = REPO_ROOT / ".claude" / "commands"
+    if not command_dir.exists():
+        return []
     defined = {f"/{path.stem}" for path in command_dir.glob("*.md")}
     errors = []
     for doc_path in COMMAND_REFERENCE_DOCS:
+        if not doc_path.exists():
+            continue
         content = doc_path.read_text(encoding="utf-8")
         for command in COMMAND_RE.findall(content):
             if command not in defined:
@@ -105,6 +122,8 @@ def lint_whitespace() -> list[str]:
     errors = []
     paths = DOCS + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
+        if not path.exists():
+            continue
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if line.endswith(" ") or line.endswith("\t"):
                 errors.append(f"Trailing whitespace in {path.relative_to(REPO_ROOT)}:{line_no}")
@@ -118,6 +137,7 @@ def main() -> int:
 
     errors = []
     errors.extend(validate_required_paths())
+    errors.extend(validate_required_docs())
     errors.extend(validate_csv_headers())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())

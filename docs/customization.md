@@ -81,7 +81,7 @@ Don't over-track. Only add habits you'll actually review. Dead data is worse tha
 
 ## Skills (`.claude/commands/`)
 
-Skills are markdown files that register as slash commands in Claude Code. In this scaffold they are the primary implementation surface. Each file describes:
+Skills are markdown files that register as slash commands in Claude Code. In this scaffold they are the primary implementation surface, and the repo validator expects at least one command file to exist. Each file describes:
 - What the skill does
 - Step-by-step instructions
 - Output format

@@ -39,6 +39,7 @@ make lint
 ```
 
 These checks verify the CSV schemas, docs links, command references, and the Python calendar helper.
+`make clean` removes generated Python caches if you want to reset the working tree after local runs.
 
 ## Google Calendar (optional)
 
