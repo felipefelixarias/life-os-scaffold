@@ -62,6 +62,10 @@ If `01-ops/life-os/config/profile.json` does NOT exist, the user hasn't set up y
 - Use `01-ops/life-os/scripts/gcal.py` for API operations.
 - Tag pushed events with `[life-os]` in description for cleanup.
 
+### Verification
+- Run `make test` after changing scaffold logic or schemas.
+- Run `make lint` after editing docs or command files.
+
 ### Communication
 - Be direct and concise.
 - Don't repeat information the user already knows.

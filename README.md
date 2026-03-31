@@ -4,17 +4,18 @@ Your life, version-controlled. Powered by [Claude Code](https://docs.anthropic.c
 
 ## What is this
 
-A personal operating system that runs from your terminal. Tasks, habits, goals, calendar, sprints -- all in CSV files, all in git. Every change is a commit. Every week is a diff. Your entire life history travels with you to any machine with `git clone`.
+A personal operating system scaffold that runs from your terminal. Tasks, habits, goals, calendar, and reviews live in files you can inspect and version. The repo ships CSV schemas, Claude slash-command prompts, templates, and a small Google Calendar helper so you can adapt it to your own workflow.
 
 No app. No subscription. No database. Just files and AI.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
+make setup
 claude
 ```
 
-First run walks you through setup. After that:
+First run usually starts with `/setup`. After that:
 
 ```
 /turbo       # morning: dashboard + day plan + push to Google Calendar
@@ -34,13 +35,22 @@ Your life data deserves the same rigor as your code. Git gives you:
 
 ## How it works
 
-You talk to Claude. Claude reads your files, plans your day, tracks your habits, and writes everything back to CSVs. Google Calendar integration is optional but powerful.
+You talk to Claude. Claude reads your files, follows the command specs in `.claude/commands/`, plans your day, tracks your habits, and writes updates back to CSVs. Google Calendar integration is optional.
 
 **Energy curve** -- tell it when you're sharpest. Deep work gets scheduled during peaks, admin during valleys.
 
 **Priority tiers** -- tell it what's sacred and what gets cut. When plans change, it cuts from the bottom up automatically.
 
-**16 slash commands** -- 8 single-purpose commands + 8 autonomous agents that chain multiple steps and make decisions.
+**17 slash commands** -- prompt files you can inspect and customize under `.claude/commands/`.
+
+## Verification
+
+```bash
+make test
+make lint
+```
+
+`make test` runs repo validation plus Python unit tests. `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace.
 
 ## Commands
 
@@ -49,6 +59,7 @@ You talk to Claude. Claude reads your files, plans your day, tracks your habits,
 | `/turbo` | Morning startup: calendar + dashboard + plan + gcal push |
 | `/shutdown` | End of day: review, update files, preview tomorrow |
 | `/daily` | Just the dashboard, no planning |
+| `/done` | Fast habit check-in for mobile |
 | `/plan-day` | Just the plan, step by step |
 | `/replan` | Rebuild from now (when plans change) |
 | `/add-task` | Natural language task capture |
@@ -102,6 +113,7 @@ Once your repo is on GitHub:
 # New machine
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
+make setup
 claude
 # /setup detects existing profile.json, skips onboarding. You're live.
 
@@ -141,6 +153,11 @@ time_blocks.csv    your planned day
 time_logs.csv      what actually happened
 calendar_events.csv imported calendar data
 ```
+
+## Notes
+
+- This scaffold includes prompt definitions and file schemas. It does not ship a full standalone planner binary.
+- Google Calendar support depends on `gcalcli` plus your own Google OAuth setup. See [docs/google-calendar.md](docs/google-calendar.md).
 
 ## Philosophy
 

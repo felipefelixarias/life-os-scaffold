@@ -2,7 +2,7 @@
 
 ## Overview
 
-life-os can read and write Google Calendar events directly from your terminal. This enables:
+life-os can read and write Google Calendar events directly from your terminal. This scaffold includes a small helper module plus Make targets for connectivity checks. That enables:
 - Viewing your agenda as part of `/daily`
 - Pushing time-blocked day plans to your calendar
 - Creating events with `/gcal-create`
@@ -22,7 +22,7 @@ pip install gcalcli
 gcalcli list
 ```
 
-This opens a browser for Google OAuth. Sign in and grant calendar access. The OAuth token is saved to `~/.gcalcli_oauth` as a pickle file.
+This opens a browser for Google OAuth. Sign in and grant calendar access. The OAuth token is typically saved to `~/.gcalcli_oauth` as a pickle file.
 
 > **Note:** gcalcli v4.4+ requires your own Google Cloud OAuth credentials. See [gcalcli docs](https://github.com/insanum/gcalcli#login-information) for details on setting up a Google Cloud project with the Calendar API enabled.
 
@@ -61,7 +61,7 @@ The Python wrapper (`gcal.py`) reuses gcalcli's saved OAuth token at `~/.gcalcli
 | `push_day_plan(blocks, date)` | Batch-create time blocks for a day |
 | `list_calendars()` | List all available calendars |
 
-All functions use the timezone from your `config/profile.json`.
+All functions use the timezone from your `config/profile.json`. The helper resolves IANA zones through Python's timezone database, so non-US zones such as `Europe/Paris` work correctly too.
 
 ## Day Plan Push
 

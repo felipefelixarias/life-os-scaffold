@@ -1,6 +1,6 @@
 # Commands & Agents Reference
 
-All interactions are slash commands in Claude Code. **Commands** are single-purpose tools — they do one thing and return a result. **Agents** are multi-step workflows that read multiple data sources, make decisions, update files, and optionally interact with external services.
+All interactions are slash commands in Claude Code. This document describes the prompt files shipped in `.claude/commands/`. **Commands** are single-purpose tools. **Agents** are multi-step workflows that read multiple data sources, make decisions, update files, and optionally interact with external services.
 
 ## Onboarding
 
@@ -72,6 +72,12 @@ All interactions are slash commands in Claude Code. **Commands** are single-purp
 /gcal-create Block 2-4pm tomorrow for deep work
 /gcal-create Leave for airport 3pm March 21
 ```
+
+### `/done` — Quick Habit Check-in
+**When:** When you want the fastest possible habit logging flow, especially on mobile
+**What it does:** Shows only habits that have not been logged today, accepts a compact reply, and appends one row per completed habit to `daily_log.csv`.
+**Reads:** habits.csv, daily_log.csv
+**Writes:** daily_log.csv
 
 ## Weekly
 
