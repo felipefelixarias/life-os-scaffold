@@ -1,4 +1,4 @@
-.PHONY: setup gcal-agenda gcal-test help
+.PHONY: help setup test lint clean gcal-agenda gcal-test
 
 LIFE_OS := 01-ops/life-os
 
@@ -10,8 +10,18 @@ setup: ## Copy example configs and get started
 	@test -f $(LIFE_OS)/config/calendar_feeds.json || (cp $(LIFE_OS)/config/calendar_feeds.example.json $(LIFE_OS)/config/calendar_feeds.json && echo "Created calendar_feeds.json — add your calendar URLs")
 	@echo "Setup complete. Run 'claude' to start using life-os."
 
+test: ## Run repo validation and unit tests
+	@python3 $(LIFE_OS)/scripts/validate_repo.py
+	@python3 -m unittest discover -s tests
+
+lint: ## Run lightweight lint checks for docs and scaffold integrity
+	@python3 $(LIFE_OS)/scripts/validate_repo.py --lint
+
+clean: ## Remove generated Python cache files
+	@find . -type d -name '__pycache__' -prune -exec rm -rf {} +
+
 gcal-agenda: ## Show today's Google Calendar agenda
-	@gcalcli agenda "$$(date +%Y-%m-%d)" "$$(date -v+1d +%Y-%m-%d)" 2>/dev/null || echo "gcalcli not configured. See docs/google-calendar.md"
+	@gcalcli agenda "$$(date +%Y-%m-%d)" "$$(python3 -c 'import datetime as dt; print((dt.date.today() + dt.timedelta(days=1)).isoformat())')" 2>/dev/null || echo "gcalcli not configured. See docs/google-calendar.md"
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."

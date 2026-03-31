@@ -10,10 +10,13 @@
 ```bash
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
+make setup
 claude
 ```
 
-Claude detects this is a fresh install (no `profile.json`) and runs `/setup` automatically. It asks you about:
+`make setup` copies the example config files into place if you do not have local copies yet.
+
+Then Claude can run `/setup` to fill in your real profile. It asks you about:
 
 1. Name and timezone
 2. Wake/sleep schedule and work hours
@@ -27,6 +30,15 @@ Claude detects this is a fresh install (no `profile.json`) and runs `/setup` aut
 Everything gets written to `01-ops/life-os/config/profile.json` and the CSV files under `01-ops/life-os/data/canonical/`.
 
 To re-run setup later: `/setup`
+
+## Verify the Scaffold
+
+```bash
+make test
+make lint
+```
+
+These checks verify the CSV schemas, docs links, command references, and the Python calendar helper.
 
 ## Google Calendar (optional)
 
@@ -67,7 +79,7 @@ Reviews what happened vs what was planned, updates your files, previews tomorrow
 
 ## All Commands
 
-See [skills-reference.md](skills-reference.md) for the full list of 16 commands and agents.
+See [skills-reference.md](skills-reference.md) for the full list of command files included in the scaffold.
 
 ## Tips
 

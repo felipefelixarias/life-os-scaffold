@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Google Calendar API wrapper using gcalcli's saved OAuth token.
-
-Provides functions to read/write Google Calendar events, used by life_ops.py
-for day planning integration.
-"""
+"""Google Calendar API wrapper using gcalcli's saved OAuth token."""
 from __future__ import annotations
 
 import datetime as dt
@@ -11,18 +7,11 @@ import json
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
 LIFE_OS_TAG = "[life-os]"
-
-# Timezone offsets for common US timezones (standard/daylight)
-_TZ_OFFSETS = {
-    "America/Los_Angeles": ("-08:00", "-07:00"),
-    "America/Denver": ("-07:00", "-06:00"),
-    "America/Chicago": ("-06:00", "-05:00"),
-    "America/New_York": ("-05:00", "-04:00"),
-}
 
 
 def _load_timezone() -> str:
@@ -34,31 +23,21 @@ def _load_timezone() -> str:
         return "America/Los_Angeles"
 
 
-def _tz_offset(tz: str, d: dt.date) -> str:
-    """Get UTC offset string for a timezone on a given date.
-
-    Uses a simple DST check: March second Sunday to November first Sunday.
-    """
-    offsets = _TZ_OFFSETS.get(tz)
-    if not offsets:
-        return "-08:00"  # fallback
-
-    # Simple US DST: second Sunday in March to first Sunday in November
-    march_1 = dt.date(d.year, 3, 1)
-    dst_start = march_1 + dt.timedelta(days=(6 - march_1.weekday()) % 7 + 7)
-    nov_1 = dt.date(d.year, 11, 1)
-    dst_end = nov_1 + dt.timedelta(days=(6 - nov_1.weekday()) % 7)
-
-    if dst_start <= d < dst_end:
-        return offsets[1]  # daylight
-    return offsets[0]  # standard
+def _get_zoneinfo(tz: str) -> ZoneInfo:
+    """Return the configured timezone, falling back to Los Angeles."""
+    try:
+        return ZoneInfo(tz)
+    except ZoneInfoNotFoundError:
+        return ZoneInfo("America/Los_Angeles")
 
 
 def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     """Format a date + time as RFC3339 with timezone offset."""
     tz = _load_timezone()
-    offset = _tz_offset(tz, d)
-    return f"{d.isoformat()}T{time_str}{offset}"
+    zone = _get_zoneinfo(tz)
+    time_value = dt.time.fromisoformat(time_str)
+    moment = dt.datetime.combine(d, time_value, tzinfo=zone)
+    return moment.isoformat()
 
 
 def get_credentials():
