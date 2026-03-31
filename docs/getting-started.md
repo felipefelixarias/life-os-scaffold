@@ -8,8 +8,8 @@
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/life-os.git
-cd life-os
+git clone https://github.com/YOUR_USERNAME/life-os-scaffold.git
+cd life-os-scaffold
 claude
 ```
 

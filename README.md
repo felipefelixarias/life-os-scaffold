@@ -40,7 +40,7 @@ You talk to Claude. Claude reads your files, plans your day, tracks your habits,
 
 **Priority tiers** -- tell it what's sacred and what gets cut. When plans change, it cuts from the bottom up automatically.
 
-**16 slash commands** -- 8 single-purpose commands + 8 autonomous agents that chain multiple steps and make decisions.
+**17 slash commands** -- Single-purpose commands and autonomous agents that chain multiple steps and make decisions.
 
 ## Commands
 
@@ -52,6 +52,7 @@ You talk to Claude. Claude reads your files, plans your day, tracks your habits,
 | `/plan-day` | Just the plan, step by step |
 | `/replan` | Rebuild from now (when plans change) |
 | `/add-task` | Natural language task capture |
+| `/done` | Quick habit logging (phone-optimized) |
 | `/log-time` | Record time spent |
 | `/gcal-create` | Create a calendar event |
 | `/status` | 5-line pulse check |
