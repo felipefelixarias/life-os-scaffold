@@ -10,6 +10,7 @@
 ```bash
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
+python3 -m pip install -r requirements.txt
 make setup
 claude
 ```

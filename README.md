@@ -11,6 +11,7 @@ No app. No subscription. No database. Just files and AI.
 ```bash
 git clone https://github.com/YOUR_USERNAME/life-os.git
 cd life-os
+python3 -m pip install -r requirements.txt
 make setup
 claude
 ```
@@ -158,7 +159,7 @@ calendar_events.csv imported calendar data
 ## Notes
 
 - This scaffold includes prompt definitions and file schemas. It does not ship a full standalone planner binary.
-- Google Calendar support depends on `gcalcli` plus your own Google OAuth setup. See [docs/google-calendar.md](docs/google-calendar.md).
+- Google Calendar support depends on the Python packages in `requirements.txt`, `gcalcli`, and your own Google OAuth setup. See [docs/google-calendar.md](docs/google-calendar.md).
 
 ## Philosophy
 

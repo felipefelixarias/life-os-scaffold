@@ -13,6 +13,7 @@ life-os can read and write Google Calendar events directly from your terminal. T
 ### 1. Install gcalcli
 
 ```bash
+python3 -m pip install -r requirements.txt
 pip install gcalcli
 ```
 

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://life-os.schema/calendar_feeds.json",
+  "title": "Life OS Calendar Feeds Configuration",
+  "description": "Configuration schema for calendar feed sources",
+  "type": "object",
+  "required": ["feeds"],
+  "properties": {
+    "feeds": {
+      "type": "array",
+      "description": "List of calendar feed sources",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "enabled", "url", "output_file"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "description": "Feed identifier (alphanumeric, underscore, hyphen only)",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this feed is active"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://",
+            "description": "URL to the calendar feed (HTTP/HTTPS only)"
+          },
+          "output_file": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_.-]+\\.(ics|csv|json)$",
+            "description": "Output filename with supported extension (.ics, .csv, .json)",
+            "minLength": 5
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 300,
+            "default": 30,
+            "description": "Request timeout in seconds"
+          },
+          "refresh_interval_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168,
+            "default": 24,
+            "description": "How often to refresh this feed (in hours)"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
