@@ -1,4 +1,4 @@
-.PHONY: setup gcal-agenda gcal-test help validate test integrity-check fix-data clean install-hooks
+.PHONY: setup gcal-agenda gcal-test help validate test integrity-check fix-data clean install-hooks health archive cleanup-logs
 
 LIFE_OS := 01-ops/life-os
 
@@ -45,15 +45,26 @@ clean: ## Clean up temporary files and cache
 install-hooks: ## Install git hooks for automatic validation
 	@echo "🔗 Installing git hooks..."
 	@mkdir -p .git/hooks
-	@cat > .git/hooks/pre-commit << 'EOF'
-#!/bin/bash
-echo "🔍 Running pre-commit validation..."
-make validate
-if [ $$? -ne 0 ]; then
-    echo "❌ Validation failed! Fix issues before committing."
-    exit 1
-fi
-echo "✅ Validation passed!"
-EOF
+	@echo '#!/bin/bash' > .git/hooks/pre-commit
+	@echo 'echo "🔍 Running pre-commit validation..."' >> .git/hooks/pre-commit
+	@echo 'make validate' >> .git/hooks/pre-commit
+	@echo 'if [ $$? -ne 0 ]; then' >> .git/hooks/pre-commit
+	@echo '    echo "❌ Validation failed! Fix issues before committing."' >> .git/hooks/pre-commit
+	@echo '    exit 1' >> .git/hooks/pre-commit
+	@echo 'fi' >> .git/hooks/pre-commit
+	@echo 'echo "✅ Validation passed!"' >> .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "✅ Pre-commit hook installed!"
+
+# Maintenance and Health
+health: ## Generate system health report
+	@echo "🏥 Generating health report..."
+	@python3 $(LIFE_OS)/scripts/maintenance.py health
+
+archive: ## Archive completed items older than 30 days
+	@echo "📦 Archiving completed items..."
+	@python3 $(LIFE_OS)/scripts/maintenance.py archive
+
+cleanup-logs: ## Clean up log entries older than 90 days
+	@echo "🧹 Cleaning up old logs..."
+	@python3 $(LIFE_OS)/scripts/maintenance.py cleanup-logs

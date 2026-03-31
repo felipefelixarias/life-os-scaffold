@@ -142,6 +142,20 @@ time_logs.csv      what actually happened
 calendar_events.csv imported calendar data
 ```
 
+### Data Validation
+
+Built-in validation ensures data integrity:
+
+```bash
+make validate          # Check CSV schemas
+make integrity-check   # Deep consistency checks  
+make fix-data          # Auto-fix common issues
+make test              # Run validation tests
+make install-hooks     # Git pre-commit validation
+```
+
+All CSV files have strict schemas with data type validation, referential integrity checks, and automatic fixes for common issues like date format inconsistencies. See [`docs/CSV_VALIDATION.md`](docs/CSV_VALIDATION.md) for details.
+
 ## Philosophy
 
 Own your data. Version-control your life. Start small. Compound, don't grind.
