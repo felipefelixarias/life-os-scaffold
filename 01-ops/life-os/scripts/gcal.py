@@ -132,6 +132,7 @@ def get_service():
     return build("calendar", "v3", credentials=creds, cache_discovery=False)
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     service = get_service()
@@ -229,12 +230,14 @@ def update_event(
     return updated
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     """Delete an event by ID."""
     service = get_service()
     service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
 
 
+@retry_api_call(max_retries=3, backoff_factor=1.0, timeout_seconds=30)
 def search_events(
     query: str,
     start_date: dt.date,
