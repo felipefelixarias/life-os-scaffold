@@ -100,6 +100,26 @@ class RepoValidationTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("Unexpected column(s) ['rogue']", errors[0])
 
+    def test_deprecated_done_status_literal_fails_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            command_dir = root / ".claude" / "commands"
+            command_dir.mkdir(parents=True)
+
+            (command_dir / "shutdown.md").write_text(
+                "- Mark completed tasks as `done` in tasks.csv\n"
+                "- Overdue means status != done\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                errors = validate_repo.validate_command_status_literals()
+
+        self.assertEqual(len(errors), 2)
+        self.assertIn("Deprecated status literal", errors[0])
+        self.assertIn(".claude/commands/shutdown.md:1", errors[0])
+        self.assertIn(".claude/commands/shutdown.md:2", errors[1])
+
 
 if __name__ == "__main__":
     unittest.main()

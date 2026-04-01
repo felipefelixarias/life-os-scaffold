@@ -9,7 +9,7 @@ Autonomously scan, prioritize, and clean up the task backlog.
 3. Read `data/canonical/goals.csv` — understand what the user is working toward.
 4. Read `data/canonical/projects.csv` — understand active projects.
 5. **Flag issues:**
-   - **Overdue**: tasks with due_date before today and status != done
+   - **Overdue**: tasks with due_date before today and status != completed
    - **Stale**: tasks with last_updated > 14 days ago and status = queued/in_progress
    - **Orphaned**: tasks whose project_id doesn't match any active project
    - **Duplicate**: tasks with very similar titles

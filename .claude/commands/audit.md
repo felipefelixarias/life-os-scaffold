@@ -10,8 +10,8 @@ Find rot in the system: stale data, broken habits, missed goals, empty logs. Pro
 ### Tasks (`data/canonical/tasks.csv`)
 - Tasks with status `queued` and last_updated > 21 days ago → **stale**
 - Tasks with status `in_progress` and last_updated > 7 days ago → **stuck**
-- Tasks with status `done` but no completion date → **incomplete record**
-- Tasks with due_date in the past and status != done → **overdue**
+- Tasks with status `completed` but no completion date → **incomplete record**
+- Tasks with due_date in the past and status != completed → **overdue**
 - Count total active tasks — if > 30, flag as backlog bloat
 
 ### Habits (`data/canonical/habits.csv` + `logs/daily_log.csv`)
@@ -20,9 +20,9 @@ Find rot in the system: stale data, broken habits, missed goals, empty logs. Pro
 - Habits with `active=true` but no log entries ever → **never started**
 
 ### Goals (`data/canonical/goals.csv`)
-- Goals past their target_date with status != done → **missed deadline**
+- Goals past their target_date with status != completed → **missed deadline**
 - Goals with no metric_current update in 30+ days → **stale progress**
-- Goals with metric_current >= metric_target but status != done → **uncelebrated win**
+- Goals with metric_current >= metric_target but status != completed → **uncelebrated win**
 
 ### Projects (`data/canonical/projects.csv`)
 - Projects with no associated tasks in tasks.csv → **empty project**
@@ -65,7 +65,7 @@ Health score as a big visual gauge. Each subsystem gets a status line.
   │                                                                 │
   │  GOALS                                                          │
   │  ⚠ "Launch Marovi beta"           no update in 32d             │
-  │  ★ "Hit 5 PR reviews/week"        at target! → close as done   │
+  │  ★ "Hit 5 PR reviews/week"        at target! → mark completed   │
   │                                                                 │
   │  PROJECTS                                                       │
   │  ✗ "Old hackathon"                0 tasks → archive?           │

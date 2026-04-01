@@ -17,6 +17,7 @@ LOG_DIR = REPO_ROOT / "01-ops" / "life-os" / "logs"
 CSV_FILES = sorted(DATA_DIR.glob("*.csv")) + sorted(LOG_DIR.glob("*.csv"))
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 COMMAND_RE = re.compile(r"`(/[\w-]+)`")
+DEPRECATED_STATUS_DONE_RE = re.compile(r"\bstatus\s*(?:!=|=)\s*done\b")
 
 
 def markdown_docs() -> list[Path]:
@@ -303,6 +304,23 @@ def validate_command_coverage() -> list[str]:
     return errors
 
 
+def validate_command_status_literals() -> list[str]:
+    """Catch command docs that tell agents to write deprecated status values."""
+    errors = []
+    command_dir = REPO_ROOT / ".claude" / "commands"
+    for command_path in sorted(command_dir.glob("*.md")):
+        for line_no, line in enumerate(
+            command_path.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if "`done`" in line or DEPRECATED_STATUS_DONE_RE.search(line):
+                errors.append(
+                    "Deprecated status literal in "
+                    f"{command_path.relative_to(REPO_ROOT)}:{line_no} "
+                    "use 'completed' instead of 'done'"
+                )
+    return errors
+
+
 def lint_whitespace() -> list[str]:
     errors = []
     paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
@@ -326,6 +344,7 @@ def main() -> int:
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())
+    errors.extend(validate_command_status_literals())
     if args.lint:
         errors.extend(lint_whitespace())
 

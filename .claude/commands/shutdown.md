@@ -13,7 +13,7 @@ Close out the day: review what happened, update records, and set up tomorrow.
    - List tasks that were in_progress — ask: done, carried, or blocked?
    - List habits due today — ask: which did you complete?
 6. **Update files based on responses:**
-   - Mark completed tasks as `done` in tasks.csv with today's date
+   - Mark completed tasks as `completed` in tasks.csv with today's date
    - Mark carried tasks with tomorrow's scheduled_date
    - Log completed habits to daily_log.csv
    - Append a summary row to logs/activity_log.csv
