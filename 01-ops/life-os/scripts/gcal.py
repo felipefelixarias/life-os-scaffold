@@ -25,7 +25,6 @@ _timezone_cache = None
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
-LIFE_OS_TAG = "[life-os]"
 
 
 def _load_timezone() -> str:
@@ -102,6 +101,19 @@ def get_service():
     return _service_cache
 
 
+def _log_google_api_error(action: str, exc: Exception) -> None:
+    """Log Google API errors consistently without requiring the dependency at import time."""
+    try:
+        from googleapiclient.errors import HttpError
+        if isinstance(exc, HttpError):
+            logger.error(f"Google Calendar API error while {action} (HTTP {exc.resp.status}): {exc}")
+            return
+    except ImportError:
+        pass
+
+    logger.error(f"Unexpected error while {action}: {exc}")
+
+
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     try:
@@ -112,15 +124,7 @@ def list_calendars() -> List[Dict[str, Any]]:
         logger.error(f"Authentication error while fetching calendar list: {e}")
         return []
     except Exception as e:
-        # Import specific Google API exception types when available
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while fetching calendar list (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while fetching calendar list: {e}")
-        except ImportError:
-            logger.error(f"Error while fetching calendar list: {e}")
+        _log_google_api_error("fetching calendar list", e)
         return []
 
 
@@ -163,14 +167,7 @@ def get_agenda(
         logger.error(f"Authentication error while fetching events for {start_date}: {e}")
         return []
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while fetching events for {start_date} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while fetching events for {start_date}: {e}")
-        except ImportError:
-            logger.error(f"Error while fetching events for {start_date}: {e}")
+        _log_google_api_error(f"fetching events for {start_date}", e)
         return []
 
 
@@ -209,14 +206,7 @@ def create_event(
         logger.error(f"Invalid input while creating event '{summary}': {e}")
         return ""
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while creating event '{summary}' (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while creating event '{summary}': {e}")
-        except ImportError:
-            logger.error(f"Error while creating event '{summary}': {e}")
+        _log_google_api_error(f"creating event '{summary}'", e)
         return ""
 
 
@@ -248,14 +238,7 @@ def update_event(
         logger.error(f"Invalid input while updating event {event_id}: {e}")
         return {}
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while updating event {event_id} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while updating event {event_id}: {e}")
-        except ImportError:
-            logger.error(f"Error while updating event {event_id}: {e}")
+        _log_google_api_error(f"updating event {event_id}", e)
         return {}
 
 

@@ -69,9 +69,8 @@ class RepoValidationTests(unittest.TestCase):
             (data_dir / "test.csv").write_text(csv_content, encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                # Update CSV_FILES to point to our temp directory
                 csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
-                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
                     errors = validate_repo.validate_csv_structure()
 
         self.assertEqual(len(errors), 1)
@@ -94,11 +93,30 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
-                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
                     errors = validate_repo.validate_csv_schemas()
 
         self.assertEqual(len(errors), 1)
         self.assertIn("Unexpected column(s) ['rogue']", errors[0])
+
+    def test_csv_files_is_resolved_from_current_repo_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+            expected = [
+                data_dir / "tasks.csv",
+                log_dir / "time_logs.csv",
+            ]
+            for path in expected:
+                path.write_text("header\nvalue\n", encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                actual = validate_repo.csv_files()
+
+        self.assertEqual(actual, expected)
 
 
 if __name__ == "__main__":
