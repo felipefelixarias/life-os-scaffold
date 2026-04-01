@@ -52,7 +52,7 @@ make test
 make lint
 ```
 
-`make test` runs repo validation plus Python unit tests. `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace.
+`make test` runs comprehensive repo validation plus Python unit tests. This includes CSV schema validation, cross-reference checks, file permissions, configuration validation, and more. `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace.
 
 ## Commands
 

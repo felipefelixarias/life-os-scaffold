@@ -78,6 +78,82 @@ class RepoValidationTests(unittest.TestCase):
         self.assertIn("CSV row mismatch", errors[0])
         self.assertIn("expected 3 columns, got 2", errors[0])
 
+    def test_csv_schema_validation_detects_missing_required_column(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a tasks.csv without required title column
+            csv_content = "task_id,domain,status\nexample_task,operations,queued\n"
+            (data_dir / "tasks.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertTrue(any("Missing required column 'title'" in error for error in errors))
+
+    def test_csv_schema_validation_detects_invalid_enum_value(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a tasks.csv with invalid status value
+            csv_content = "task_id,title,domain,status\nexample_task,Test Task,operations,invalid_status\n"
+            (data_dir / "tasks.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertTrue(any("Invalid value 'invalid_status' for 'status'" in error for error in errors))
+
+    def test_csv_schema_validation_detects_invalid_date_format(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a tasks.csv with invalid date format
+            csv_content = "task_id,title,domain,due_date\nexample_task,Test Task,operations,12/31/2026\n"
+            (data_dir / "tasks.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertTrue(any("Invalid date format '12/31/2026'" in error for error in errors))
+
+    def test_csv_header_validation_detects_blank_cells(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a CSV with blank header cell
+            csv_content = "col1,,col3\nval1,val2,val3\n"
+            (data_dir / "test.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_headers()
+
+        self.assertTrue(any("blank header cells" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

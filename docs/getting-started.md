@@ -41,7 +41,7 @@ make test
 make lint
 ```
 
-These checks verify the CSV schemas, docs links, command references, and the Python calendar helper.
+These checks verify CSV schemas with cross-reference validation, docs links, command references, file permissions, configuration structure, and the Python calendar helper.
 
 ## Google Calendar (optional)
 

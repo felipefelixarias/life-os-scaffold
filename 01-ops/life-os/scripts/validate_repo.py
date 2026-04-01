@@ -7,7 +7,7 @@ import argparse
 import csv
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 
@@ -42,6 +42,56 @@ def command_reference_docs() -> list[Path]:
 
 def fail(message: str) -> None:
     print(f"ERROR: {message}")
+
+
+def validate_config_files() -> list[str]:
+    """Validate configuration files exist and have valid structure."""
+    errors = []
+
+    # Check if profile.json exists and is valid
+    profile_path = REPO_ROOT / "01-ops" / "life-os" / "config" / "profile.json"
+    profile_example_path = REPO_ROOT / "01-ops" / "life-os" / "config" / "profile.example.json"
+
+    if not profile_path.exists():
+        if profile_example_path.exists():
+            errors.append(
+                "Profile configuration missing. Run 'make setup' to copy from example."
+            )
+        else:
+            errors.append("Both profile.json and profile.example.json are missing")
+    else:
+        try:
+            with profile_path.open("r", encoding="utf-8") as f:
+                import json
+                profile_data = json.load(f)
+
+            # Validate required profile fields
+            required_fields = ["owner", "timezone", "energy_curve"]
+            for field in required_fields:
+                if field not in profile_data:
+                    errors.append(f"Missing required field '{field}' in profile.json")
+
+            # Validate energy_curve structure
+            if "energy_curve" in profile_data:
+                energy_curve = profile_data["energy_curve"]
+                if not isinstance(energy_curve, list):
+                    errors.append("energy_curve in profile.json should be an array/list")
+                else:
+                    # Check that energy curve has reasonable structure
+                    for i, entry in enumerate(energy_curve):
+                        if not isinstance(entry, dict):
+                            errors.append(f"energy_curve entry {i} should be an object with 'time' and 'energy' fields")
+                        elif "time" not in entry or "energy" not in entry:
+                            errors.append(f"energy_curve entry {i} missing required 'time' or 'energy' field")
+                        elif entry.get("energy") not in ["low", "medium", "high"]:
+                            errors.append(f"energy_curve entry {i} has invalid energy level: {entry.get('energy')}")
+
+        except json.JSONDecodeError as e:
+            errors.append(f"Invalid JSON in profile.json: {e}")
+        except (FileNotFoundError, PermissionError) as e:
+            errors.append(f"Cannot read profile.json: {e}")
+
+    return errors
 
 
 def validate_required_paths() -> list[str]:
@@ -116,6 +166,117 @@ def validate_csv_structure() -> list[str]:
         except (FileNotFoundError, PermissionError, UnicodeDecodeError):
             # Already handled in validate_csv_headers
             pass
+
+    return errors
+
+
+def validate_file_permissions() -> list[str]:
+    """Validate that critical files have appropriate permissions."""
+    errors = []
+
+    # Check that CSV files are readable and writable by owner
+    for csv_path in CSV_FILES:
+        if csv_path.exists():
+            try:
+                # Check read permission
+                with csv_path.open("r", encoding="utf-8") as f:
+                    pass
+                # Check write permission
+                if not csv_path.stat().st_mode & 0o200:
+                    errors.append(f"CSV file is not writable: {csv_path.relative_to(REPO_ROOT)}")
+            except (PermissionError, OSError) as e:
+                errors.append(f"Permission error with CSV file {csv_path.relative_to(REPO_ROOT)}: {e}")
+
+    return errors
+
+
+def validate_csv_file_sizes() -> list[str]:
+    """Validate that CSV files are not suspiciously large."""
+    errors = []
+    MAX_CSV_SIZE_MB = 10  # 10MB limit for CSV files
+
+    for csv_path in CSV_FILES:
+        if csv_path.exists():
+            try:
+                size_bytes = csv_path.stat().st_size
+                size_mb = size_bytes / (1024 * 1024)
+                if size_mb > MAX_CSV_SIZE_MB:
+                    errors.append(
+                        f"CSV file is unusually large ({size_mb:.2f}MB): {csv_path.relative_to(REPO_ROOT)}. "
+                        f"Consider archiving old data."
+                    )
+            except OSError as e:
+                errors.append(f"Cannot check file size for {csv_path.relative_to(REPO_ROOT)}: {e}")
+
+    return errors
+
+
+def validate_date_formats_enhanced(date_str: str, field_name: str, line_num: int, filename: str) -> list[str]:
+    """Enhanced date format validation with more comprehensive checks."""
+    errors = []
+
+    if not date_str.strip():
+        return errors  # Empty dates are often allowed
+
+    try:
+        parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        # Check for reasonable date ranges (not too far in past/future)
+        current_year = date.today().year
+        if parsed_date.year < 1900 or parsed_date.year > current_year + 50:
+            errors.append(
+                f"Date '{date_str}' in '{field_name}' at line {line_num} in {filename} "
+                f"seems unrealistic (year {parsed_date.year})"
+            )
+    except ValueError:
+        errors.append(
+            f"Invalid date format '{date_str}' in '{field_name}' at line {line_num} in {filename}. "
+            f"Use YYYY-MM-DD"
+        )
+
+    return errors
+
+
+def validate_csv_cross_references() -> list[str]:
+    """Validate cross-references between CSV files."""
+    errors = []
+
+    try:
+        # Load all CSV data for cross-reference validation
+        csv_data = {}
+        for csv_path in CSV_FILES:
+            if csv_path.exists():
+                try:
+                    with csv_path.open(newline="", encoding="utf-8") as handle:
+                        reader = csv.DictReader(handle)
+                        csv_data[csv_path.name] = list(reader)
+                except (FileNotFoundError, PermissionError, UnicodeDecodeError):
+                    continue  # Skip files we can't read
+
+        # Validate project_id references in tasks.csv
+        if "tasks.csv" in csv_data and "projects.csv" in csv_data:
+            project_ids = {row.get("project_id", "") for row in csv_data["projects.csv"] if row.get("project_id", "").strip()}
+            project_ids.add("")  # Empty project_id is valid (no project assigned)
+
+            for i, task in enumerate(csv_data["tasks.csv"], 2):  # Start at line 2 (after header)
+                task_project_id = task.get("project_id", "").strip()
+                if task_project_id and task_project_id not in project_ids:
+                    errors.append(f"Invalid project_id '{task_project_id}' in tasks.csv at line {i} - project does not exist")
+
+        # Validate that goal areas exist in a reasonable set of domains
+        if "goals.csv" in csv_data:
+            goal_areas = {row.get("area", "").strip().lower() for row in csv_data["goals.csv"] if row.get("area", "").strip()}
+            if "tasks.csv" in csv_data:
+                task_domains = {row.get("domain", "").strip().lower() for row in csv_data["tasks.csv"] if row.get("domain", "").strip()}
+                # Warn if goal areas don't align with task domains (soft validation)
+                orphaned_goals = goal_areas - task_domains
+                if orphaned_goals and len(orphaned_goals) > 0:
+                    # Only warn if there are many orphaned goals (might be intentional)
+                    if len(orphaned_goals) > 2:
+                        errors.append(f"Many goal areas have no corresponding task domains: {sorted(orphaned_goals)}")
+
+    except Exception as e:
+        errors.append(f"Error during cross-reference validation: {e}")
 
     return errors
 
@@ -215,13 +376,12 @@ def validate_csv_schemas() -> list[str]:
                             if col in row and row[col].strip() and row[col] not in valid_values:
                                 errors.append(f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Valid: {valid_values}")
 
-                    # Validate date formats
+                    # Validate date formats with enhanced validation
                     for col in ["date", "target_date", "due_date", "start_date", "scheduled_date", "last_updated"]:
                         if col in row and row[col].strip():
-                            try:
-                                datetime.strptime(row[col], "%Y-%m-%d")
-                            except ValueError:
-                                errors.append(f"Invalid date format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use YYYY-MM-DD")
+                            errors.extend(validate_date_formats_enhanced(
+                                row[col], col, line_num, csv_path.relative_to(REPO_ROOT)
+                            ))
 
                     # Validate time formats
                     for col in ["start", "end", "start_time", "end_time", "scheduled_start", "scheduled_end"]:
@@ -309,9 +469,13 @@ def main() -> int:
 
     errors = []
     errors.extend(validate_required_paths())
+    errors.extend(validate_config_files())
+    errors.extend(validate_file_permissions())
+    errors.extend(validate_csv_file_sizes())
     errors.extend(validate_csv_headers())
     errors.extend(validate_csv_structure())
     errors.extend(validate_csv_schemas())
+    errors.extend(validate_csv_cross_references())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())

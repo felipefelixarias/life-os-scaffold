@@ -6,6 +6,7 @@ import datetime as dt
 import json
 import logging
 import pickle
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -26,6 +27,10 @@ _timezone_cache = None
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
 LIFE_OS_TAG = "[life-os]"
+DEFAULT_TIMEZONE = "America/Los_Angeles"
+DEFAULT_TIME = "00:00:00"
+CALENDAR_API_VERSION = "v3"
+TIME_FORMAT_PATTERN = re.compile(r"^([01]?[0-9]|2[0-3]):([0-5][0-9])$")
 
 
 def _load_timezone() -> str:
@@ -34,9 +39,9 @@ def _load_timezone() -> str:
     if _timezone_cache is None:
         try:
             with PROFILE_PATH.open("r", encoding="utf-8") as f:
-                _timezone_cache = json.load(f).get("timezone", "America/Los_Angeles")
+                _timezone_cache = json.load(f).get("timezone", DEFAULT_TIMEZONE)
         except (FileNotFoundError, json.JSONDecodeError):
-            _timezone_cache = "America/Los_Angeles"
+            _timezone_cache = DEFAULT_TIMEZONE
     return _timezone_cache
 
 
@@ -45,17 +50,17 @@ def _get_zoneinfo(tz: str) -> ZoneInfo:
     try:
         return ZoneInfo(tz)
     except ZoneInfoNotFoundError:
-        return ZoneInfo("America/Los_Angeles")
+        return ZoneInfo(DEFAULT_TIMEZONE)
 
 
-def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
+def _rfc3339(d: dt.date, time_str: str = DEFAULT_TIME) -> str:
     """Format a date + time as RFC3339 with timezone offset."""
     tz = _load_timezone()
     zone = _get_zoneinfo(tz)
     try:
         time_value = dt.time.fromisoformat(time_str)
     except ValueError as e:
-        logger.warning(f"Invalid time format '{time_str}', using 00:00:00: {e}")
+        logger.warning(f"Invalid time format '{time_str}', using {DEFAULT_TIME}: {e}")
         time_value = dt.time(0, 0, 0)
     moment = dt.datetime.combine(d, time_value, tzinfo=zone)
     return moment.isoformat()
@@ -98,8 +103,24 @@ def get_service():
     if _service_cache is None:
         from googleapiclient.discovery import build
         creds = get_credentials()
-        _service_cache = build("calendar", "v3", credentials=creds, cache_discovery=False)
+        _service_cache = build("calendar", CALENDAR_API_VERSION, credentials=creds, cache_discovery=False)
     return _service_cache
+
+
+def _handle_api_exception(e: Exception, operation_desc: str, return_value: Any = None) -> Any:
+    """Centralized exception handling for Google Calendar API operations."""
+    if isinstance(e, (FileNotFoundError, PermissionError)):
+        logger.error(f"Authentication error while {operation_desc}: {e}")
+    else:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while {operation_desc} (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while {operation_desc}: {e}")
+        except ImportError:
+            logger.error(f"Error while {operation_desc}: {e}")
+    return return_value
 
 
 def list_calendars() -> List[Dict[str, Any]]:
@@ -108,20 +129,8 @@ def list_calendars() -> List[Dict[str, Any]]:
         service = get_service()
         result = service.calendarList().list().execute()
         return result.get("items", [])
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while fetching calendar list: {e}")
-        return []
     except Exception as e:
-        # Import specific Google API exception types when available
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while fetching calendar list (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while fetching calendar list: {e}")
-        except ImportError:
-            logger.error(f"Error while fetching calendar list: {e}")
-        return []
+        return _handle_api_exception(e, "fetching calendar list", [])
 
 
 def get_agenda(
@@ -159,19 +168,8 @@ def get_agenda(
                 break
 
         return events
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while fetching events for {start_date}: {e}")
-        return []
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while fetching events for {start_date} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while fetching events for {start_date}: {e}")
-        except ImportError:
-            logger.error(f"Error while fetching events for {start_date}: {e}")
-        return []
+        return _handle_api_exception(e, f"fetching events for {start_date}", [])
 
 
 def create_event(
@@ -202,22 +200,11 @@ def create_event(
         service = get_service()
         event = service.events().insert(calendarId=calendar_id, body=body).execute()
         return event["id"]
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while creating event '{summary}': {e}")
-        return ""
     except ValueError as e:
         logger.error(f"Invalid input while creating event '{summary}': {e}")
         return ""
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while creating event '{summary}' (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while creating event '{summary}': {e}")
-        except ImportError:
-            logger.error(f"Error while creating event '{summary}': {e}")
-        return ""
+        return _handle_api_exception(e, f"creating event '{summary}'", "")
 
 
 def update_event(
@@ -241,22 +228,11 @@ def update_event(
             calendarId=calendar_id, eventId=event_id, body=event
         ).execute()
         return updated
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while updating event {event_id}: {e}")
-        return {}
     except ValueError as e:
         logger.error(f"Invalid input while updating event {event_id}: {e}")
         return {}
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while updating event {event_id} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while updating event {event_id}: {e}")
-        except ImportError:
-            logger.error(f"Error while updating event {event_id}: {e}")
-        return {}
+        return _handle_api_exception(e, f"updating event {event_id}", {})
 
 
 def delete_event(event_id: str, calendar_id: str = "primary") -> None:
@@ -264,20 +240,16 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     try:
         service = get_service()
         service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while deleting event {event_id}: {e}")
     except Exception as e:
+        # Special handling for 404 errors in delete operations
         try:
             from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                if e.resp.status == 404:
-                    logger.warning(f"Event {event_id} not found (already deleted or never existed)")
-                else:
-                    logger.error(f"Google Calendar API error while deleting event {event_id} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while deleting event {event_id}: {e}")
+            if isinstance(e, HttpError) and e.resp.status == 404:
+                logger.warning(f"Event {event_id} not found (already deleted or never existed)")
+                return
         except ImportError:
-            logger.error(f"Error while deleting event {event_id}: {e}")
+            pass
+        _handle_api_exception(e, f"deleting event {event_id}", None)
 
 
 def search_events(
@@ -303,19 +275,8 @@ def search_events(
             orderBy="startTime",
         ).execute()
         return result.get("items", [])
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while searching events for '{query}': {e}")
-        return []
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while searching events for '{query}' (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while searching events for '{query}': {e}")
-        except ImportError:
-            logger.error(f"Error while searching events for '{query}': {e}")
-        return []
+        return _handle_api_exception(e, f"searching events for '{query}'", [])
 
 
 def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
@@ -358,23 +319,17 @@ def push_day_plan(
         domain = block.get("domain", "")
         task_id = block.get("task_id", "")
 
-        # Validate time format first
-        start_parts = start_str.split(":")
-        end_parts = end_str.split(":")
-        if len(start_parts) < 2 or len(end_parts) < 2:
-            logger.warning(f"Skipping block '{title}': invalid time format (start='{start_str}', end='{end_str}')")
+        # Validate time format using regex
+        if not TIME_FORMAT_PATTERN.match(start_str) or not TIME_FORMAT_PATTERN.match(end_str):
+            logger.warning(f"Skipping block '{title}': invalid time format (start='{start_str}', end='{end_str}') - use HH:MM format")
             skipped_blocks += 1
             continue
 
         try:
+            start_parts = start_str.split(":")
+            end_parts = end_str.split(":")
             start_hour, start_min = int(start_parts[0]), int(start_parts[1])
             end_hour, end_min = int(end_parts[0]), int(end_parts[1])
-
-            # Validate time ranges
-            if not (0 <= start_hour <= 23 and 0 <= start_min <= 59):
-                raise ValueError(f"Invalid start time: {start_hour:02d}:{start_min:02d}")
-            if not (0 <= end_hour <= 23 and 0 <= end_min <= 59):
-                raise ValueError(f"Invalid end time: {end_hour:02d}:{end_min:02d}")
 
             start_dt = dt.datetime(date.year, date.month, date.day, start_hour, start_min)
             end_dt = dt.datetime(date.year, date.month, date.day, end_hour, end_min)
