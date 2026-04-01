@@ -51,6 +51,12 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     return moment.isoformat()
 
 
+def _parse_block_datetime(date: dt.date, time_str: str) -> dt.datetime:
+    """Parse an HH:MM or HH:MM:SS block time into a naive datetime."""
+    time_value = dt.time.fromisoformat(time_str)
+    return dt.datetime.combine(date, time_value.replace(second=0, microsecond=0))
+
+
 def get_credentials():
     """Load OAuth credentials from gcalcli's saved pickle token."""
     from google.auth.transport.requests import Request
@@ -277,21 +283,10 @@ def push_day_plan(
         domain = block.get("domain", "")
         task_id = block.get("task_id", "")
 
-        start_parts = start_str.split(":")
-        end_parts = end_str.split(":")
-        if len(start_parts) < 2 or len(end_parts) < 2:
-            continue
-
         try:
-            start_dt = dt.datetime(
-                date.year, date.month, date.day,
-                int(start_parts[0]), int(start_parts[1]),
-            )
-            end_dt = dt.datetime(
-                date.year, date.month, date.day,
-                int(end_parts[0]), int(end_parts[1]),
-            )
-        except (ValueError, IndexError) as e:
+            start_dt = _parse_block_datetime(date, start_str)
+            end_dt = _parse_block_datetime(date, end_str)
+        except ValueError as e:
             print(f"Warning: Invalid time format in block '{title}': {e}")
             continue
 
@@ -308,7 +303,8 @@ def push_day_plan(
             description=description,
             calendar_id=calendar_id,
         )
-        created_ids.append(event_id)
+        if event_id:
+            created_ids.append(event_id)
 
     return created_ids
 
