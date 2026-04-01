@@ -30,6 +30,20 @@ class GcalTimezoneTests(unittest.TestCase):
         fallback = gcal._get_zoneinfo("Mars/Olympus_Mons")
         self.assertEqual(str(fallback), "America/Los_Angeles")
 
+    def test_push_day_plan_skips_failed_creations(self) -> None:
+        blocks = [
+            {"start": "09:00", "end": "10:00", "title": "Focus", "domain": "work"},
+            {"start": "10:30", "end": "11:00", "title": "Email", "domain": "admin"},
+        ]
+
+        with (
+            mock.patch.object(gcal, "clear_life_os_events", return_value=0),
+            mock.patch.object(gcal, "create_event", side_effect=["evt-1", ""]),
+        ):
+            created = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))
+
+        self.assertEqual(created, ["evt-1"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -308,7 +308,8 @@ def push_day_plan(
             description=description,
             calendar_id=calendar_id,
         )
-        created_ids.append(event_id)
+        if event_id:
+            created_ids.append(event_id)
 
     return created_ids
 

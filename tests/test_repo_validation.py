@@ -69,10 +69,7 @@ class RepoValidationTests(unittest.TestCase):
             (data_dir / "test.csv").write_text(csv_content, encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                # Update CSV_FILES to point to our temp directory
-                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
-                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
-                    errors = validate_repo.validate_csv_structure()
+                errors = validate_repo.validate_csv_structure()
 
         self.assertEqual(len(errors), 1)
         self.assertIn("CSV row mismatch", errors[0])

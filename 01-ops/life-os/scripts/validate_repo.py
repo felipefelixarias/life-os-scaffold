@@ -12,9 +12,6 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DATA_DIR = REPO_ROOT / "01-ops" / "life-os" / "data" / "canonical"
-LOG_DIR = REPO_ROOT / "01-ops" / "life-os" / "logs"
-CSV_FILES = sorted(DATA_DIR.glob("*.csv")) + sorted(LOG_DIR.glob("*.csv"))
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 COMMAND_RE = re.compile(r"`(/[\w-]+)`")
 
@@ -40,6 +37,13 @@ def command_reference_docs() -> list[Path]:
     ]
 
 
+def csv_files() -> list[Path]:
+    """Return canonical and log CSV files for the current repo root."""
+    data_dir = REPO_ROOT / "01-ops" / "life-os" / "data" / "canonical"
+    log_dir = REPO_ROOT / "01-ops" / "life-os" / "logs"
+    return sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+
+
 def fail(message: str) -> None:
     print(f"ERROR: {message}")
 
@@ -60,7 +64,7 @@ def validate_required_paths() -> list[str]:
 
 def validate_csv_headers() -> list[str]:
     errors = []
-    for csv_path in CSV_FILES:
+    for csv_path in csv_files():
         try:
             with csv_path.open(newline="", encoding="utf-8") as handle:
                 reader = csv.reader(handle)
@@ -93,7 +97,7 @@ def validate_csv_headers() -> list[str]:
 def validate_csv_structure() -> list[str]:
     """Validate CSV file structure for consistency."""
     errors = []
-    for csv_path in CSV_FILES:
+    for csv_path in csv_files():
         try:
             with csv_path.open(newline="", encoding="utf-8") as handle:
                 reader = csv.reader(handle)
@@ -180,7 +184,7 @@ def validate_csv_schemas() -> list[str]:
         }
     }
 
-    for csv_path in CSV_FILES:
+    for csv_path in csv_files():
         filename = csv_path.name
         if filename not in schemas:
             continue
