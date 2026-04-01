@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+# Module-level caches for performance
+_service_cache = None
+_timezone_cache = None
+
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
 LIFE_OS_TAG = "[life-os]"
@@ -16,11 +20,14 @@ LIFE_OS_TAG = "[life-os]"
 
 def _load_timezone() -> str:
     """Load timezone from profile.json, default to America/Los_Angeles."""
-    try:
-        with PROFILE_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f).get("timezone", "America/Los_Angeles")
-    except (FileNotFoundError, json.JSONDecodeError):
-        return "America/Los_Angeles"
+    global _timezone_cache
+    if _timezone_cache is None:
+        try:
+            with PROFILE_PATH.open("r", encoding="utf-8") as f:
+                _timezone_cache = json.load(f).get("timezone", "America/Los_Angeles")
+        except (FileNotFoundError, json.JSONDecodeError):
+            _timezone_cache = "America/Los_Angeles"
+    return _timezone_cache
 
 
 def _get_zoneinfo(tz: str) -> ZoneInfo:
@@ -62,6 +69,8 @@ def get_credentials():
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
 
+    # Note: pickle.load() can execute arbitrary code. This is acceptable because
+    # the token file is in the user's home directory and managed by gcalcli.
     with OAUTH_TOKEN_PATH.open("rb") as f:
         creds = pickle.load(f)
 
@@ -74,18 +83,24 @@ def get_credentials():
 
 
 def get_service():
-    """Build and return a Google Calendar API service."""
-    from googleapiclient.discovery import build
-
-    creds = get_credentials()
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
+    """Build and return a Google Calendar API service with caching."""
+    global _service_cache
+    if _service_cache is None:
+        from googleapiclient.discovery import build
+        creds = get_credentials()
+        _service_cache = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    return _service_cache
 
 
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
-    service = get_service()
-    result = service.calendarList().list().execute()
-    return result.get("items", [])
+    try:
+        service = get_service()
+        result = service.calendarList().list().execute()
+        return result.get("items", [])
+    except Exception as e:
+        print(f"ERROR: Failed to fetch calendar list: {e}")
+        return []
 
 
 def get_agenda(
@@ -94,34 +109,38 @@ def get_agenda(
     calendar_id: str = "primary",
 ) -> List[Dict[str, Any]]:
     """Get events between start_date and end_date (inclusive)."""
-    if end_date is None:
-        end_date = start_date + dt.timedelta(days=1)
+    try:
+        if end_date is None:
+            end_date = start_date + dt.timedelta(days=1)
 
-    tz = _load_timezone()
-    time_min = _rfc3339(start_date)
-    time_max = _rfc3339(end_date)
+        tz = _load_timezone()
+        time_min = _rfc3339(start_date)
+        time_max = _rfc3339(end_date)
 
-    service = get_service()
-    events = []
-    page_token = None
+        service = get_service()
+        events = []
+        page_token = None
 
-    while True:
-        result = service.events().list(
-            calendarId=calendar_id,
-            timeMin=time_min,
-            timeMax=time_max,
-            timeZone=tz,
-            singleEvents=True,
-            orderBy="startTime",
-            pageToken=page_token,
-        ).execute()
+        while True:
+            result = service.events().list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                timeZone=tz,
+                singleEvents=True,
+                orderBy="startTime",
+                pageToken=page_token,
+            ).execute()
 
-        events.extend(result.get("items", []))
-        page_token = result.get("nextPageToken")
-        if not page_token:
-            break
+            events.extend(result.get("items", []))
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
 
-    return events
+        return events
+    except Exception as e:
+        print(f"ERROR: Failed to fetch calendar events for {start_date}: {e}")
+        return []
 
 
 def create_event(
@@ -133,24 +152,28 @@ def create_event(
     reminders: Optional[Dict] = None,
     calendar_id: str = "primary",
 ) -> str:
-    """Create a calendar event. Returns the event ID."""
-    tz = _load_timezone()
+    """Create a calendar event. Returns the event ID or empty string on failure."""
+    try:
+        tz = _load_timezone()
 
-    body: Dict[str, Any] = {
-        "summary": summary,
-        "start": {"dateTime": start_dt.isoformat(), "timeZone": tz},
-        "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
-    }
-    if location:
-        body["location"] = location
-    if description:
-        body["description"] = description
-    if reminders:
-        body["reminders"] = reminders
+        body: Dict[str, Any] = {
+            "summary": summary,
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": tz},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
+        }
+        if location:
+            body["location"] = location
+        if description:
+            body["description"] = description
+        if reminders:
+            body["reminders"] = reminders
 
-    service = get_service()
-    event = service.events().insert(calendarId=calendar_id, body=body).execute()
-    return event["id"]
+        service = get_service()
+        event = service.events().insert(calendarId=calendar_id, body=body).execute()
+        return event["id"]
+    except Exception as e:
+        print(f"ERROR: Failed to create calendar event '{summary}': {e}")
+        return ""
 
 
 def update_event(
@@ -159,26 +182,33 @@ def update_event(
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """Update an existing event. Pass fields to update as kwargs."""
-    service = get_service()
-    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    try:
+        service = get_service()
+        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
-    tz = _load_timezone()
-    for key, value in kwargs.items():
-        if key in ("start", "end") and isinstance(value, dt.datetime):
-            event[key] = {"dateTime": value.isoformat(), "timeZone": tz}
-        else:
-            event[key] = value
+        tz = _load_timezone()
+        for key, value in kwargs.items():
+            if key in ("start", "end") and isinstance(value, dt.datetime):
+                event[key] = {"dateTime": value.isoformat(), "timeZone": tz}
+            else:
+                event[key] = value
 
-    updated = service.events().update(
-        calendarId=calendar_id, eventId=event_id, body=event
-    ).execute()
-    return updated
+        updated = service.events().update(
+            calendarId=calendar_id, eventId=event_id, body=event
+        ).execute()
+        return updated
+    except Exception as e:
+        print(f"ERROR: Failed to update calendar event {event_id}: {e}")
+        return {}
 
 
 def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     """Delete an event by ID."""
-    service = get_service()
-    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    try:
+        service = get_service()
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    except Exception as e:
+        print(f"ERROR: Failed to delete calendar event {event_id}: {e}")
 
 
 def search_events(
@@ -188,21 +218,25 @@ def search_events(
     calendar_id: str = "primary",
 ) -> List[Dict[str, Any]]:
     """Search events by text query within a date range."""
-    tz = _load_timezone()
-    time_min = _rfc3339(start_date)
-    time_max = _rfc3339(end_date)
+    try:
+        tz = _load_timezone()
+        time_min = _rfc3339(start_date)
+        time_max = _rfc3339(end_date)
 
-    service = get_service()
-    result = service.events().list(
-        calendarId=calendar_id,
-        timeMin=time_min,
-        timeMax=time_max,
-        timeZone=tz,
-        q=query,
-        singleEvents=True,
-        orderBy="startTime",
-    ).execute()
-    return result.get("items", [])
+        service = get_service()
+        result = service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            timeZone=tz,
+            q=query,
+            singleEvents=True,
+            orderBy="startTime",
+        ).execute()
+        return result.get("items", [])
+    except Exception as e:
+        print(f"ERROR: Failed to search calendar events for '{query}': {e}")
+        return []
 
 
 def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
