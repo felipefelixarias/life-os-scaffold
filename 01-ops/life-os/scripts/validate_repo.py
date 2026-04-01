@@ -13,24 +13,30 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = REPO_ROOT / "01-ops" / "life-os" / "data" / "canonical"
 LOG_DIR = REPO_ROOT / "01-ops" / "life-os" / "logs"
-DOCS = [
-    REPO_ROOT / "README.md",
-    REPO_ROOT / "CLAUDE.md",
-    REPO_ROOT / "docs" / "getting-started.md",
-    REPO_ROOT / "docs" / "google-calendar.md",
-    REPO_ROOT / "docs" / "customization.md",
-    REPO_ROOT / "docs" / "skills-reference.md",
-]
-COMMAND_REFERENCE_DOCS = [
-    REPO_ROOT / "README.md",
-    REPO_ROOT / "CLAUDE.md",
-    REPO_ROOT / "docs" / "getting-started.md",
-    REPO_ROOT / "docs" / "google-calendar.md",
-    REPO_ROOT / "docs" / "skills-reference.md",
-]
 CSV_FILES = sorted(DATA_DIR.glob("*.csv")) + sorted(LOG_DIR.glob("*.csv"))
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 COMMAND_RE = re.compile(r"`(/[\w-]+)`")
+
+
+def markdown_docs() -> list[Path]:
+    """Return tracked markdown docs that should participate in validation."""
+    docs_dir = REPO_ROOT / "docs"
+    return [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "CLAUDE.md",
+        *sorted(docs_dir.glob("*.md")),
+    ]
+
+
+def command_reference_docs() -> list[Path]:
+    """Return docs that are expected to mention real, built-in commands."""
+    return [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "CLAUDE.md",
+        REPO_ROOT / "docs" / "getting-started.md",
+        REPO_ROOT / "docs" / "google-calendar.md",
+        REPO_ROOT / "docs" / "skills-reference.md",
+    ]
 
 
 def fail(message: str) -> None:
@@ -69,7 +75,7 @@ def validate_csv_headers() -> list[str]:
 
 def validate_markdown_links() -> list[str]:
     errors = []
-    for doc_path in DOCS:
+    for doc_path in markdown_docs():
         content = doc_path.read_text(encoding="utf-8")
         for target in LINK_RE.findall(content):
             if (
@@ -91,7 +97,7 @@ def validate_command_references() -> list[str]:
     command_dir = REPO_ROOT / ".claude" / "commands"
     defined = {f"/{path.stem}" for path in command_dir.glob("*.md")}
     errors = []
-    for doc_path in COMMAND_REFERENCE_DOCS:
+    for doc_path in command_reference_docs():
         content = doc_path.read_text(encoding="utf-8")
         for command in COMMAND_RE.findall(content):
             if command not in defined:
@@ -101,9 +107,28 @@ def validate_command_references() -> list[str]:
     return errors
 
 
+def validate_command_coverage() -> list[str]:
+    """Catch unreferenced command files before they turn into dead scaffold code."""
+    command_dir = REPO_ROOT / ".claude" / "commands"
+    referenced = set()
+
+    for doc_path in markdown_docs():
+        content = doc_path.read_text(encoding="utf-8")
+        referenced.update(COMMAND_RE.findall(content))
+
+    errors = []
+    for command_path in sorted(command_dir.glob("*.md")):
+        command = f"/{command_path.stem}"
+        if command not in referenced:
+            errors.append(
+                f"Command file is not referenced in docs: {command_path.relative_to(REPO_ROOT)}"
+            )
+    return errors
+
+
 def lint_whitespace() -> list[str]:
     errors = []
-    paths = DOCS + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
+    paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
         for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if line.endswith(" ") or line.endswith("\t"):
@@ -121,6 +146,7 @@ def main() -> int:
     errors.extend(validate_csv_headers())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
+    errors.extend(validate_command_coverage())
     if args.lint:
         errors.extend(lint_whitespace())
 
