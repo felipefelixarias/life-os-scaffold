@@ -169,7 +169,13 @@ def validate_csv_schemas() -> list[str]:
         },
         "time_logs.csv": {
             "required_columns": ["log_id", "date", "start_time", "end_time", "activity"],
-            "optional_columns": ["domain", "task_id", "notes", "last_updated"]
+            "optional_columns": [
+                "domain",
+                "task_id",
+                "duration_mins",
+                "notes",
+                "last_updated",
+            ],
         },
         "calendar_events.csv": {
             "required_columns": ["event_id", "date", "start_time", "end_time", "title"],
@@ -200,6 +206,15 @@ def validate_csv_schemas() -> list[str]:
                 for required_col in schema["required_columns"]:
                     if required_col not in header:
                         errors.append(f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}")
+
+                allowed_columns = set(schema["required_columns"]) | set(
+                    schema.get("optional_columns", [])
+                )
+                unexpected_columns = sorted(set(header) - allowed_columns)
+                for unexpected_col in unexpected_columns:
+                    errors.append(
+                        f"Unexpected column '{unexpected_col}' in {csv_path.relative_to(REPO_ROOT)}"
+                    )
 
                 # Validate data rows
                 line_num = 2  # Start after header
