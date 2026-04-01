@@ -78,6 +78,30 @@ class RepoValidationTests(unittest.TestCase):
         self.assertIn("CSV row mismatch", errors[0])
         self.assertIn("expected 3 columns, got 2", errors[0])
 
+    def test_csv_schema_validation_detects_unexpected_column(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            csv_content = (
+                "task_id,title,domain,status,rogue_column\n"
+                "task-1,Write tests,ops,queued,unexpected\n"
+            )
+            (data_dir / "tasks.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertEqual(
+            errors,
+            ["Unexpected column 'rogue_column' in 01-ops/life-os/data/canonical/tasks.csv"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

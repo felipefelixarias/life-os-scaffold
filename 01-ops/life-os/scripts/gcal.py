@@ -295,6 +295,10 @@ def push_day_plan(
             print(f"Warning: Invalid time format in block '{title}': {e}")
             continue
 
+        if end_dt <= start_dt:
+            print(f"Warning: Skipping block '{title}' because end is not after start")
+            continue
+
         summary = f"[{domain}] {title}" if domain else title
         desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
         if task_id:
@@ -308,7 +312,8 @@ def push_day_plan(
             description=description,
             calendar_id=calendar_id,
         )
-        created_ids.append(event_id)
+        if event_id:
+            created_ids.append(event_id)
 
     return created_ids
 
