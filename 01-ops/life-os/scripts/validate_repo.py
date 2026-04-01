@@ -60,16 +60,62 @@ def validate_required_paths() -> list[str]:
 def validate_csv_headers() -> list[str]:
     errors = []
     for csv_path in CSV_FILES:
-        with csv_path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.reader(handle)
-            header = next(reader, None)
+        try:
+            with csv_path.open(newline="", encoding="utf-8") as handle:
+                reader = csv.reader(handle)
+                header = next(reader, None)
+        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+            errors.append(f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}")
+            continue
+
         if not header:
             errors.append(f"CSV missing header row: {csv_path.relative_to(REPO_ROOT)}")
             continue
+
+        # Check for blank header cells
         if any(not cell.strip() for cell in header):
             errors.append(f"CSV has blank header cells: {csv_path.relative_to(REPO_ROOT)}")
+
+        # Check for duplicate header cells
         if len(set(header)) != len(header):
             errors.append(f"CSV has duplicate header cells: {csv_path.relative_to(REPO_ROOT)}")
+
+        # Check for suspicious characters in headers
+        for cell in header:
+            if any(char in cell for char in ['"', "'", '\n', '\r', '\t']):
+                errors.append(f"CSV header contains suspicious characters: {csv_path.relative_to(REPO_ROOT)}")
+                break
+
+    return errors
+
+
+def validate_csv_structure() -> list[str]:
+    """Validate CSV file structure for consistency."""
+    errors = []
+    for csv_path in CSV_FILES:
+        try:
+            with csv_path.open(newline="", encoding="utf-8") as handle:
+                reader = csv.reader(handle)
+                header = next(reader, None)
+                if not header:
+                    continue
+
+                header_count = len(header)
+                line_num = 2  # Start after header
+
+                for row in reader:
+                    if len(row) != header_count:
+                        errors.append(
+                            f"CSV row mismatch at line {line_num} in {csv_path.relative_to(REPO_ROOT)}: "
+                            f"expected {header_count} columns, got {len(row)}"
+                        )
+                        break  # Stop after first mismatch to avoid noise
+                    line_num += 1
+
+        except (FileNotFoundError, PermissionError, UnicodeDecodeError):
+            # Already handled in validate_csv_headers
+            pass
+
     return errors
 
 
@@ -144,6 +190,7 @@ def main() -> int:
     errors = []
     errors.extend(validate_required_paths())
     errors.extend(validate_csv_headers())
+    errors.extend(validate_csv_structure())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())
