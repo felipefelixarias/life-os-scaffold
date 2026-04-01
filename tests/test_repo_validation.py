@@ -56,6 +56,28 @@ class RepoValidationTests(unittest.TestCase):
             ["Command file is not referenced in docs: .claude/commands/orphan.md"],
         )
 
+    def test_csv_structure_validation_detects_column_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a CSV with mismatched columns
+            csv_content = "col1,col2,col3\nval1,val2,val3\nval1,val2\n"
+            (data_dir / "test.csv").write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                # Update CSV_FILES to point to our temp directory
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_structure()
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("CSV row mismatch", errors[0])
+        self.assertIn("expected 3 columns, got 2", errors[0])
+
 
 if __name__ == "__main__":
     unittest.main()
