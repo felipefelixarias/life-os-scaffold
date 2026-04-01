@@ -30,6 +30,26 @@ class GcalTimezoneTests(unittest.TestCase):
         fallback = gcal._get_zoneinfo("Mars/Olympus_Mons")
         self.assertEqual(str(fallback), "America/Los_Angeles")
 
+    def test_parse_block_datetime_returns_none_for_invalid_time(self) -> None:
+        actual = gcal._parse_block_datetime(dt.date(2026, 1, 15), "25:61")
+        self.assertIsNone(actual)
+
+    def test_push_day_plan_skips_invalid_ranges_and_failed_creates(self) -> None:
+        blocks = [
+            {"start": "09:00", "end": "10:00", "title": "Valid"},
+            {"start": "11:00", "end": "10:00", "title": "Backwards"},
+            {"start": "bad", "end": "12:00", "title": "Broken"},
+        ]
+
+        with (
+            mock.patch.object(gcal, "clear_life_os_events", return_value=0),
+            mock.patch.object(gcal, "create_event", return_value="evt_123") as create_event,
+        ):
+            actual = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))
+
+        self.assertEqual(actual, ["evt_123"])
+        self.assertEqual(create_event.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

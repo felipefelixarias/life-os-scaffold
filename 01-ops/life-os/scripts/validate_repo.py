@@ -169,7 +169,7 @@ def validate_csv_schemas() -> list[str]:
         },
         "time_logs.csv": {
             "required_columns": ["log_id", "date", "start_time", "end_time", "activity"],
-            "optional_columns": ["domain", "task_id", "notes", "last_updated"]
+            "optional_columns": ["domain", "task_id", "duration_mins", "notes", "last_updated"]
         },
         "calendar_events.csv": {
             "required_columns": ["event_id", "date", "start_time", "end_time", "title"],
@@ -196,10 +196,20 @@ def validate_csv_schemas() -> list[str]:
                     errors.append(f"CSV has no header: {csv_path.relative_to(REPO_ROOT)}")
                     continue
 
+                allowed_columns = set(schema["required_columns"]) | set(
+                    schema.get("optional_columns", [])
+                )
+
                 # Check required columns
                 for required_col in schema["required_columns"]:
                     if required_col not in header:
                         errors.append(f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}")
+
+                for column in header:
+                    if column not in allowed_columns:
+                        errors.append(
+                            f"Unexpected column '{column}' in {csv_path.relative_to(REPO_ROOT)}"
+                        )
 
                 # Validate data rows
                 line_num = 2  # Start after header
@@ -230,6 +240,16 @@ def validate_csv_schemas() -> list[str]:
                                 datetime.strptime(row[col], "%H:%M")
                             except ValueError:
                                 errors.append(f"Invalid time format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use HH:MM")
+
+                    if "duration_mins" in row and row["duration_mins"].strip():
+                        try:
+                            duration = int(row["duration_mins"])
+                            if duration < 0:
+                                raise ValueError("must be non-negative")
+                        except ValueError:
+                            errors.append(
+                                f"Invalid duration_mins '{row['duration_mins']}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use a non-negative integer"
+                            )
 
                     line_num += 1
 

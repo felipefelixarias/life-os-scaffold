@@ -78,6 +78,48 @@ class RepoValidationTests(unittest.TestCase):
         self.assertIn("CSV row mismatch", errors[0])
         self.assertIn("expected 3 columns, got 2", errors[0])
 
+    def test_csv_schema_validation_rejects_unexpected_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            (data_dir / "tasks.csv").write_text(
+                "task_id,title,domain,rogue_column\n"
+                "t1,Write tests,ops,unexpected\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertIn("Unexpected column 'rogue_column' in 01-ops/life-os/data/canonical/tasks.csv", errors)
+
+    def test_csv_schema_validation_rejects_negative_duration(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            (data_dir / "time_logs.csv").write_text(
+                "log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated\n"
+                "l1,2026-01-15,Deep work,ops,-15,09:00,09:30,,2026-01-15\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
+                with mock.patch.object(validate_repo, "CSV_FILES", csv_files):
+                    errors = validate_repo.validate_csv_schemas()
+
+        self.assertIn("Invalid duration_mins '-15' at line 2 in 01-ops/life-os/data/canonical/time_logs.csv. Use a non-negative integer", errors)
+
 
 if __name__ == "__main__":
     unittest.main()
