@@ -25,6 +25,7 @@ _timezone_cache = None
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
+LIFE_OS_TAG = "[life-os]"
 
 
 def _load_timezone() -> str:
@@ -60,7 +61,7 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     return moment.isoformat()
 
 
-def get_credentials():
+def get_credentials() -> Any:
     """Load OAuth credentials from gcalcli's saved pickle token."""
     from google.auth.transport.requests import Request
 
@@ -91,7 +92,7 @@ def get_credentials():
     return creds
 
 
-def get_service():
+def get_service() -> Any:
     """Build and return a Google Calendar API service with caching."""
     global _service_cache
     if _service_cache is None:
