@@ -40,6 +40,15 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     return moment.isoformat()
 
 
+def _parse_block_datetime(date: dt.date, time_str: str) -> Optional[dt.datetime]:
+    """Parse HH:MM or HH:MM:SS into a datetime on the given date."""
+    try:
+        parsed_time = dt.time.fromisoformat(time_str)
+    except ValueError:
+        return None
+    return dt.datetime.combine(date, parsed_time)
+
+
 def get_credentials():
     """Load OAuth credentials from gcalcli's saved pickle token."""
     from google.auth.transport.requests import Request
@@ -230,19 +239,10 @@ def push_day_plan(
         domain = block.get("domain", "")
         task_id = block.get("task_id", "")
 
-        start_parts = start_str.split(":")
-        end_parts = end_str.split(":")
-        if len(start_parts) < 2 or len(end_parts) < 2:
+        start_dt = _parse_block_datetime(date, start_str)
+        end_dt = _parse_block_datetime(date, end_str)
+        if start_dt is None or end_dt is None or end_dt <= start_dt:
             continue
-
-        start_dt = dt.datetime(
-            date.year, date.month, date.day,
-            int(start_parts[0]), int(start_parts[1]),
-        )
-        end_dt = dt.datetime(
-            date.year, date.month, date.day,
-            int(end_parts[0]), int(end_parts[1]),
-        )
 
         summary = f"[{domain}] {title}" if domain else title
         desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]

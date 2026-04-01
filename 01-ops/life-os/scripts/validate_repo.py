@@ -21,6 +21,21 @@ DOCS = [
     REPO_ROOT / "docs" / "customization.md",
     REPO_ROOT / "docs" / "skills-reference.md",
 ]
+SCAFFOLD_PLACEHOLDERS = [
+    REPO_ROOT / "00-inbox" / ".gitkeep",
+    REPO_ROOT / "01-ops" / "goals" / "areas" / ".gitkeep",
+    REPO_ROOT / "01-ops" / "reviews" / ".gitkeep",
+    REPO_ROOT / "01-ops" / "todo" / ".gitkeep",
+    REPO_ROOT / "02-career" / "applications" / ".gitkeep",
+    REPO_ROOT / "02-career" / "interviews" / ".gitkeep",
+    REPO_ROOT / "02-career" / "resume" / ".gitkeep",
+    REPO_ROOT / "03-study" / "drills" / ".gitkeep",
+    REPO_ROOT / "03-study" / "notes" / ".gitkeep",
+    REPO_ROOT / "04-repos" / ".gitkeep",
+    REPO_ROOT / "05-assets" / ".gitkeep",
+    REPO_ROOT / "06-admin" / ".gitkeep",
+    REPO_ROOT / "99-archive" / ".gitkeep",
+]
 COMMAND_REFERENCE_DOCS = [
     REPO_ROOT / "README.md",
     REPO_ROOT / "CLAUDE.md",
@@ -48,6 +63,14 @@ def validate_required_paths() -> list[str]:
     for path in paths:
         if not path.exists():
             errors.append(f"Missing required path: {path.relative_to(REPO_ROOT)}")
+    return errors
+
+
+def validate_scaffold_placeholders() -> list[str]:
+    errors = []
+    for path in SCAFFOLD_PLACEHOLDERS:
+        if not path.exists():
+            errors.append(f"Missing scaffold placeholder: {path.relative_to(REPO_ROOT)}")
     return errors
 
 
@@ -118,6 +141,7 @@ def main() -> int:
 
     errors = []
     errors.extend(validate_required_paths())
+    errors.extend(validate_scaffold_placeholders())
     errors.extend(validate_csv_headers())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
