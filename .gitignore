@@ -15,6 +15,10 @@ __pycache__/
 *.pyc
 *.pyo
 .venv/
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
 
 # Node
 node_modules/
