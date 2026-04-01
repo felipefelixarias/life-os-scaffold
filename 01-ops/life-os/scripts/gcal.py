@@ -25,6 +25,7 @@ _timezone_cache = None
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
+LIFE_OS_TAG = "[life-os]"
 
 
 def _load_timezone() -> str:
