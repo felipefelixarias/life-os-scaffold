@@ -35,7 +35,11 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     """Format a date + time as RFC3339 with timezone offset."""
     tz = _load_timezone()
     zone = _get_zoneinfo(tz)
-    time_value = dt.time.fromisoformat(time_str)
+    try:
+        time_value = dt.time.fromisoformat(time_str)
+    except ValueError as e:
+        print(f"Warning: Invalid time format '{time_str}', using 00:00:00: {e}")
+        time_value = dt.time(0, 0, 0)
     moment = dt.datetime.combine(d, time_value, tzinfo=zone)
     return moment.isoformat()
 
@@ -49,6 +53,15 @@ def get_credentials():
             f"OAuth token not found at {OAUTH_TOKEN_PATH}. "
             "Install and authenticate gcalcli first: gcalcli list"
         )
+
+    # Ensure the token file is within the expected location for security
+    try:
+        resolved_path = OAUTH_TOKEN_PATH.resolve()
+        if not str(resolved_path).startswith(str(Path.home())):
+            raise PermissionError("OAuth token file is outside user home directory")
+    except (OSError, RuntimeError) as e:
+        raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
+
     with OAUTH_TOKEN_PATH.open("rb") as f:
         creds = pickle.load(f)
 
@@ -235,14 +248,18 @@ def push_day_plan(
         if len(start_parts) < 2 or len(end_parts) < 2:
             continue
 
-        start_dt = dt.datetime(
-            date.year, date.month, date.day,
-            int(start_parts[0]), int(start_parts[1]),
-        )
-        end_dt = dt.datetime(
-            date.year, date.month, date.day,
-            int(end_parts[0]), int(end_parts[1]),
-        )
+        try:
+            start_dt = dt.datetime(
+                date.year, date.month, date.day,
+                int(start_parts[0]), int(start_parts[1]),
+            )
+            end_dt = dt.datetime(
+                date.year, date.month, date.day,
+                int(end_parts[0]), int(end_parts[1]),
+            )
+        except (ValueError, IndexError) as e:
+            print(f"Warning: Invalid time format in block '{title}': {e}")
+            continue
 
         summary = f"[{domain}] {title}" if domain else title
         desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
