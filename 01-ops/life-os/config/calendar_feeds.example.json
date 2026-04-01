@@ -1,4 +1,5 @@
 {
+  "_comment": "Calendar feeds configuration - Copy to calendar_feeds.json and customize",
   "feeds": [
     {
       "name": "personal",

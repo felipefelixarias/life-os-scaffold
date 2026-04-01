@@ -1,4 +1,5 @@
 {
+  "_comment": "life-os Profile Configuration - Copy to profile.json and customize",
   "owner": "Your Name",
   "timezone": "America/New_York",
   "planning": {
