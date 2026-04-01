@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test
+.PHONY: help setup test lint clean gcal-agenda gcal-test format type-check dev-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -25,3 +25,17 @@ gcal-agenda: ## Show today's Google Calendar agenda
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."
+
+dev-install: ## Install development dependencies
+	@pip install -e .[dev]
+	@echo "Development dependencies installed. Run 'make test' to verify setup."
+
+format: ## Format code with ruff
+	@ruff format .
+	@echo "Code formatting complete."
+
+format-check: ## Check code formatting without making changes
+	@ruff format --check .
+
+type-check: ## Run type checking with mypy
+	@mypy $(LIFE_OS)/scripts/

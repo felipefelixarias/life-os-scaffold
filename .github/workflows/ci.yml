@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
+    - name: Run lint checks
+      run: |
+        make lint
+
+    - name: Run type checking
+      run: |
+        mypy 01-ops/life-os/scripts/
+
+    - name: Run code formatting checks
+      run: |
+        ruff check .
+        ruff format --check .
+
+    - name: Run tests
+      run: |
+        make test
+
+  validate-structure:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+
+    - name: Validate repository structure
+      run: |
+        python3 01-ops/life-os/scripts/validate_repo.py --verbose
+
+    - name: Check for missing files
+      run: |
+        test -f README.md
+        test -f pyproject.toml
+        test -f Makefile
+        test -f .gitignore
+        test -d .claude/commands
+        echo "✓ All required files present"
+
+    - name: Validate command files
+      run: |
+        find .claude/commands -name "*.md" -exec grep -l "^# /" {} \; | wc -l | grep -v "^0$"
+        echo "✓ Command files validated"
