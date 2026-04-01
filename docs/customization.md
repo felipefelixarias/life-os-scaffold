@@ -13,7 +13,7 @@ Set this to your IANA timezone. All scheduling and calendar operations depend on
 ```
 
 ### Planning Windows
-Define when your day starts, when work happens, and when you sleep.
+Define when your day starts, when work happens, and when you sleep. Also configure default task durations and scheduling parameters.
 ```json
 "planning": {
   "weekday_wake": "07:00",
@@ -21,9 +21,27 @@ Define when your day starts, when work happens, and when you sleep.
   "day_end": "23:00",
   "bedtime": "23:00",
   "workday_start": "09:00",
-  "workday_end": "17:00"
+  "workday_end": "17:00",
+  "workday_commute_start": "08:30",
+  "workday_commute_home_end": "17:30",
+  "default_task_block_mins": 60,
+  "deep_work_block_mins": 90,
+  "max_screen_block_mins": 90,
+  "break_mins": 15,
+  "max_major_tasks_per_day": 4,
+  "weekly_review_day": "Sunday"
 }
 ```
+
+**Additional Planning Fields:**
+- `workday_commute_start`: When to leave for work (for commuters)
+- `workday_commute_home_end`: When you arrive home from work
+- `default_task_block_mins`: Default time allocation for standard tasks
+- `deep_work_block_mins`: Duration for focused work sessions
+- `max_screen_block_mins`: Maximum continuous screen time
+- `break_mins`: Standard break duration between tasks
+- `max_major_tasks_per_day`: Limit on high-effort tasks per day
+- `weekly_review_day`: Day of week for weekly planning review
 
 ### Energy Curve
 The planner schedules deep work during high-energy periods and admin during lows. Adjust the times and levels to match your actual rhythm — not what you wish it was.
@@ -31,10 +49,16 @@ The planner schedules deep work during high-energy periods and admin during lows
 "energy_curve": [
   {"time": "07:00", "energy": "low"},
   {"time": "09:00", "energy": "high"},
+  {"time": "12:00", "energy": "medium"},
   {"time": "14:00", "energy": "low"},
-  {"time": "19:00", "energy": "high"}
+  {"time": "16:00", "energy": "medium"},
+  {"time": "19:00", "energy": "high"},
+  {"time": "21:00", "energy": "medium"},
+  {"time": "22:00", "energy": "low"}
 ]
 ```
+
+This 8-point curve captures typical energy patterns: morning rise, lunch dip, afternoon recovery, evening peak, and nighttime wind-down. Customize the timing and levels based on your personal patterns.
 
 ### Domains
 Domains are the life areas you track. Weight determines relative priority when the planner allocates time.

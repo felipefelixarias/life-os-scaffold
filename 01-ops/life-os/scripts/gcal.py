@@ -4,10 +4,24 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+# Configure logging
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+# Module-level caches for performance
+_service_cache = None
+_timezone_cache = None
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
@@ -16,11 +30,14 @@ LIFE_OS_TAG = "[life-os]"
 
 def _load_timezone() -> str:
     """Load timezone from profile.json, default to America/Los_Angeles."""
-    try:
-        with PROFILE_PATH.open("r", encoding="utf-8") as f:
-            return json.load(f).get("timezone", "America/Los_Angeles")
-    except (FileNotFoundError, json.JSONDecodeError):
-        return "America/Los_Angeles"
+    global _timezone_cache
+    if _timezone_cache is None:
+        try:
+            with PROFILE_PATH.open("r", encoding="utf-8") as f:
+                _timezone_cache = json.load(f).get("timezone", "America/Los_Angeles")
+        except (FileNotFoundError, json.JSONDecodeError):
+            _timezone_cache = "America/Los_Angeles"
+    return _timezone_cache
 
 
 def _get_zoneinfo(tz: str) -> ZoneInfo:
@@ -38,7 +55,7 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     try:
         time_value = dt.time.fromisoformat(time_str)
     except ValueError as e:
-        print(f"Warning: Invalid time format '{time_str}', using 00:00:00: {e}")
+        logger.warning(f"Invalid time format '{time_str}', using 00:00:00: {e}")
         time_value = dt.time(0, 0, 0)
     moment = dt.datetime.combine(d, time_value, tzinfo=zone)
     return moment.isoformat()
@@ -62,6 +79,8 @@ def get_credentials():
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
 
+    # Note: pickle.load() can execute arbitrary code. This is acceptable because
+    # the token file is in the user's home directory and managed by gcalcli.
     with OAUTH_TOKEN_PATH.open("rb") as f:
         creds = pickle.load(f)
 
@@ -74,18 +93,35 @@ def get_credentials():
 
 
 def get_service():
-    """Build and return a Google Calendar API service."""
-    from googleapiclient.discovery import build
-
-    creds = get_credentials()
-    return build("calendar", "v3", credentials=creds, cache_discovery=False)
+    """Build and return a Google Calendar API service with caching."""
+    global _service_cache
+    if _service_cache is None:
+        from googleapiclient.discovery import build
+        creds = get_credentials()
+        _service_cache = build("calendar", "v3", credentials=creds, cache_discovery=False)
+    return _service_cache
 
 
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
-    service = get_service()
-    result = service.calendarList().list().execute()
-    return result.get("items", [])
+    try:
+        service = get_service()
+        result = service.calendarList().list().execute()
+        return result.get("items", [])
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while fetching calendar list: {e}")
+        return []
+    except Exception as e:
+        # Import specific Google API exception types when available
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while fetching calendar list (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while fetching calendar list: {e}")
+        except ImportError:
+            logger.error(f"Error while fetching calendar list: {e}")
+        return []
 
 
 def get_agenda(
@@ -94,34 +130,48 @@ def get_agenda(
     calendar_id: str = "primary",
 ) -> List[Dict[str, Any]]:
     """Get events between start_date and end_date (inclusive)."""
-    if end_date is None:
-        end_date = start_date + dt.timedelta(days=1)
+    try:
+        if end_date is None:
+            end_date = start_date + dt.timedelta(days=1)
 
-    tz = _load_timezone()
-    time_min = _rfc3339(start_date)
-    time_max = _rfc3339(end_date)
+        tz = _load_timezone()
+        time_min = _rfc3339(start_date)
+        time_max = _rfc3339(end_date)
 
-    service = get_service()
-    events = []
-    page_token = None
+        service = get_service()
+        events = []
+        page_token = None
 
-    while True:
-        result = service.events().list(
-            calendarId=calendar_id,
-            timeMin=time_min,
-            timeMax=time_max,
-            timeZone=tz,
-            singleEvents=True,
-            orderBy="startTime",
-            pageToken=page_token,
-        ).execute()
+        while True:
+            result = service.events().list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                timeZone=tz,
+                singleEvents=True,
+                orderBy="startTime",
+                pageToken=page_token,
+            ).execute()
 
-        events.extend(result.get("items", []))
-        page_token = result.get("nextPageToken")
-        if not page_token:
-            break
+            events.extend(result.get("items", []))
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
 
-    return events
+        return events
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while fetching events for {start_date}: {e}")
+        return []
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while fetching events for {start_date} (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while fetching events for {start_date}: {e}")
+        except ImportError:
+            logger.error(f"Error while fetching events for {start_date}: {e}")
+        return []
 
 
 def create_event(
@@ -133,24 +183,41 @@ def create_event(
     reminders: Optional[Dict] = None,
     calendar_id: str = "primary",
 ) -> str:
-    """Create a calendar event. Returns the event ID."""
-    tz = _load_timezone()
+    """Create a calendar event. Returns the event ID or empty string on failure."""
+    try:
+        tz = _load_timezone()
 
-    body: Dict[str, Any] = {
-        "summary": summary,
-        "start": {"dateTime": start_dt.isoformat(), "timeZone": tz},
-        "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
-    }
-    if location:
-        body["location"] = location
-    if description:
-        body["description"] = description
-    if reminders:
-        body["reminders"] = reminders
+        body: Dict[str, Any] = {
+            "summary": summary,
+            "start": {"dateTime": start_dt.isoformat(), "timeZone": tz},
+            "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
+        }
+        if location:
+            body["location"] = location
+        if description:
+            body["description"] = description
+        if reminders:
+            body["reminders"] = reminders
 
-    service = get_service()
-    event = service.events().insert(calendarId=calendar_id, body=body).execute()
-    return event["id"]
+        service = get_service()
+        event = service.events().insert(calendarId=calendar_id, body=body).execute()
+        return event["id"]
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while creating event '{summary}': {e}")
+        return ""
+    except ValueError as e:
+        logger.error(f"Invalid input while creating event '{summary}': {e}")
+        return ""
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while creating event '{summary}' (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while creating event '{summary}': {e}")
+        except ImportError:
+            logger.error(f"Error while creating event '{summary}': {e}")
+        return ""
 
 
 def update_event(
@@ -159,26 +226,58 @@ def update_event(
     **kwargs: Any,
 ) -> Dict[str, Any]:
     """Update an existing event. Pass fields to update as kwargs."""
-    service = get_service()
-    event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    try:
+        service = get_service()
+        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
 
-    tz = _load_timezone()
-    for key, value in kwargs.items():
-        if key in ("start", "end") and isinstance(value, dt.datetime):
-            event[key] = {"dateTime": value.isoformat(), "timeZone": tz}
-        else:
-            event[key] = value
+        tz = _load_timezone()
+        for key, value in kwargs.items():
+            if key in ("start", "end") and isinstance(value, dt.datetime):
+                event[key] = {"dateTime": value.isoformat(), "timeZone": tz}
+            else:
+                event[key] = value
 
-    updated = service.events().update(
-        calendarId=calendar_id, eventId=event_id, body=event
-    ).execute()
-    return updated
+        updated = service.events().update(
+            calendarId=calendar_id, eventId=event_id, body=event
+        ).execute()
+        return updated
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while updating event {event_id}: {e}")
+        return {}
+    except ValueError as e:
+        logger.error(f"Invalid input while updating event {event_id}: {e}")
+        return {}
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while updating event {event_id} (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while updating event {event_id}: {e}")
+        except ImportError:
+            logger.error(f"Error while updating event {event_id}: {e}")
+        return {}
 
 
 def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     """Delete an event by ID."""
-    service = get_service()
-    service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    try:
+        service = get_service()
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while deleting event {event_id}: {e}")
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                if e.resp.status == 404:
+                    logger.warning(f"Event {event_id} not found (already deleted or never existed)")
+                else:
+                    logger.error(f"Google Calendar API error while deleting event {event_id} (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while deleting event {event_id}: {e}")
+        except ImportError:
+            logger.error(f"Error while deleting event {event_id}: {e}")
 
 
 def search_events(
@@ -188,21 +287,35 @@ def search_events(
     calendar_id: str = "primary",
 ) -> List[Dict[str, Any]]:
     """Search events by text query within a date range."""
-    tz = _load_timezone()
-    time_min = _rfc3339(start_date)
-    time_max = _rfc3339(end_date)
+    try:
+        tz = _load_timezone()
+        time_min = _rfc3339(start_date)
+        time_max = _rfc3339(end_date)
 
-    service = get_service()
-    result = service.events().list(
-        calendarId=calendar_id,
-        timeMin=time_min,
-        timeMax=time_max,
-        timeZone=tz,
-        q=query,
-        singleEvents=True,
-        orderBy="startTime",
-    ).execute()
-    return result.get("items", [])
+        service = get_service()
+        result = service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            timeZone=tz,
+            q=query,
+            singleEvents=True,
+            orderBy="startTime",
+        ).execute()
+        return result.get("items", [])
+    except (FileNotFoundError, PermissionError) as e:
+        logger.error(f"Authentication error while searching events for '{query}': {e}")
+        return []
+    except Exception as e:
+        try:
+            from googleapiclient.errors import HttpError
+            if isinstance(e, HttpError):
+                logger.error(f"Google Calendar API error while searching events for '{query}' (HTTP {e.resp.status}): {e}")
+            else:
+                logger.error(f"Unexpected error while searching events for '{query}': {e}")
+        except ImportError:
+            logger.error(f"Error while searching events for '{query}': {e}")
+        return []
 
 
 def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
@@ -233,9 +346,11 @@ def push_day_plan(
     """
     cleared = clear_life_os_events(date, calendar_id=calendar_id)
     if cleared:
-        print(f"Cleared {cleared} existing {LIFE_OS_TAG} events for {date}")
+        logger.info(f"Cleared {cleared} existing {LIFE_OS_TAG} events for {date}")
 
     created_ids = []
+    skipped_blocks = 0
+
     for block in blocks:
         start_str = block.get("start", "")
         end_str = block.get("end", "")
@@ -243,22 +358,35 @@ def push_day_plan(
         domain = block.get("domain", "")
         task_id = block.get("task_id", "")
 
+        # Validate time format first
         start_parts = start_str.split(":")
         end_parts = end_str.split(":")
         if len(start_parts) < 2 or len(end_parts) < 2:
+            logger.warning(f"Skipping block '{title}': invalid time format (start='{start_str}', end='{end_str}')")
+            skipped_blocks += 1
             continue
 
         try:
-            start_dt = dt.datetime(
-                date.year, date.month, date.day,
-                int(start_parts[0]), int(start_parts[1]),
-            )
-            end_dt = dt.datetime(
-                date.year, date.month, date.day,
-                int(end_parts[0]), int(end_parts[1]),
-            )
+            start_hour, start_min = int(start_parts[0]), int(start_parts[1])
+            end_hour, end_min = int(end_parts[0]), int(end_parts[1])
+
+            # Validate time ranges
+            if not (0 <= start_hour <= 23 and 0 <= start_min <= 59):
+                raise ValueError(f"Invalid start time: {start_hour:02d}:{start_min:02d}")
+            if not (0 <= end_hour <= 23 and 0 <= end_min <= 59):
+                raise ValueError(f"Invalid end time: {end_hour:02d}:{end_min:02d}")
+
+            start_dt = dt.datetime(date.year, date.month, date.day, start_hour, start_min)
+            end_dt = dt.datetime(date.year, date.month, date.day, end_hour, end_min)
+
+            # Handle end time on next day if earlier than start time
+            if end_dt <= start_dt:
+                end_dt += dt.timedelta(days=1)
+                logger.info(f"Block '{title}' spans midnight, end time adjusted to next day")
+
         except (ValueError, IndexError) as e:
-            print(f"Warning: Invalid time format in block '{title}': {e}")
+            logger.warning(f"Skipping block '{title}': invalid time format - {e}")
+            skipped_blocks += 1
             continue
 
         summary = f"[{domain}] {title}" if domain else title
@@ -274,7 +402,20 @@ def push_day_plan(
             description=description,
             calendar_id=calendar_id,
         )
-        created_ids.append(event_id)
+        if event_id:  # Only add successful creations
+            created_ids.append(event_id)
+
+    # Log summary of the operation
+    total_blocks = len(blocks)
+    successful_blocks = len(created_ids)
+    failed_blocks = total_blocks - successful_blocks - skipped_blocks
+
+    if skipped_blocks > 0:
+        logger.warning(f"Day plan push summary: {successful_blocks}/{total_blocks} created, {skipped_blocks} skipped due to invalid time format")
+    if failed_blocks > 0:
+        logger.error(f"Day plan push summary: {failed_blocks} blocks failed to create events")
+    if successful_blocks > 0:
+        logger.info(f"Successfully created {successful_blocks} calendar events for {date}")
 
     return created_ids
 

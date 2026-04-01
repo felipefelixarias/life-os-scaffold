@@ -9,8 +9,10 @@ A personal operating system scaffold that runs from your terminal. Tasks, habits
 No app. No subscription. No database. Just files and AI.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/life-os.git
+git clone https://github.com/felipefelixarias/life-os-scaffold.git life-os
 cd life-os
+# Install Python dependencies (optional, for Google Calendar integration)
+pip install -r requirements.txt
 make setup
 claude
 ```
@@ -91,16 +93,14 @@ git push -u origin main
 
 ### Option B: Public repo with gitignored data
 
-If you want your structure public but data private, uncomment these lines in `.gitignore`:
-```
-01-ops/life-os/data/canonical/*.csv
-01-ops/life-os/logs/*.csv
-01-ops/life-os/config/profile.json
-```
+Your personal data is protected by default. The `.gitignore` automatically excludes:
+- `01-ops/life-os/data/canonical/*.csv` (your actual task/habit/goal data)
+- `01-ops/life-os/logs/*.csv` (your time logs and daily entries)
+- `01-ops/life-os/config/profile.json` (your personal configuration)
 
-### What's already protected
+### What's also protected
 
-The `.gitignore` already excludes:
+The `.gitignore` also excludes:
 - `.env` files and secrets
 - Credential files (`*.pem`, `*.key`, `*credential*.csv`, `*client_secret*.json`)
 - `04-repos/` (independent code projects)
@@ -123,6 +123,19 @@ claude                      # /turbo, work, /shutdown
 git add -A && git commit    # end of day: save state
 git push                    # sync for tomorrow
 ```
+
+## Requirements
+
+- **Python 3.9+** (for Google Calendar integration)
+- **Claude Code** (get it at [claude.ai/code](https://claude.ai/code))
+- **gcalcli** (optional, for Google Calendar sync): `pip install gcalcli`
+
+Python dependencies for Google Calendar features:
+```bash
+pip install -r requirements.txt
+```
+
+The system works without Python dependencies, but you'll miss Google Calendar integration.
 
 ## Structure
 

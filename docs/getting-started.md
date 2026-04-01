@@ -4,12 +4,15 @@
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - Git
+- Python 3.9+ (for Google Calendar integration)
 
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/life-os.git
+git clone https://github.com/felipefelixarias/life-os-scaffold.git life-os
 cd life-os
+# Install Python dependencies for Google Calendar features
+pip install -r requirements.txt
 make setup
 claude
 ```
@@ -42,12 +45,18 @@ These checks verify the CSV schemas, docs links, command references, and the Pyt
 
 ## Google Calendar (optional)
 
+If you haven't already installed the dependencies:
 ```bash
-pip install gcalcli
-gcalcli list
+pip install -r requirements.txt  # Installs Google API libraries
+pip install gcalcli              # Command-line calendar tool
+gcalcli list                     # Start OAuth flow
 ```
 
 Follow the OAuth flow in your browser. Once done, `/turbo` and `/plan-day` can push time blocks to your calendar.
+
+The Python dependencies in `requirements.txt` include:
+- `google-auth` and `google-api-python-client` for calendar API access
+- `pytest` for running validation tests
 
 See [google-calendar.md](google-calendar.md) for details.
 
