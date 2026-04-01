@@ -1,1 +1,1 @@
-event_id,calendar_name,title,start,end,all_day,location,description,source,last_updated
+event_id,date,start_time,end_time,title,location,attendees,source,calendar,notes

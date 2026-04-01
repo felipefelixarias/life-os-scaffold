@@ -7,6 +7,7 @@ import argparse
 import csv
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -119,6 +120,125 @@ def validate_csv_structure() -> list[str]:
     return errors
 
 
+def validate_csv_schemas() -> list[str]:
+    """Validate CSV files against expected schemas and data quality."""
+    errors = []
+
+    # Define expected schemas for each canonical file
+    schemas = {
+        "habits.csv": {
+            "required_columns": ["habit_id", "area", "name", "frequency", "target_per_week", "min_value", "unit", "active"],
+            "optional_columns": ["notes", "last_updated"],
+            "enums": {
+                "frequency": ["daily", "weekly"],
+                "active": ["true", "false"]
+            }
+        },
+        "goals.csv": {
+            "required_columns": ["goal_id", "area", "title"],
+            "optional_columns": ["horizon", "target_date", "metric_name", "metric_target", "metric_current", "status", "last_updated", "notes"],
+            "enums": {
+                "horizon": ["quarter", "year", "month"],
+                "status": ["active", "completed", "paused", "dropped"]
+            }
+        },
+        "tasks.csv": {
+            "required_columns": ["task_id", "title", "domain"],
+            "optional_columns": ["project_id", "status", "priority", "effort_mins", "due_date", "energy", "context", "source", "next_step", "scheduled_date", "scheduled_start", "scheduled_end", "last_updated", "notes"],
+            "enums": {
+                "status": ["queued", "in_progress", "blocked", "completed"],
+                "energy": ["low", "medium", "high"],
+                "source": ["manual", "auto", "imported"]
+            }
+        },
+        "projects.csv": {
+            "required_columns": ["project_id", "area", "name"],
+            "optional_columns": ["status", "start_date", "target_date", "description", "last_updated", "notes", "active"],
+            "enums": {
+                "status": ["planning", "active", "paused", "completed"],
+                "active": ["true", "false"]
+            }
+        },
+        "time_blocks.csv": {
+            "required_columns": ["block_id", "date", "start", "end", "title"],
+            "optional_columns": ["domain", "task_id", "source", "status", "notes"],
+            "enums": {
+                "source": ["manual", "auto_planner", "imported"],
+                "status": ["planned", "in_progress", "completed", "skipped"]
+            }
+        },
+        "time_logs.csv": {
+            "required_columns": ["log_id", "date", "start_time", "end_time", "activity"],
+            "optional_columns": ["domain", "task_id", "notes", "last_updated"]
+        },
+        "calendar_events.csv": {
+            "required_columns": ["event_id", "date", "start_time", "end_time", "title"],
+            "optional_columns": ["location", "attendees", "source", "calendar", "notes"],
+            "enums": {
+                "source": ["google_calendar", "manual", "outlook"]
+            }
+        }
+    }
+
+    for csv_path in CSV_FILES:
+        filename = csv_path.name
+        if filename not in schemas:
+            continue
+
+        schema = schemas[filename]
+
+        try:
+            with csv_path.open(newline="", encoding="utf-8") as handle:
+                reader = csv.DictReader(handle)
+                header = reader.fieldnames
+
+                if not header:
+                    errors.append(f"CSV has no header: {csv_path.relative_to(REPO_ROOT)}")
+                    continue
+
+                # Check required columns
+                for required_col in schema["required_columns"]:
+                    if required_col not in header:
+                        errors.append(f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}")
+
+                # Validate data rows
+                line_num = 2  # Start after header
+                for row in reader:
+                    # Check required fields are not empty
+                    for required_col in schema["required_columns"]:
+                        if required_col in row and not row[required_col].strip():
+                            errors.append(f"Empty required field '{required_col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}")
+
+                    # Validate enums
+                    if "enums" in schema:
+                        for col, valid_values in schema["enums"].items():
+                            if col in row and row[col].strip() and row[col] not in valid_values:
+                                errors.append(f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Valid: {valid_values}")
+
+                    # Validate date formats
+                    for col in ["date", "target_date", "due_date", "start_date", "scheduled_date", "last_updated"]:
+                        if col in row and row[col].strip():
+                            try:
+                                datetime.strptime(row[col], "%Y-%m-%d")
+                            except ValueError:
+                                errors.append(f"Invalid date format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use YYYY-MM-DD")
+
+                    # Validate time formats
+                    for col in ["start", "end", "start_time", "end_time", "scheduled_start", "scheduled_end"]:
+                        if col in row and row[col].strip():
+                            try:
+                                datetime.strptime(row[col], "%H:%M")
+                            except ValueError:
+                                errors.append(f"Invalid time format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use HH:MM")
+
+                    line_num += 1
+
+        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+            errors.append(f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}")
+
+    return errors
+
+
 def validate_markdown_links() -> list[str]:
     errors = []
     for doc_path in markdown_docs():
@@ -191,6 +311,7 @@ def main() -> int:
     errors.extend(validate_required_paths())
     errors.extend(validate_csv_headers())
     errors.extend(validate_csv_structure())
+    errors.extend(validate_csv_schemas())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())
