@@ -1,2 +1,2 @@
 project_id,area,name,status,start_date,target_date,description,last_updated,notes,active
-example_project,health,Build healthy morning routine,active,2026-04-01,2026-06-01,Establish a consistent morning routine including exercise and meditation,2026-04-01,Starter project — replace with your own,true
+example_project,health,Morning routine optimization,planning,2026-04-02,,Streamline and improve morning routine,2026-04-02,Focus on consistency and energy,true
