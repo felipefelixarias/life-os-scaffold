@@ -7,14 +7,15 @@ import json
 import logging
 import pickle
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Configure logging
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    formatter = logging.Formatter(log_format)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
@@ -22,6 +23,9 @@ if not logger.handlers:
 # Module-level caches for performance
 _service_cache = None
 _timezone_cache = None
+
+# Security constants
+MAX_OAUTH_TOKEN_SIZE = 50 * 1024  # 50KB
 
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
@@ -80,7 +84,8 @@ def get_credentials() -> Any:
         # Additional security: check file permissions (should be user-only readable)
         file_stat = resolved_path.stat()
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
-            logger.warning(f"OAuth token file has overly permissive permissions: {oct(file_stat.st_mode)}")
+            perms = oct(file_stat.st_mode)
+            logger.warning(f"OAuth token file has overly permissive permissions: {perms}")
 
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
@@ -90,13 +95,15 @@ def get_credentials() -> Any:
     # For additional security, we check file size to prevent huge files
     try:
         file_size = OAUTH_TOKEN_PATH.stat().st_size
-        if file_size > 50 * 1024:  # 50KB should be more than enough for credentials
-            raise ValueError(f"OAuth token file unexpectedly large: {file_size} bytes")
+        if file_size > MAX_OAUTH_TOKEN_SIZE:
+            error_msg = f"OAuth token file unexpectedly large: {file_size} bytes"
+            raise ValueError(error_msg)
 
         with OAUTH_TOKEN_PATH.open("rb") as f:
             creds = pickle.load(f)
     except (OSError, pickle.PickleError, ValueError) as e:
-        raise PermissionError(f"Cannot load OAuth credentials: {e}") from e
+        error_msg = f"Cannot load OAuth credentials: {e}"
+        raise PermissionError(error_msg) from e
 
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
@@ -151,7 +158,7 @@ def _parse_block_time(date: dt.date, time_str: str, field_name: str) -> dt.datet
     )
 
 
-def list_calendars() -> List[Dict[str, Any]]:
+def list_calendars() -> list[dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     try:
         service = get_service()
@@ -169,7 +176,7 @@ def get_agenda(
     start_date: dt.date,
     end_date: Optional[dt.date] = None,
     calendar_id: str = "primary",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get events between start_date and end_date (inclusive)."""
     try:
         if end_date is None:
@@ -214,14 +221,14 @@ def create_event(
     end_dt: dt.datetime,
     location: Optional[str] = None,
     description: Optional[str] = None,
-    reminders: Optional[Dict] = None,
+    reminders: Optional[dict] = None,
     calendar_id: str = "primary",
 ) -> str:
     """Create a calendar event. Returns the event ID or empty string on failure."""
     try:
         tz = _load_timezone()
 
-        body: Dict[str, Any] = {
+        body: dict[str, Any] = {
             "summary": summary,
             "start": {"dateTime": start_dt.isoformat(), "timeZone": tz},
             "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
@@ -251,7 +258,7 @@ def update_event(
     event_id: str,
     calendar_id: str = "primary",
     **kwargs: Any,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update an existing event. Pass fields to update as kwargs."""
     try:
         service = get_service()
@@ -298,7 +305,7 @@ def search_events(
     start_date: dt.date,
     end_date: dt.date,
     calendar_id: str = "primary",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Search events by text query within a date range."""
     try:
         tz = _load_timezone()
@@ -346,10 +353,10 @@ def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
 
 
 def push_day_plan(
-    blocks: List[Dict[str, str]],
+    blocks: list[dict[str, str]],
     date: dt.date,
     calendar_id: str = "primary",
-) -> List[str]:
+) -> list[str]:
     """Batch-create calendar events from time blocks with automatic cleanup.
 
     This function first clears all existing [life-os] tagged events for the given date,
@@ -431,7 +438,7 @@ def push_day_plan(
     return created_ids
 
 
-def format_event_line(event: Dict[str, Any]) -> str:
+def format_event_line(event: dict[str, Any]) -> str:
     """Format a single event for display."""
     start = event.get("start", {})
     end = event.get("end", {})
