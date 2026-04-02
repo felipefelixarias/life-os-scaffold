@@ -11,9 +11,16 @@ No app. No subscription. No database. Just files and AI.
 ```bash
 git clone https://github.com/felipefelixarias/life-os-scaffold.git life-os
 cd life-os
-# Install Python dependencies (optional, for Google Calendar integration)
+
+# Set up Python dependencies (recommended for full functionality)
+# See VIRTUAL_ENV_SETUP.md for detailed instructions
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+
+# Initial setup and verification
 make setup
+make test
 claude
 ```
 
@@ -62,6 +69,8 @@ make refresh-examples # Refresh CSV files with example data
 - `make deps-check` checks Python dependencies and security status
 - `make health` runs comprehensive repository health check
 - `make refresh-examples` refreshes CSV files with current example data for testing/onboarding
+
+💡 **Having dependency issues?** See [`VIRTUAL_ENV_SETUP.md`](VIRTUAL_ENV_SETUP.md) for detailed Python environment setup instructions.
 
 ## Commands
 
