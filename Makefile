@@ -38,3 +38,11 @@ health: ## Comprehensive repository health check
 
 refresh-examples: ## Refresh CSV files with fresh example data
 	@python3 $(LIFE_OS)/scripts/refresh_example_data.py
+
+dev-check: ## Run all development checks (test, lint, csv, health)
+	@echo "Running comprehensive development checks..."
+	@$(MAKE) test
+	@$(MAKE) lint
+	@$(MAKE) csv-check
+	@$(MAKE) health
+	@echo "✅ All development checks passed!"

@@ -23,30 +23,57 @@ def analyze_csv_file(csv_path: Path) -> Dict:
         "columns": 0,
         "has_data": False,
         "sample_row": None,
+        "size_bytes": 0,
     }
 
     if not csv_path.exists():
         return stats
 
     try:
+        # Get file size for performance context
+        stats["size_bytes"] = csv_path.stat().st_size
+
         with csv_path.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
-            header = next(reader, None)
+            try:
+                header = next(reader, None)
+            except UnicodeDecodeError as e:
+                stats["error"] = f"Encoding error: {e}"
+                return stats
 
             if header:
                 stats["columns"] = len(header)
                 stats["header"] = header
 
-                # Count data rows and get a sample
-                data_rows = list(reader)
-                stats["rows"] = len(data_rows)
-                stats["has_data"] = len(data_rows) > 0
+                # For performance, avoid loading all data for large files
+                if stats["size_bytes"] > 1024 * 1024:  # 1MB
+                    # Sample approach for large files
+                    row_count = 0
+                    sample_row = None
+                    for row in reader:
+                        row_count += 1
+                        if row_count == 1:
+                            sample_row = row
+                        if row_count > 1000:  # Stop early for very large files
+                            stats["rows"] = f"{row_count}+ (large file, sampling)"
+                            stats["has_data"] = True
+                            stats["sample_row"] = sample_row
+                            return stats
+                    stats["rows"] = row_count
+                    stats["has_data"] = row_count > 0
+                    stats["sample_row"] = sample_row
+                else:
+                    # Load all data for smaller files
+                    data_rows = list(reader)
+                    stats["rows"] = len(data_rows)
+                    stats["has_data"] = len(data_rows) > 0
+                    if data_rows:
+                        stats["sample_row"] = data_rows[0]
 
-                if data_rows:
-                    stats["sample_row"] = data_rows[0]
-
+    except PermissionError:
+        stats["error"] = "Permission denied"
     except Exception as e:
-        stats["error"] = str(e)
+        stats["error"] = f"Unexpected error: {type(e).__name__}: {e}"
 
     return stats
 
@@ -80,7 +107,16 @@ def main() -> None:
             print(f"   ⚠️  Error: {stats['error']}")
             continue
 
-        print(f"   📊 {stats['columns']} columns, {stats['rows']} data rows")
+        # Format file size for display
+        size_str = ""
+        if stats["size_bytes"] > 0:
+            if stats["size_bytes"] < 1024:
+                size_str = f" ({stats['size_bytes']} bytes)"
+            else:
+                size_kb = stats["size_bytes"] / 1024
+                size_str = f" ({size_kb:.1f}KB)"
+
+        print(f"   📊 {stats['columns']} columns, {stats['rows']} data rows{size_str}")
 
         if stats["has_data"]:
             print(f"   ✅ Has data (sample: {stats['sample_row'][:2] if stats['sample_row'] else 'None'}...)")

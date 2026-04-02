@@ -214,7 +214,18 @@ def check_security() -> None:
 
 
 def main() -> None:
-    """Run comprehensive repository health check."""
+    """Run comprehensive repository health check.
+
+    Performs the following checks:
+    - Git repository status and remote connectivity
+    - Required file structure and command availability
+    - Python code compilation and linting
+    - Test suite execution
+    - CSV data integrity validation
+    - Basic security vulnerability scanning
+
+    Returns exit code 0 on success, non-zero if critical issues found.
+    """
     print("🏥 Life-OS Repository Health Check")
     print("=" * 50)
 

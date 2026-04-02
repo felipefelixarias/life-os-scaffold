@@ -14,11 +14,21 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .venv/
+venv/
+env/
+ENV/
 .coverage
 .coverage.*
 .pytest_cache/
 htmlcov/
+*.egg-info/
+dist/
+build/
+.tox/
+.mypy_cache/
+.ruff_cache/
 
 # Node
 node_modules/
