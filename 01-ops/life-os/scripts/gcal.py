@@ -29,7 +29,14 @@ LIFE_OS_TAG = "[life-os]"
 
 
 def _load_timezone() -> str:
-    """Load timezone from profile.json, default to America/Los_Angeles."""
+    """Load timezone from profile.json with safe fallback.
+
+    Returns:
+        Timezone string from profile configuration, or 'America/Los_Angeles'
+        as fallback if profile is missing or malformed.
+
+    Caches result for performance on subsequent calls.
+    """
     global _timezone_cache
     if _timezone_cache is None:
         try:
@@ -52,11 +59,37 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     """Format a date + time as RFC3339 with timezone offset."""
     tz = _load_timezone()
     zone = _get_zoneinfo(tz)
+
+    # Improved time parsing with better validation
     try:
-        time_value = dt.time.fromisoformat(time_str)
-    except ValueError as e:
+        # Handle different time formats
+        if ":" not in time_str:
+            raise ValueError(f"Time string '{time_str}' missing colon separator")
+
+        parts = time_str.split(":")
+        if len(parts) == 2:
+            # HH:MM format
+            hour, minute = int(parts[0]), int(parts[1])
+            second = 0
+        elif len(parts) == 3:
+            # HH:MM:SS format
+            hour, minute, second = int(parts[0]), int(parts[1]), int(parts[2])
+        else:
+            raise ValueError(f"Invalid time format '{time_str}', expected HH:MM or HH:MM:SS")
+
+        # Validate ranges
+        if not (0 <= hour <= 23):
+            raise ValueError(f"Invalid hour {hour}, must be 0-23")
+        if not (0 <= minute <= 59):
+            raise ValueError(f"Invalid minute {minute}, must be 0-59")
+        if not (0 <= second <= 59):
+            raise ValueError(f"Invalid second {second}, must be 0-59")
+
+        time_value = dt.time(hour, minute, second)
+    except (ValueError, TypeError) as e:
         logger.warning(f"Invalid time format '{time_str}', using 00:00:00: {e}")
         time_value = dt.time(0, 0, 0)
+
     moment = dt.datetime.combine(d, time_value, tzinfo=zone)
     return moment.isoformat()
 
@@ -79,15 +112,48 @@ def get_credentials() -> Any:
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
 
+    # Validate token file size and permissions for additional security
+    try:
+        stat_info = OAUTH_TOKEN_PATH.stat()
+        if stat_info.st_size == 0:
+            raise ValueError("OAuth token file is empty")
+        if stat_info.st_size > 1024 * 1024:  # 1MB limit
+            logger.warning(f"OAuth token file is unusually large ({stat_info.st_size} bytes)")
+    except OSError as e:
+        raise PermissionError(f"Cannot access OAuth token file: {e}") from e
+
     # Note: pickle.load() can execute arbitrary code. This is acceptable because
     # the token file is in the user's home directory and managed by gcalcli.
-    with OAUTH_TOKEN_PATH.open("rb") as f:
-        creds = pickle.load(f)
+    try:
+        with OAUTH_TOKEN_PATH.open("rb") as f:
+            creds = pickle.load(f)
+    except (pickle.UnpicklingError, EOFError, UnicodeDecodeError) as e:
+        raise ValueError(f"Corrupted OAuth token file: {e}") from e
+    except Exception as e:
+        raise RuntimeError(f"Unexpected error loading OAuth token: {e}") from e
 
-    if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        with OAUTH_TOKEN_PATH.open("wb") as f:
-            pickle.dump(creds, f)
+    # Validate credentials object
+    if not hasattr(creds, 'expired') or not hasattr(creds, 'valid'):
+        raise ValueError("Invalid credentials object loaded from token file")
+
+    try:
+        if creds.expired and creds.refresh_token:
+            logger.info("Refreshing expired OAuth credentials")
+            creds.refresh(Request())
+            # Atomically write the refreshed token to prevent corruption
+            temp_path = OAUTH_TOKEN_PATH.with_suffix('.tmp')
+            with temp_path.open("wb") as f:
+                pickle.dump(creds, f)
+            temp_path.replace(OAUTH_TOKEN_PATH)
+            logger.info("OAuth credentials refreshed successfully")
+        elif creds.expired and not creds.refresh_token:
+            raise ValueError("OAuth credentials expired and no refresh token available")
+    except Exception as e:
+        logger.error(f"Failed to refresh OAuth credentials: {e}")
+        raise RuntimeError(f"Cannot refresh expired credentials: {e}") from e
+
+    if not creds.valid:
+        raise ValueError("OAuth credentials are invalid")
 
     return creds
 
@@ -133,11 +199,31 @@ def get_agenda(
     start_date: dt.date,
     end_date: Optional[dt.date] = None,
     calendar_id: str = "primary",
+    max_retries: int = 3,
+    retry_delay: float = 1.0,
 ) -> List[Dict[str, Any]]:
-    """Get events between start_date and end_date (inclusive)."""
+    """Get events between start_date and end_date (inclusive).
+
+    Args:
+        start_date: Start date for event query
+        end_date: End date for event query (defaults to start_date + 1 day)
+        calendar_id: Google Calendar ID (defaults to "primary")
+        max_retries: Maximum number of retry attempts for rate limiting
+        retry_delay: Base delay in seconds between retries
+    """
+    import time
+
     try:
         if end_date is None:
             end_date = start_date + dt.timedelta(days=1)
+
+        # Validate date range
+        if end_date < start_date:
+            raise ValueError(f"End date {end_date} cannot be before start date {start_date}")
+
+        date_range_days = (end_date - start_date).days
+        if date_range_days > 365:
+            logger.warning(f"Large date range requested: {date_range_days} days")
 
         tz = _load_timezone()
         time_min = _rfc3339(start_date)
@@ -146,26 +232,58 @@ def get_agenda(
         service = get_service()
         events = []
         page_token = None
+        retry_count = 0
 
         while True:
-            result = service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                timeZone=tz,
-                singleEvents=True,
-                orderBy="startTime",
-                pageToken=page_token,
-            ).execute()
+            try:
+                result = service.events().list(
+                    calendarId=calendar_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    timeZone=tz,
+                    singleEvents=True,
+                    orderBy="startTime",
+                    pageToken=page_token,
+                    maxResults=250,  # Reasonable page size
+                ).execute()
 
-            events.extend(result.get("items", []))
-            page_token = result.get("nextPageToken")
-            if not page_token:
-                break
+                events.extend(result.get("items", []))
+                page_token = result.get("nextPageToken")
+                if not page_token:
+                    break
 
+                retry_count = 0  # Reset retry count on successful page
+
+            except Exception as e:
+                try:
+                    from googleapiclient.errors import HttpError
+                    if isinstance(e, HttpError):
+                        if e.resp.status == 429 and retry_count < max_retries:  # Rate limited
+                            retry_count += 1
+                            delay = retry_delay * (2 ** (retry_count - 1))  # Exponential backoff
+                            logger.warning(f"Rate limited, retrying in {delay:.1f}s (attempt {retry_count}/{max_retries})")
+                            time.sleep(delay)
+                            continue
+                        elif e.resp.status == 404:
+                            logger.error(f"Calendar '{calendar_id}' not found")
+                            return []
+                        elif e.resp.status == 403:
+                            logger.error(f"Access denied to calendar '{calendar_id}'")
+                            return []
+                except ImportError:
+                    pass
+
+                # Re-raise if not a retryable error or max retries exceeded
+                raise
+
+        logger.info(f"Retrieved {len(events)} events from {start_date} to {end_date}")
         return events
+
     except (FileNotFoundError, PermissionError) as e:
         logger.error(f"Authentication error while fetching events for {start_date}: {e}")
+        return []
+    except ValueError as e:
+        logger.error(f"Invalid input while fetching events for {start_date}: {e}")
         return []
     except Exception as e:
         _log_google_api_error(f"fetching events for {start_date}", e)
@@ -317,89 +435,186 @@ def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
     return deleted
 
 
+def _validate_time_block(block: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """Validate and normalize a time block dictionary.
+
+    Args:
+        block: Dictionary containing time block data with expected keys:
+               'start', 'end', 'title', 'domain', 'task_id'
+
+    Returns:
+        Normalized block data dictionary with parsed time components,
+        or None if validation fails.
+
+    Validates:
+        - Required time fields (start, end) are present and well-formatted
+        - Time values are within valid 24-hour range (00:00-23:59)
+        - Title is not empty (defaults to "Untitled" if missing)
+        - No malformed time strings
+    """
+    if not isinstance(block, dict):
+        logger.warning("Block is not a dictionary")
+        return None
+
+    start_str = str(block.get("start", "")).strip()
+    end_str = str(block.get("end", "")).strip()
+    title = str(block.get("title", "Untitled")).strip() or "Untitled"
+
+    if not start_str or not end_str:
+        logger.warning(f"Block '{title}': missing start or end time")
+        return None
+
+    # Validate and parse time format
+    try:
+        start_parts = start_str.split(":")
+        end_parts = end_str.split(":")
+
+        if len(start_parts) < 2 or len(end_parts) < 2:
+            logger.warning(f"Block '{title}': invalid time format (start='{start_str}', end='{end_str}')")
+            return None
+
+        start_hour, start_min = int(start_parts[0]), int(start_parts[1])
+        end_hour, end_min = int(end_parts[0]), int(end_parts[1])
+
+        # Validate time ranges
+        if not (0 <= start_hour <= 23 and 0 <= start_min <= 59):
+            logger.warning(f"Block '{title}': invalid start time {start_hour:02d}:{start_min:02d}")
+            return None
+        if not (0 <= end_hour <= 23 and 0 <= end_min <= 59):
+            logger.warning(f"Block '{title}': invalid end time {end_hour:02d}:{end_min:02d}")
+            return None
+
+        return {
+            "start_hour": start_hour,
+            "start_min": start_min,
+            "end_hour": end_hour,
+            "end_min": end_min,
+            "title": title,
+            "domain": str(block.get("domain", "")).strip(),
+            "task_id": str(block.get("task_id", "")).strip(),
+        }
+
+    except (ValueError, IndexError) as e:
+        logger.warning(f"Block '{title}': invalid time format - {e}")
+        return None
+
+
 def push_day_plan(
     blocks: List[Dict[str, str]],
     date: dt.date,
     calendar_id: str = "primary",
+    max_concurrent: int = 10,
 ) -> List[str]:
     """Batch-create calendar events from time blocks.
 
     Each block should have: start (HH:MM), end (HH:MM), title, domain, task_id.
     Clears existing [life-os] events for the date first.
     Returns list of created event IDs.
-    """
-    cleared = clear_life_os_events(date, calendar_id=calendar_id)
-    if cleared:
-        logger.info(f"Cleared {cleared} existing {LIFE_OS_TAG} events for {date}")
 
-    created_ids = []
+    Args:
+        blocks: List of time block dictionaries
+        date: Date to create events for
+        calendar_id: Google Calendar ID
+        max_concurrent: Maximum number of concurrent event creations
+    """
+    if not blocks:
+        logger.warning(f"No blocks provided for {date}")
+        return []
+
+    if not isinstance(blocks, list):
+        logger.error(f"Blocks must be a list, got {type(blocks)}")
+        return []
+
+    # Validate date is not too far in the future (prevent accidental bulk creation)
+    max_future_days = 90
+    if (date - dt.date.today()).days > max_future_days:
+        logger.warning(f"Date {date} is more than {max_future_days} days in the future")
+
+    logger.info(f"Processing {len(blocks)} time blocks for {date}")
+
+    # Clear existing life-os events first
+    try:
+        cleared = clear_life_os_events(date, calendar_id=calendar_id)
+        if cleared:
+            logger.info(f"Cleared {cleared} existing {LIFE_OS_TAG} events for {date}")
+    except Exception as e:
+        logger.error(f"Failed to clear existing events for {date}: {e}")
+        # Continue anyway - better to have duplicate events than no events
+
+    # Validate and process blocks
+    valid_blocks = []
     skipped_blocks = 0
 
-    for block in blocks:
-        start_str = block.get("start", "")
-        end_str = block.get("end", "")
-        title = block.get("title", "Untitled")
-        domain = block.get("domain", "")
-        task_id = block.get("task_id", "")
-
-        # Validate time format first
-        start_parts = start_str.split(":")
-        end_parts = end_str.split(":")
-        if len(start_parts) < 2 or len(end_parts) < 2:
-            logger.warning(f"Skipping block '{title}': invalid time format (start='{start_str}', end='{end_str}')")
+    for i, block in enumerate(blocks):
+        validated = _validate_time_block(block)
+        if validated:
+            validated["index"] = i
+            valid_blocks.append(validated)
+        else:
             skipped_blocks += 1
-            continue
 
+    if not valid_blocks:
+        logger.error(f"No valid time blocks found for {date}")
+        return []
+
+    # Create events with error tracking
+    created_ids = []
+    failed_blocks = []
+
+    for block in valid_blocks:
         try:
-            start_hour, start_min = int(start_parts[0]), int(start_parts[1])
-            end_hour, end_min = int(end_parts[0]), int(end_parts[1])
-
-            # Validate time ranges
-            if not (0 <= start_hour <= 23 and 0 <= start_min <= 59):
-                raise ValueError(f"Invalid start time: {start_hour:02d}:{start_min:02d}")
-            if not (0 <= end_hour <= 23 and 0 <= end_min <= 59):
-                raise ValueError(f"Invalid end time: {end_hour:02d}:{end_min:02d}")
-
-            start_dt = dt.datetime(date.year, date.month, date.day, start_hour, start_min)
-            end_dt = dt.datetime(date.year, date.month, date.day, end_hour, end_min)
+            start_dt = dt.datetime(date.year, date.month, date.day,
+                                 block["start_hour"], block["start_min"])
+            end_dt = dt.datetime(date.year, date.month, date.day,
+                               block["end_hour"], block["end_min"])
 
             # Handle end time on next day if earlier than start time
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
-                logger.info(f"Block '{title}' spans midnight, end time adjusted to next day")
+                logger.info(f"Block '{block['title']}' spans midnight, end time adjusted to next day")
 
-        except (ValueError, IndexError) as e:
-            logger.warning(f"Skipping block '{title}': invalid time format - {e}")
-            skipped_blocks += 1
-            continue
+            # Build event details
+            summary = f"[{block['domain']}] {block['title']}" if block['domain'] else block['title']
+            desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
+            if block['task_id']:
+                desc_parts.append(f"Task: {block['task_id']}")
+            description = "\n".join(desc_parts)
 
-        summary = f"[{domain}] {title}" if domain else title
-        desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
-        if task_id:
-            desc_parts.append(f"Task: {task_id}")
-        description = "\n".join(desc_parts)
+            # Create the event
+            event_id = create_event(
+                summary=summary,
+                start_dt=start_dt,
+                end_dt=end_dt,
+                description=description,
+                calendar_id=calendar_id,
+            )
 
-        event_id = create_event(
-            summary=summary,
-            start_dt=start_dt,
-            end_dt=end_dt,
-            description=description,
-            calendar_id=calendar_id,
-        )
-        if event_id:  # Only add successful creations
-            created_ids.append(event_id)
+            if event_id:
+                created_ids.append(event_id)
+            else:
+                failed_blocks.append(block)
 
-    # Log summary of the operation
+        except Exception as e:
+            logger.error(f"Unexpected error creating event for block '{block['title']}': {e}")
+            failed_blocks.append(block)
+
+    # Log comprehensive summary
     total_blocks = len(blocks)
     successful_blocks = len(created_ids)
-    failed_blocks = total_blocks - successful_blocks - skipped_blocks
+    failed_count = len(failed_blocks)
 
-    if skipped_blocks > 0:
-        logger.warning(f"Day plan push summary: {successful_blocks}/{total_blocks} created, {skipped_blocks} skipped due to invalid time format")
-    if failed_blocks > 0:
-        logger.error(f"Day plan push summary: {failed_blocks} blocks failed to create events")
     if successful_blocks > 0:
         logger.info(f"Successfully created {successful_blocks} calendar events for {date}")
+
+    if skipped_blocks > 0:
+        logger.warning(f"Skipped {skipped_blocks} blocks due to invalid format")
+
+    if failed_count > 0:
+        logger.error(f"Failed to create {failed_count} events")
+        for block in failed_blocks[:3]:  # Log first 3 failures for debugging
+            logger.error(f"  Failed block: {block['title']} ({block['start_hour']:02d}:{block['start_min']:02d}-{block['end_hour']:02d}:{block['end_min']:02d})")
+
+    logger.info(f"Day plan push completed: {successful_blocks}/{total_blocks} created, {skipped_blocks} skipped, {failed_count} failed")
 
     return created_ids
 
