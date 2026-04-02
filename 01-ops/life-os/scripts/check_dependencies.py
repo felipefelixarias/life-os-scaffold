@@ -7,14 +7,17 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
 
+# Security version constants
+REQUESTS_MIN_MAJOR_VERSION = 2
+REQUESTS_MIN_MINOR_VERSION = 31
 
-def get_installed_packages() -> Dict[str, str]:
+
+def get_installed_packages() -> dict[str, str]:
     """Get currently installed package versions."""
     try:
         result = subprocess.run(
@@ -30,7 +33,7 @@ def get_installed_packages() -> Dict[str, str]:
         return {}
 
 
-def parse_requirements() -> List[str]:
+def parse_requirements() -> list[str]:
     """Parse requirements from requirements.txt."""
     if not REQUIREMENTS_FILE.exists():
         print(f"Requirements file not found: {REQUIREMENTS_FILE}")
@@ -77,7 +80,10 @@ def check_package_availability() -> None:
                 # Basic check for very old versions
                 try:
                     major, minor = map(int, version.split(".")[:2])
-                    if pkg_name.lower() == "requests" and (major < 2 or (major == 2 and minor < 31)):
+                    is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
+                    is_old_minor = (major == REQUESTS_MIN_MAJOR_VERSION and
+                                    minor < REQUESTS_MIN_MINOR_VERSION)
+                    if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
                         outdated_warnings.append(f"{pkg_name} {version} may have security vulnerabilities")
                 except ValueError:
                     pass

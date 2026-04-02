@@ -6,13 +6,15 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# Exit code constants
+COMMAND_NOT_FOUND_EXIT_CODE = 127
 
-def run_command(cmd: List[str], cwd: Path = REPO_ROOT) -> Tuple[int, str, str]:
+
+def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
         result = subprocess.run(
@@ -116,7 +118,7 @@ def check_python_health() -> None:
     exit_code, stdout, stderr = run_command([sys.executable, "-m", "ruff", "check", ".", "--quiet"])
     if exit_code == 0:
         print("✅ No ruff linting issues")
-    elif exit_code == 127 or "No module named 'ruff'" in stderr:
+    elif exit_code == COMMAND_NOT_FOUND_EXIT_CODE or "No module named 'ruff'" in stderr:
         print("⚠️  ruff not available (optional)")
     else:
         # Count actual issues by lines that aren't empty or summary lines
