@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples
 
 LIFE_OS := 01-ops/life-os
 
@@ -26,3 +26,15 @@ gcal-agenda: ## Show today's Google Calendar agenda
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."
+
+csv-check: ## Analyze CSV data files and show statistics
+	@python3 $(LIFE_OS)/scripts/check_csv_data.py
+
+deps-check: ## Check Python dependencies and security status
+	@python3 $(LIFE_OS)/scripts/check_dependencies.py
+
+health: ## Comprehensive repository health check
+	@python3 $(LIFE_OS)/scripts/repo_health.py
+
+refresh-examples: ## Refresh CSV files with fresh example data
+	@python3 $(LIFE_OS)/scripts/refresh_example_data.py

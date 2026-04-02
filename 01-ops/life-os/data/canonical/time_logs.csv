@@ -1,2 +1,2 @@
-log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated
-example_log,2026-04-01,System setup and familiarization,operations,45,09:00,09:45,Initial exploration of life-os features,2026-04-01
+log_id,date,start_time,end_time,activity,domain,duration_mins,task_id,notes
+example_log,2026-04-02,09:00,10:00,Project planning,work,60,,Morning planning session

@@ -1,2 +1,2 @@
 goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes
-example_goal,health,Run a 5K,quarter,2026-06-01,distance_km,5,0,active,2026-04-01,Starter goal — replace with your own
+example_goal,health,Establish consistent sleep routine,quarter,2026-04-03,days_with_7h_sleep,90,0,active,2026-04-02,Improve sleep quality and consistency
