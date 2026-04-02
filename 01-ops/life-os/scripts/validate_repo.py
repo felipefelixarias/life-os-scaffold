@@ -71,10 +71,12 @@ def csv_files() -> list[Path]:
 
 
 def fail(message: str) -> None:
+    """Print an error message with consistent formatting."""
     print(f"ERROR: {message}")
 
 
 def validate_required_paths() -> list[str]:
+    """Validate that all required directories and files exist."""
     paths = [
         REPO_ROOT / ".claude" / "commands",
         REPO_ROOT / "01-ops" / "life-os" / "config" / "profile.example.json",
@@ -90,6 +92,7 @@ def validate_required_paths() -> list[str]:
 
 
 def validate_csv_headers() -> list[str]:
+    """Validate CSV file headers for basic integrity and formatting."""
     errors = []
     for csv_path in csv_files():
         try:
@@ -290,6 +293,7 @@ def validate_csv_schemas() -> list[str]:
 
 
 def validate_markdown_links() -> list[str]:
+    """Validate that all relative links in markdown files resolve to existing files."""
     errors = []
     for doc_path in markdown_docs():
         content = doc_path.read_text(encoding="utf-8")
@@ -310,6 +314,7 @@ def validate_markdown_links() -> list[str]:
 
 
 def validate_command_references() -> list[str]:
+    """Validate that command references in documentation point to existing command files."""
     command_dir = REPO_ROOT / ".claude" / "commands"
     defined = {f"/{path.stem}" for path in command_dir.glob("*.md")}
     errors = []
@@ -343,6 +348,7 @@ def validate_command_coverage() -> list[str]:
 
 
 def lint_whitespace() -> list[str]:
+    """Check for trailing whitespace in markdown files and command files."""
     errors = []
     paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
@@ -353,6 +359,7 @@ def lint_whitespace() -> list[str]:
 
 
 def main() -> int:
+    """Main entry point for the validation script with optional lint checks."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--lint", action="store_true", help="Run lint-style checks too.")
     args = parser.parse_args()
