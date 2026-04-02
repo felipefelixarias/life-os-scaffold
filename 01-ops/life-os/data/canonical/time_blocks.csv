@@ -1,1 +1,2 @@
 block_id,date,start,end,title,domain,task_id,source,status,notes
+example_block,2026-04-01,09:00,09:30,Life-OS setup and customization,operations,example_task,manual,planned,Initial system configuration

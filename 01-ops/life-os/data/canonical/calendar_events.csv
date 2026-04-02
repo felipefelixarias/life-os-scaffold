@@ -1,1 +1,2 @@
 event_id,date,start_time,end_time,title,location,attendees,source,calendar,notes
+example_event,2026-04-01,14:00,15:00,Weekly planning session,Home office,,manual,Personal,Time to review goals and plan upcoming tasks
