@@ -115,6 +115,28 @@ def _log_google_api_error(action: str, exc: Exception) -> None:
     logger.error(f"Unexpected error while {action}: {exc}")
 
 
+def _is_http_error_status(exc: Exception, status: int) -> bool:
+    """Return whether the given exception is a matching Google API HttpError."""
+    try:
+        from googleapiclient.errors import HttpError
+        return isinstance(exc, HttpError) and exc.resp.status == status
+    except ImportError:
+        return False
+
+
+def _parse_block_time(date: dt.date, time_str: str, field_name: str) -> dt.datetime:
+    """Parse HH:MM or HH:MM:SS block times for a specific date."""
+    try:
+        time_value = dt.time.fromisoformat(time_str)
+    except ValueError as exc:
+        raise ValueError(f"invalid {field_name} time '{time_str}'") from exc
+
+    return dt.datetime.combine(
+        date,
+        dt.time(time_value.hour, time_value.minute),
+    )
+
+
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     try:
@@ -251,17 +273,10 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     except (FileNotFoundError, PermissionError) as e:
         logger.error(f"Authentication error while deleting event {event_id}: {e}")
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                if e.resp.status == 404:
-                    logger.warning(f"Event {event_id} not found (already deleted or never existed)")
-                else:
-                    logger.error(f"Google Calendar API error while deleting event {event_id} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while deleting event {event_id}: {e}")
-        except ImportError:
-            logger.error(f"Error while deleting event {event_id}: {e}")
+        if _is_http_error_status(e, 404):
+            logger.warning(f"Event {event_id} not found (already deleted or never existed)")
+        else:
+            _log_google_api_error(f"deleting event {event_id}", e)
 
 
 def search_events(
@@ -291,14 +306,7 @@ def search_events(
         logger.error(f"Authentication error while searching events for '{query}': {e}")
         return []
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while searching events for '{query}' (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while searching events for '{query}': {e}")
-        except ImportError:
-            logger.error(f"Error while searching events for '{query}': {e}")
+        _log_google_api_error(f"searching events for '{query}'", e)
         return []
 
 
@@ -342,33 +350,16 @@ def push_day_plan(
         domain = block.get("domain", "")
         task_id = block.get("task_id", "")
 
-        # Validate time format first
-        start_parts = start_str.split(":")
-        end_parts = end_str.split(":")
-        if len(start_parts) < 2 or len(end_parts) < 2:
-            logger.warning(f"Skipping block '{title}': invalid time format (start='{start_str}', end='{end_str}')")
-            skipped_blocks += 1
-            continue
-
         try:
-            start_hour, start_min = int(start_parts[0]), int(start_parts[1])
-            end_hour, end_min = int(end_parts[0]), int(end_parts[1])
-
-            # Validate time ranges
-            if not (0 <= start_hour <= 23 and 0 <= start_min <= 59):
-                raise ValueError(f"Invalid start time: {start_hour:02d}:{start_min:02d}")
-            if not (0 <= end_hour <= 23 and 0 <= end_min <= 59):
-                raise ValueError(f"Invalid end time: {end_hour:02d}:{end_min:02d}")
-
-            start_dt = dt.datetime(date.year, date.month, date.day, start_hour, start_min)
-            end_dt = dt.datetime(date.year, date.month, date.day, end_hour, end_min)
+            start_dt = _parse_block_time(date, start_str, "start")
+            end_dt = _parse_block_time(date, end_str, "end")
 
             # Handle end time on next day if earlier than start time
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
                 logger.info(f"Block '{title}' spans midnight, end time adjusted to next day")
 
-        except (ValueError, IndexError) as e:
+        except ValueError as e:
             logger.warning(f"Skipping block '{title}': invalid time format - {e}")
             skipped_blocks += 1
             continue
