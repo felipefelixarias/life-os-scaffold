@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from typing import Any
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -30,7 +31,7 @@ def _init_csv_stats(csv_path: Path) -> dict:
     }
 
 
-def _process_large_csv(reader, stats: dict) -> dict:
+def _process_large_csv(reader: Any, stats: dict) -> dict:
     """Process large CSV files with sampling to avoid memory issues."""
     row_count = 0
     sample_row = None
@@ -51,7 +52,7 @@ def _process_large_csv(reader, stats: dict) -> dict:
     return stats
 
 
-def _process_small_csv(reader, stats: dict) -> dict:
+def _process_small_csv(reader: Any, stats: dict) -> dict:
     """Process small CSV files by loading all data."""
     data_rows = list(reader)
     stats["rows"] = len(data_rows)
@@ -140,7 +141,7 @@ def main() -> None:
         print(f"   📊 {stats['columns']} columns, {stats['rows']} data rows{size_str}")
 
         if stats["has_data"]:
-            sample_preview = stats['sample_row'][:2] if stats['sample_row'] else 'None'
+            sample_preview = stats["sample_row"][:2] if stats["sample_row"] else "None"
             print(f"   ✅ Has data (sample: {sample_preview}...)")
         else:
             print("   📝 Header only (no data)")

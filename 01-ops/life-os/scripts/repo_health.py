@@ -184,17 +184,21 @@ def check_security() -> None:
 
     # Check .env files
     env_files = list(REPO_ROOT.glob("**/.env*"))
-    for env_file in env_files:
-        if ".git" not in str(env_file):
-            security_issues.append(f"Environment file found: {env_file.relative_to(REPO_ROOT)}")
+    security_issues.extend(
+        f"Environment file found: {env_file.relative_to(REPO_ROOT)}"
+        for env_file in env_files
+        if ".git" not in str(env_file)
+    )
 
     # Check for private keys
     key_patterns = ["*.key", "*.pem", "*_rsa", "*id_rsa*"]
     for pattern in key_patterns:
         key_files = list(REPO_ROOT.glob(f"**/{pattern}"))
-        for key_file in key_files:
-            if ".git" not in str(key_file):
-                security_issues.append(f"Potential private key: {key_file.relative_to(REPO_ROOT)}")
+        security_issues.extend(
+            f"Potential private key: {key_file.relative_to(REPO_ROOT)}"
+            for key_file in key_files
+            if ".git" not in str(key_file)
+        )
 
     # Check file permissions on sensitive files
     sensitive_files = [
