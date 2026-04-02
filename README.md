@@ -50,9 +50,12 @@ You talk to Claude. Claude reads your files, follows the command specs in `.clau
 ```bash
 make test
 make lint
+make csv-check
 ```
 
-`make test` runs repo validation plus Python unit tests. `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace.
+- `make test` runs repo validation plus Python unit tests
+- `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace
+- `make csv-check` analyzes CSV data files and shows statistics (useful during development)
 
 ## Commands
 

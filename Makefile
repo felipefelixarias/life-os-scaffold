@@ -26,3 +26,6 @@ gcal-agenda: ## Show today's Google Calendar agenda
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."
+
+csv-check: ## Analyze CSV data files and show statistics
+	@python3 $(LIFE_OS)/scripts/check_csv_data.py
