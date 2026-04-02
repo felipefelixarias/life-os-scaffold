@@ -15,6 +15,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.pyi
 .venv/
 venv/
 env/
@@ -29,6 +30,8 @@ build/
 .tox/
 .mypy_cache/
 .ruff_cache/
+.ipynb_checkpoints/
+*.log
 
 # Node
 node_modules/
