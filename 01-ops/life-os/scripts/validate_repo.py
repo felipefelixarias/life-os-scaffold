@@ -32,6 +32,15 @@ TIME_COLUMNS = (
 )
 
 
+def _read_utf8(path: Path, errors: list[str]) -> str:
+    """Read a UTF-8 text file and collect validation errors instead of crashing."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except (FileNotFoundError, PermissionError, UnicodeDecodeError) as exc:
+        errors.append(f"Cannot read text file {path.relative_to(REPO_ROOT)}: {exc}")
+        return ""
+
+
 def markdown_docs() -> list[Path]:
     """Return tracked markdown docs that should participate in validation."""
     docs_dir = REPO_ROOT / "docs"
@@ -273,7 +282,9 @@ def validate_csv_schemas() -> list[str]:
 def validate_markdown_links() -> list[str]:
     errors = []
     for doc_path in markdown_docs():
-        content = doc_path.read_text(encoding="utf-8")
+        content = _read_utf8(doc_path, errors)
+        if not content:
+            continue
         for target in LINK_RE.findall(content):
             if (
                 target.startswith("http://")
@@ -295,7 +306,9 @@ def validate_command_references() -> list[str]:
     defined = {f"/{path.stem}" for path in command_dir.glob("*.md")}
     errors = []
     for doc_path in command_reference_docs():
-        content = doc_path.read_text(encoding="utf-8")
+        content = _read_utf8(doc_path, errors)
+        if not content:
+            continue
         for command in COMMAND_RE.findall(content):
             if command not in defined:
                 errors.append(
@@ -308,12 +321,14 @@ def validate_command_coverage() -> list[str]:
     """Catch unreferenced command files before they turn into dead scaffold code."""
     command_dir = REPO_ROOT / ".claude" / "commands"
     referenced = set()
+    errors = []
 
     for doc_path in markdown_docs():
-        content = doc_path.read_text(encoding="utf-8")
+        content = _read_utf8(doc_path, errors)
+        if not content:
+            continue
         referenced.update(COMMAND_RE.findall(content))
 
-    errors = []
     for command_path in sorted(command_dir.glob("*.md")):
         command = f"/{command_path.stem}"
         if command not in referenced:
@@ -327,7 +342,10 @@ def lint_whitespace() -> list[str]:
     errors = []
     paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
-        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        content = _read_utf8(path, errors)
+        if not content:
+            continue
+        for line_no, line in enumerate(content.splitlines(), 1):
             if line.endswith(" ") or line.endswith("\t"):
                 errors.append(f"Trailing whitespace in {path.relative_to(REPO_ROOT)}:{line_no}")
     return errors

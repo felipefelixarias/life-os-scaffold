@@ -118,6 +118,32 @@ class RepoValidationTests(unittest.TestCase):
 
         self.assertEqual(actual, expected)
 
+    def test_read_utf8_collects_text_file_errors(self) -> None:
+        errors: list[str] = []
+        missing_path = REPO_ROOT / "docs" / "missing.md"
+
+        actual = validate_repo._read_utf8(missing_path, errors)
+
+        self.assertEqual(actual, "")
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Cannot read text file docs/missing.md", errors[0])
+
+    def test_validate_markdown_links_handles_unreadable_doc(self) -> None:
+        target_doc = REPO_ROOT / "README.md"
+        original_read_text = Path.read_text
+
+        def fake_read_text(self: Path, *args, **kwargs) -> str:
+            if self == target_doc:
+                raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+            return original_read_text(self, *args, **kwargs)
+
+        with mock.patch.object(Path, "read_text", new=fake_read_text):
+            errors = validate_repo.validate_markdown_links()
+
+        self.assertTrue(
+            any(error.startswith("Cannot read text file README.md") for error in errors)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

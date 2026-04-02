@@ -115,6 +115,22 @@ def _log_google_api_error(action: str, exc: Exception) -> None:
     logger.error(f"Unexpected error while {action}: {exc}")
 
 
+def _log_delete_event_error(event_id: str, exc: Exception) -> None:
+    """Log delete-specific errors, including missing events as warnings."""
+    try:
+        from googleapiclient.errors import HttpError
+        if isinstance(exc, HttpError):
+            if exc.resp.status == 404:
+                logger.warning(f"Event {event_id} not found (already deleted or never existed)")
+                return
+            logger.error(f"Google Calendar API error while deleting event {event_id} (HTTP {exc.resp.status}): {exc}")
+            return
+    except ImportError:
+        pass
+
+    logger.error(f"Unexpected error while deleting event {event_id}: {exc}")
+
+
 def list_calendars() -> List[Dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     try:
@@ -251,17 +267,7 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     except (FileNotFoundError, PermissionError) as e:
         logger.error(f"Authentication error while deleting event {event_id}: {e}")
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                if e.resp.status == 404:
-                    logger.warning(f"Event {event_id} not found (already deleted or never existed)")
-                else:
-                    logger.error(f"Google Calendar API error while deleting event {event_id} (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while deleting event {event_id}: {e}")
-        except ImportError:
-            logger.error(f"Error while deleting event {event_id}: {e}")
+        _log_delete_event_error(event_id, e)
 
 
 def search_events(
@@ -291,14 +297,7 @@ def search_events(
         logger.error(f"Authentication error while searching events for '{query}': {e}")
         return []
     except Exception as e:
-        try:
-            from googleapiclient.errors import HttpError
-            if isinstance(e, HttpError):
-                logger.error(f"Google Calendar API error while searching events for '{query}' (HTTP {e.resp.status}): {e}")
-            else:
-                logger.error(f"Unexpected error while searching events for '{query}': {e}")
-        except ImportError:
-            logger.error(f"Error while searching events for '{query}': {e}")
+        _log_google_api_error(f"searching events for '{query}'", e)
         return []
 
 
