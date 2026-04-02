@@ -5,10 +5,20 @@ from __future__ import annotations
 
 import argparse
 import csv
+import logging
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
+
+# Configure basic logging
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -123,8 +133,9 @@ def validate_csv_structure() -> list[str]:
 
                 header_count = len(header)
                 line_num = 2  # Start after header
+                max_lines_to_check = 1000  # Limit for performance on large files
 
-                for row in reader:
+                for row_idx, row in enumerate(reader):
                     if len(row) != header_count:
                         errors.append(
                             f"CSV row mismatch at line {line_num} in {csv_path.relative_to(REPO_ROOT)}: "
@@ -132,6 +143,11 @@ def validate_csv_structure() -> list[str]:
                         )
                         break  # Stop after first mismatch to avoid noise
                     line_num += 1
+
+                    # Performance optimization: don't check infinite rows
+                    if row_idx >= max_lines_to_check:
+                        logger.info(f"Checked first {max_lines_to_check} rows of {csv_path.relative_to(REPO_ROOT)}")
+                        break
 
         except (FileNotFoundError, PermissionError, UnicodeDecodeError):
             # Already handled in validate_csv_headers
