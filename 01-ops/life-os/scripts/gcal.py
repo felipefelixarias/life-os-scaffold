@@ -76,13 +76,27 @@ def get_credentials() -> Any:
         resolved_path = OAUTH_TOKEN_PATH.resolve()
         if not str(resolved_path).startswith(str(Path.home())):
             raise PermissionError("OAuth token file is outside user home directory")
+
+        # Additional security: check file permissions (should be user-only readable)
+        file_stat = resolved_path.stat()
+        if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
+            logger.warning(f"OAuth token file has overly permissive permissions: {oct(file_stat.st_mode)}")
+
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
 
     # Note: pickle.load() can execute arbitrary code. This is acceptable because
     # the token file is in the user's home directory and managed by gcalcli.
-    with OAUTH_TOKEN_PATH.open("rb") as f:
-        creds = pickle.load(f)
+    # For additional security, we check file size to prevent huge files
+    try:
+        file_size = OAUTH_TOKEN_PATH.stat().st_size
+        if file_size > 50 * 1024:  # 50KB should be more than enough for credentials
+            raise ValueError(f"OAuth token file unexpectedly large: {file_size} bytes")
+
+        with OAUTH_TOKEN_PATH.open("rb") as f:
+            creds = pickle.load(f)
+    except (OSError, pickle.PickleError, ValueError) as e:
+        raise PermissionError(f"Cannot load OAuth credentials: {e}") from e
 
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
