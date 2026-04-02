@@ -4,9 +4,8 @@
 from __future__ import annotations
 
 import csv
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]

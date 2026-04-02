@@ -401,7 +401,7 @@ def push_day_plan(
             continue
 
         summary = f"[{domain}] {title}" if domain else title
-        desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
+        desc_parts = [LIFE_OS_TAG, "Source: auto_planner"]
         if task_id:
             desc_parts.append(f"Task: {task_id}")
         description = "\n".join(desc_parts)
