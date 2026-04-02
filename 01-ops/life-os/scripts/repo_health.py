@@ -120,7 +120,9 @@ def check_python_health() -> None:
     elif exit_code == 127 or "No module named 'ruff'" in stderr:
         print("⚠️  ruff not available (optional)")
     else:
-        print(f"⚠️  Ruff found {stdout.count('Found')} issues")
+        # Count actual issues by lines that aren't empty or summary lines
+        issue_lines = [line for line in stdout.splitlines() if line.strip() and not line.startswith("Found")]
+        print(f"⚠️  Ruff found {len(issue_lines)} issues")
 
 
 def check_test_health() -> None:
