@@ -329,12 +329,18 @@ def clear_life_os_events(date: dt.date, calendar_id: str = "primary") -> int:
     next_day = date + dt.timedelta(days=1)
     events = get_agenda(date, next_day, calendar_id=calendar_id)
 
-    deleted = 0
+    # Collect events to delete first, then delete in batch for better performance
+    events_to_delete = []
     for ev in events:
         desc = ev.get("description", "") or ""
         if LIFE_OS_TAG in desc:
-            delete_event(ev["id"], calendar_id=calendar_id)
-            deleted += 1
+            events_to_delete.append(ev["id"])
+
+    # Delete events
+    deleted = 0
+    for event_id in events_to_delete:
+        delete_event(event_id, calendar_id=calendar_id)
+        deleted += 1
 
     return deleted
 
@@ -344,11 +350,27 @@ def push_day_plan(
     date: dt.date,
     calendar_id: str = "primary",
 ) -> List[str]:
-    """Batch-create calendar events from time blocks.
+    """Batch-create calendar events from time blocks with automatic cleanup.
 
-    Each block should have: start (HH:MM), end (HH:MM), title, domain, task_id.
-    Clears existing [life-os] events for the date first.
-    Returns list of created event IDs.
+    This function first clears all existing [life-os] tagged events for the given date,
+    then creates new events from the provided time blocks. Events that span midnight
+    are automatically adjusted to the next day. Invalid time formats are logged and skipped.
+
+    Args:
+        blocks: List of dictionaries, each containing:
+            - start: Time string in HH:MM format
+            - end: Time string in HH:MM format
+            - title: Event title
+            - domain: Optional domain/category
+            - task_id: Optional task identifier
+        date: Target date for the events
+        calendar_id: Google Calendar ID (defaults to "primary")
+
+    Returns:
+        List of successfully created event IDs
+
+    Raises:
+        No exceptions are raised; errors are logged and operation continues.
     """
     cleared = clear_life_os_events(date, calendar_id=calendar_id)
     if cleared:
