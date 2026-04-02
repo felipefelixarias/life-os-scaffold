@@ -81,10 +81,11 @@ def validate_required_paths() -> list[str]:
         REPO_ROOT / "01-ops" / "life-os" / "config" / "calendar_feeds.example.json",
         REPO_ROOT / "01-ops" / "life-os" / "scripts" / "gcal.py",
     ]
-    errors = []
-    for path in paths:
-        if not path.exists():
-            errors.append(f"Missing required path: {path.relative_to(REPO_ROOT)}")
+    errors = [
+        f"Missing required path: {path.relative_to(REPO_ROOT)}"
+        for path in paths
+        if not path.exists()
+    ]
     return errors
 
 
@@ -233,9 +234,11 @@ def validate_csv_schemas() -> list[str]:
                     continue
 
                 # Check required columns
-                for required_col in schema["required_columns"]:
-                    if required_col not in header:
-                        errors.append(f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}")
+                errors.extend(
+                    f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}"
+                    for required_col in schema["required_columns"]
+                    if required_col not in header
+                )
 
                 allowed_columns = set(schema["required_columns"]) | set(
                     schema.get("optional_columns", [])
@@ -312,11 +315,11 @@ def validate_command_references() -> list[str]:
     errors = []
     for doc_path in command_reference_docs():
         content = doc_path.read_text(encoding="utf-8")
-        for command in COMMAND_RE.findall(content):
-            if command not in defined:
-                errors.append(
-                    f"Unknown command reference in {doc_path.relative_to(REPO_ROOT)}: {command}"
-                )
+        errors.extend(
+            f"Unknown command reference in {doc_path.relative_to(REPO_ROOT)}: {command}"
+            for command in COMMAND_RE.findall(content)
+            if command not in defined
+        )
     return errors
 
 

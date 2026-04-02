@@ -7,7 +7,7 @@ import json
 import logging
 import pickle
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Configure logging
@@ -59,7 +59,7 @@ def _rfc3339(d: dt.date, time_str: str = "00:00:00") -> str:
     try:
         time_value = dt.time.fromisoformat(time_str)
     except ValueError as e:
-        logger.warning(f"Invalid time format '{time_str}', using 00:00:00: {e}")
+        logger.warning("Invalid time format '%s', using 00:00:00: %s", time_str, e)
         time_value = dt.time(0, 0, 0)
     moment = dt.datetime.combine(d, time_value, tzinfo=zone)
     return moment.isoformat()
@@ -85,7 +85,7 @@ def get_credentials() -> Any:
         file_stat = resolved_path.stat()
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
             perms = oct(file_stat.st_mode)
-            logger.warning(f"OAuth token file has overly permissive permissions: {perms}")
+            logger.warning("OAuth token file has overly permissive permissions: %s", perms)
 
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
@@ -128,12 +128,12 @@ def _log_google_api_error(action: str, exc: Exception) -> None:
     try:
         from googleapiclient.errors import HttpError
         if isinstance(exc, HttpError):
-            logger.error(f"Google Calendar API error while {action} (HTTP {exc.resp.status}): {exc}")
+            logger.error("Google Calendar API error while %s (HTTP %s): %s", action, exc.resp.status, exc)
             return
     except ImportError:
         pass
 
-    logger.error(f"Unexpected error while {action}: {exc}")
+    logger.error("Unexpected error while %s: %s", action, exc)
 
 
 def _is_http_error_status(exc: Exception, status: int) -> bool:
@@ -164,8 +164,8 @@ def list_calendars() -> list[dict[str, Any]]:
         service = get_service()
         result = service.calendarList().list().execute()
         return result.get("items", [])
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while fetching calendar list: {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while fetching calendar list")
         return []
     except Exception as e:
         _log_google_api_error("fetching calendar list", e)
@@ -174,7 +174,7 @@ def list_calendars() -> list[dict[str, Any]]:
 
 def get_agenda(
     start_date: dt.date,
-    end_date: Optional[dt.date] = None,
+    end_date: dt.date | None = None,
     calendar_id: str = "primary",
 ) -> list[dict[str, Any]]:
     """Get events between start_date and end_date (inclusive)."""
@@ -205,13 +205,16 @@ def get_agenda(
             page_token = result.get("nextPageToken")
             if not page_token:
                 break
+        else:
+            # This else block is associated with the while loop and runs after normal completion
+            pass
 
         return events
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while fetching events for {start_date}: {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while fetching events for %s", start_date)
         return []
     except Exception as e:
-        _log_google_api_error(f"fetching events for {start_date}", e)
+        _log_google_api_error("fetching events for %s" % start_date, e)
         return []
 
 
@@ -219,9 +222,9 @@ def create_event(
     summary: str,
     start_dt: dt.datetime,
     end_dt: dt.datetime,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
-    reminders: Optional[dict] = None,
+    location: str | None = None,
+    description: str | None = None,
+    reminders: dict | None = None,
     calendar_id: str = "primary",
 ) -> str:
     """Create a calendar event. Returns the event ID or empty string on failure."""
@@ -243,14 +246,14 @@ def create_event(
         service = get_service()
         event = service.events().insert(calendarId=calendar_id, body=body).execute()
         return event["id"]
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while creating event '{summary}': {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while creating event '%s'", summary)
         return ""
     except ValueError as e:
-        logger.error(f"Invalid input while creating event '{summary}': {e}")
+        logger.error("Invalid input while creating event '%s': %s", summary, e)
         return ""
     except Exception as e:
-        _log_google_api_error(f"creating event '{summary}'", e)
+        _log_google_api_error("creating event '%s'" % summary, e)
         return ""
 
 
@@ -275,14 +278,14 @@ def update_event(
             calendarId=calendar_id, eventId=event_id, body=event
         ).execute()
         return updated
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while updating event {event_id}: {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while updating event %s", event_id)
         return {}
     except ValueError as e:
-        logger.error(f"Invalid input while updating event {event_id}: {e}")
+        logger.error("Invalid input while updating event %s: %s", event_id, e)
         return {}
     except Exception as e:
-        _log_google_api_error(f"updating event {event_id}", e)
+        _log_google_api_error("updating event %s" % event_id, e)
         return {}
 
 
@@ -291,13 +294,13 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     try:
         service = get_service()
         service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while deleting event {event_id}: {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while deleting event %s", event_id)
     except Exception as e:
         if _is_http_error_status(e, 404):
-            logger.warning(f"Event {event_id} not found (already deleted or never existed)")
+            logger.warning("Event %s not found (already deleted or never existed)", event_id)
         else:
-            _log_google_api_error(f"deleting event {event_id}", e)
+            _log_google_api_error("deleting event %s" % event_id, e)
 
 
 def search_events(
@@ -323,11 +326,11 @@ def search_events(
             orderBy="startTime",
         ).execute()
         return result.get("items", [])
-    except (FileNotFoundError, PermissionError) as e:
-        logger.error(f"Authentication error while searching events for '{query}': {e}")
+    except (FileNotFoundError, PermissionError):
+        logger.exception("Authentication error while searching events for '%s'", query)
         return []
     except Exception as e:
-        _log_google_api_error(f"searching events for '{query}'", e)
+        _log_google_api_error("searching events for '%s'" % query, e)
         return []
 
 
@@ -381,7 +384,7 @@ def push_day_plan(
     """
     cleared = clear_life_os_events(date, calendar_id=calendar_id)
     if cleared:
-        logger.info(f"Cleared {cleared} existing {LIFE_OS_TAG} events for {date}")
+        logger.info("Cleared %s existing %s events for %s", cleared, LIFE_OS_TAG, date)
 
     created_ids = []
     skipped_blocks = 0
@@ -400,10 +403,10 @@ def push_day_plan(
             # Handle end time on next day if earlier than start time
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
-                logger.info(f"Block '{title}' spans midnight, end time adjusted to next day")
+                logger.info("Block '%s' spans midnight, end time adjusted to next day", title)
 
         except ValueError as e:
-            logger.warning(f"Skipping block '{title}': invalid time format - {e}")
+            logger.warning("Skipping block '%s': invalid time format - %s", title, e)
             skipped_blocks += 1
             continue
 
@@ -429,11 +432,11 @@ def push_day_plan(
     failed_blocks = total_blocks - successful_blocks - skipped_blocks
 
     if skipped_blocks > 0:
-        logger.warning(f"Day plan push summary: {successful_blocks}/{total_blocks} created, {skipped_blocks} skipped due to invalid time format")
+        logger.warning("Day plan push summary: %s/%s created, %s skipped due to invalid time format", successful_blocks, total_blocks, skipped_blocks)
     if failed_blocks > 0:
-        logger.error(f"Day plan push summary: {failed_blocks} blocks failed to create events")
+        logger.error("Day plan push summary: %s blocks failed to create events", failed_blocks)
     if successful_blocks > 0:
-        logger.info(f"Successfully created {successful_blocks} calendar events for {date}")
+        logger.info("Successfully created %s calendar events for %s", successful_blocks, date)
 
     return created_ids
 
