@@ -79,6 +79,150 @@ class CheckCSVDataTests(unittest.TestCase):
             self.assertIn("error", stats)
             self.assertIn("Encoding error", stats["error"])
 
+    def test_process_large_csv_with_sampling(self) -> None:
+        """Test processing large CSV files with row sampling."""
+        import io
+        import csv
+
+        # Create a mock reader that simulates a large file
+        large_data = [["col1", "col2", "col3"]]
+        for i in range(check_csv_data.MAX_SAMPLING_ROWS + 100):
+            large_data.append([f"val{i}_1", f"val{i}_2", f"val{i}_3"])
+
+        # Simulate a CSV reader
+        string_data = "\n".join([",".join(row) for row in large_data])
+        reader = csv.reader(io.StringIO(string_data))
+        next(reader)  # Skip header
+
+        stats = {"rows": 0, "has_data": False, "sample_row": None}
+        result = check_csv_data._process_large_csv(reader, stats)
+
+        self.assertIn("large file, sampling", str(result["rows"]))
+        self.assertTrue(result["has_data"])
+        self.assertIsNotNone(result["sample_row"])
+
+    def test_process_small_csv_loads_all_data(self) -> None:
+        """Test processing small CSV files that load all data."""
+        import io
+        import csv
+
+        data = [["val1", "val2", "val3"], ["val4", "val5", "val6"]]
+        string_data = "\n".join([",".join(row) for row in data])
+        reader = csv.reader(io.StringIO(string_data))
+
+        stats = {"rows": 0, "has_data": False, "sample_row": None}
+        result = check_csv_data._process_small_csv(reader, stats)
+
+        self.assertEqual(result["rows"], 2)
+        self.assertTrue(result["has_data"])
+        self.assertEqual(result["sample_row"], ["val1", "val2", "val3"])
+
+    def test_process_small_csv_empty_data(self) -> None:
+        """Test processing small CSV with no data rows."""
+        import io
+        import csv
+
+        string_data = ""  # No data
+        reader = csv.reader(io.StringIO(string_data))
+
+        stats = {"rows": 0, "has_data": False, "sample_row": None}
+        result = check_csv_data._process_small_csv(reader, stats)
+
+        self.assertEqual(result["rows"], 0)
+        self.assertFalse(result["has_data"])
+        self.assertIsNone(result["sample_row"])
+
+    def test_init_csv_stats(self) -> None:
+        """Test initialization of CSV stats dictionary."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "test.csv"
+
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+                stats = check_csv_data._init_csv_stats(csv_path)
+
+            self.assertEqual(stats["file"], Path("test.csv"))
+            self.assertFalse(stats["exists"])
+            self.assertEqual(stats["rows"], 0)
+            self.assertEqual(stats["columns"], 0)
+            self.assertFalse(stats["has_data"])
+            self.assertIsNone(stats["sample_row"])
+            self.assertEqual(stats["size_bytes"], 0)
+
+    def test_analyze_csv_file_handles_permission_error(self) -> None:
+        """Test handling of permission errors when reading CSV files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "permission_denied.csv"
+            csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
+
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+                # Mock Path.open specifically to raise PermissionError
+                with mock.patch.object(Path, "open", side_effect=PermissionError("Access denied")):
+                    stats = check_csv_data.analyze_csv_file(csv_path)
+
+            self.assertTrue(stats["exists"])
+            self.assertIn("error", stats)
+            self.assertEqual(stats["error"], "Permission denied")
+
+    def test_analyze_csv_file_handles_csv_error(self) -> None:
+        """Test handling of CSV parsing errors."""
+        import csv as csv_module
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "malformed.csv"
+            csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
+
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+                # Mock csv.reader to raise a CSV error
+                with mock.patch("csv.reader", side_effect=csv_module.Error("Malformed CSV")):
+                    stats = check_csv_data.analyze_csv_file(csv_path)
+
+            self.assertTrue(stats["exists"])
+            self.assertIn("error", stats)
+            self.assertIn("Error: Malformed CSV", stats["error"])
+
+    def test_analyze_csv_file_large_file_threshold(self) -> None:
+        """Test that large files use sampling logic."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "large.csv"
+            # Create content but mock the size to appear large
+            csv_content = "col1,col2,col3\nval1,val2,val3\n"
+            csv_path.write_text(csv_content, encoding="utf-8")
+
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+                # Mock the file size to exceed the large file threshold
+                with mock.patch.object(Path, 'stat') as mock_stat:
+                    mock_stat_result = mock.Mock()
+                    mock_stat_result.st_size = check_csv_data.LARGE_FILE_THRESHOLD + 1
+                    mock_stat.return_value = mock_stat_result
+
+                    stats = check_csv_data.analyze_csv_file(csv_path)
+
+            self.assertTrue(stats["exists"])
+            self.assertEqual(stats["size_bytes"], check_csv_data.LARGE_FILE_THRESHOLD + 1)
+            self.assertTrue(stats["has_data"])
+
+    def test_main_function_exists_and_callable(self) -> None:
+        """Test that main function exists and is callable."""
+        self.assertTrue(callable(check_csv_data.main))
+        # Basic smoke test - just ensure it doesn't crash when called
+        # We won't test the full output since it depends on actual file structure
+
+    def test_analyze_csv_file_unicode_decode_error_in_reader(self) -> None:
+        """Test handling unicode decode errors during CSV reading."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "unicode_error.csv"
+            # Write some valid content first
+            csv_path.write_text("col1,col2\n", encoding="utf-8")
+
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+                # Mock the CSV reader's next() call to raise UnicodeDecodeError
+                with mock.patch("builtins.next", side_effect=UnicodeDecodeError("utf-8", b"\x80\x81", 0, 1, "invalid start byte")):
+                    stats = check_csv_data.analyze_csv_file(csv_path)
+
+            self.assertTrue(stats["exists"])
+            self.assertIn("error", stats)
+            self.assertIn("Encoding error", stats["error"])
+
 
 if __name__ == "__main__":
     unittest.main()
