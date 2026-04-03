@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+life_os_scaffold.egg-info/PKG-INFO
+life_os_scaffold.egg-info/SOURCES.txt
+life_os_scaffold.egg-info/dependency_links.txt
+life_os_scaffold.egg-info/requires.txt
+life_os_scaffold.egg-info/top_level.txt
+tests/test_check_csv_data.py
+tests/test_check_dependencies.py
+tests/test_gcal.py
+tests/test_refresh_example_data.py
+tests/test_repo_health.py
+tests/test_repo_validation.py

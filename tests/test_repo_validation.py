@@ -1,4 +1,3 @@
-import csv
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +9,7 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
 SPEC = spec_from_file_location("life_os_validate_repo", MODULE_PATH)
+assert SPEC is not None
 validate_repo = module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(validate_repo)
@@ -362,6 +362,33 @@ class PathValidationTests(unittest.TestCase):
 
         self.assertTrue(len(errors) > 0)
         self.assertTrue(any("Missing required path" in error for error in errors))
+
+    def test_command_references_validation(self) -> None:
+        """Test validation of command references in documentation."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            command_dir = root / ".claude" / "commands"
+            docs_dir = root / "docs"
+            command_dir.mkdir(parents=True)
+            docs_dir.mkdir()
+
+            # Create command files
+            (command_dir / "daily.md").write_text("# Daily command", encoding="utf-8")
+            (command_dir / "setup.md").write_text("# Setup command", encoding="utf-8")
+
+            # Create docs with valid and invalid command references
+            (root / "README.md").write_text("`/daily` and `/invalid-command`", encoding="utf-8")
+            (root / "CLAUDE.md").write_text("`/setup` works fine", encoding="utf-8")
+            (docs_dir / "getting-started.md").write_text("Use `/daily` command", encoding="utf-8")
+            (docs_dir / "google-calendar.md").write_text("No commands here", encoding="utf-8")
+            (docs_dir / "skills-reference.md").write_text("Also no commands", encoding="utf-8")
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                errors = validate_repo.validate_command_references()
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Unknown command reference", errors[0])
+        self.assertIn("/invalid-command", errors[0])
 
 
 if __name__ == "__main__":

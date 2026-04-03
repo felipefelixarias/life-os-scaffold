@@ -301,6 +301,19 @@ def create_event(
 ) -> str:
     """Create a calendar event. Returns the event ID or empty string on failure."""
     try:
+        # Input validation for security
+        if len(summary) > 1000:
+            logger.warning(f"Event summary truncated from {len(summary)} to 1000 characters")
+            summary = summary[:1000]
+
+        if description and len(description) > 8000:
+            logger.warning(f"Event description truncated from {len(description)} to 8000 characters")
+            description = description[:8000]
+
+        if location and len(location) > 1000:
+            logger.warning(f"Event location truncated from {len(location)} to 1000 characters")
+            location = location[:1000]
+
         tz = _load_timezone()
 
         body: Dict[str, Any] = {
@@ -564,9 +577,9 @@ def push_day_plan(
     for block in valid_blocks:
         try:
             start_dt = dt.datetime(date.year, date.month, date.day,
-                                 block["start_hour"], block["start_min"])
+                                 int(block["start_hour"]), int(block["start_min"]))
             end_dt = dt.datetime(date.year, date.month, date.day,
-                               block["end_hour"], block["end_min"])
+                               int(block["end_hour"]), int(block["end_min"]))
 
             # Handle end time on next day if earlier than start time
             if end_dt <= start_dt:
@@ -575,7 +588,7 @@ def push_day_plan(
 
             # Build event details
             summary = f"[{block['domain']}] {block['title']}" if block['domain'] else block['title']
-            desc_parts = [LIFE_OS_TAG, f"Source: auto_planner"]
+            desc_parts = [LIFE_OS_TAG, "Source: auto_planner"]
             if block['task_id']:
                 desc_parts.append(f"Task: {block['task_id']}")
             description = "\n".join(desc_parts)

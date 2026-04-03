@@ -181,12 +181,11 @@ def validate_csv_structure() -> list[str]:
 
                     # Limit validation for very large files
                     if lines_checked >= max_lines_to_check:
-                        total_lines = sum(1 for _ in handle) + lines_checked + 1  # +1 for header
-                        if total_lines > max_lines_to_check + 1:
-                            errors.append(
-                                f"CSV file {csv_path.relative_to(REPO_ROOT)} has {total_lines} lines, "
-                                f"only validated first {max_lines_to_check} data rows"
-                            )
+                        # Don't count remaining lines to avoid expensive file operation
+                        errors.append(
+                            f"CSV file {csv_path.relative_to(REPO_ROOT)} has more than {max_lines_to_check} rows, "
+                            f"only validated first {max_lines_to_check} data rows"
+                        )
                         break
 
         except (FileNotFoundError, PermissionError, UnicodeDecodeError):
@@ -213,7 +212,7 @@ def _validate_numeric_field(value: str, field_name: str, line_num: int, csv_path
     Returns:
         List of validation error messages
     """
-    errors = []
+    errors: list[str] = []
     if not value.strip():
         return errors  # Empty values handled elsewhere
 
@@ -279,7 +278,7 @@ def _validate_id_field(value: str, field_name: str, line_num: int, csv_path_str:
         - No problematic characters that could break CSV parsing
         - Not empty after trimming
     """
-    errors = []
+    errors: list[str] = []
     if not value.strip():
         return errors  # Empty values handled elsewhere
 
@@ -431,13 +430,17 @@ def validate_csv_schemas() -> list[str]:
 
                     # Validate enums
                     if "enums" in schema:
-                        for col, valid_values in schema["enums"].items():
+                        enums_dict = schema["enums"]
+                        assert isinstance(enums_dict, dict)
+                        for col, valid_values in enums_dict.items():
                             if col in row and row[col].strip() and row[col] not in valid_values:
                                 errors.append(f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path_str}. Valid: {valid_values}")
 
                     # Validate numeric fields with range checking
                     if "numeric_fields" in schema:
-                        for col, constraints in schema["numeric_fields"].items():
+                        numeric_fields_dict = schema["numeric_fields"]
+                        assert isinstance(numeric_fields_dict, dict)
+                        for col, constraints in numeric_fields_dict.items():
                             if col in row and row[col].strip():
                                 errors.extend(_validate_numeric_field(
                                     row[col], col, line_num, csv_path_str,
@@ -515,7 +518,11 @@ def validate_csv_schemas() -> list[str]:
 def validate_markdown_links() -> list[str]:
     errors = []
     for doc_path in markdown_docs():
-        content = doc_path.read_text(encoding="utf-8")
+        try:
+            content = doc_path.read_text(encoding="utf-8")
+        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+            errors.append(f"Cannot read markdown file {doc_path.relative_to(REPO_ROOT)}: {e}")
+            continue
         for target in LINK_RE.findall(content):
             if (
                 target.startswith("http://")
