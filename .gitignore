@@ -60,3 +60,8 @@ node_modules/
 
 # Sensitive documents
 # 06-admin/finance/
+
+# Development tools
+.pre-commit-cache/
+.bandit/
+.safety/

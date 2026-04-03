@@ -1,0 +1,17 @@
+# Bandit security linter configuration for life-os-scaffold
+# https://bandit.readthedocs.io/
+
+[bandit]
+# Paths to exclude from scanning
+exclude_dirs = ["venv", ".venv", "tests", "__pycache__", ".git"]
+
+# Security checks to skip (use with caution)
+# B101 - assert_used (asserts are ok in tests)
+# B603 - subprocess_without_shell_equals_true (we use shell=False intentionally)
+skips = ["B101"]
+
+# Confidence levels to report: LOW, MEDIUM, HIGH
+confidence = ["MEDIUM", "HIGH"]
+
+# Severity levels to report: LOW, MEDIUM, HIGH
+severity = ["MEDIUM", "HIGH"]
