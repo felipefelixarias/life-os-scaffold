@@ -1,0 +1,165 @@
+# Project configuration for life-os-scaffold
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "life-os-scaffold"
+version = "0.1.0"
+description = "Personal life operating system scaffold with task management, calendar integration, and habit tracking"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Felipe Felix Arias", email = "noreply@example.com"}
+]
+keywords = ["productivity", "life-os", "task-management", "calendar", "habits"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "google-auth>=2.30.0,<3.0.0",
+    "google-api-python-client>=2.120.0,<3.0.0",
+    "google-auth-oauthlib>=1.2.0,<2.0.0",
+    "google-auth-httplib2>=0.2.0,<1.0.0",
+    "python-dateutil>=2.8.0,<3.0.0",
+    "requests>=2.31.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0,<9.0.0",
+    "pytest-cov>=4.0.0,<6.0.0",
+    "ruff>=0.7.0,<1.0.0",
+    "mypy>=1.10.0,<2.0.0",
+    "black>=24.0.0,<25.0.0",
+    "bandit>=1.7.5,<2.0.0",
+    "safety>=3.2.0,<4.0.0",
+    "pre-commit>=3.7.0,<4.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/felipefelixarias/life-os-scaffold"
+Repository = "https://github.com/felipefelixarias/life-os-scaffold"
+Issues = "https://github.com/felipefelixarias/life-os-scaffold/issues"
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+extend-exclude = ["venv", ".venv", "migrations"]
+
+[tool.ruff.lint]
+# Enable comprehensive rule sets
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+    "N",    # pep8-naming
+    "C4",   # flake8-comprehensions
+    "PIE",  # flake8-pie
+    "PT",   # flake8-pytest-style
+    "RUF",  # Ruff-specific rules
+    "S",    # bandit security checks
+]
+
+ignore = [
+    "E501",   # Line too long (black handles this)
+    "B008",   # Do not perform function call in argument defaults
+    "S101",   # Use of assert (ok in tests)
+    "S603",   # subprocess call without shell=True
+]
+
+# Assume Python 3.12+ features are available
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S106", "S107"]  # Allow asserts and hardcoded passwords in tests
+
+# Black configuration
+[tool.black]
+target-version = ['py312']
+line-length = 88
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=01-ops/life-os/scripts",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--strict-markers",
+    "-v"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["01-ops/life-os/scripts"]
+omit = [
+    "tests/*",
+    "venv/*",
+    ".venv/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstract",
+]

@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -46,3 +46,39 @@ dev-check: ## Run all development checks (test, lint, csv, health)
 	@$(MAKE) csv-check
 	@$(MAKE) health
 	@echo "✅ All development checks passed!"
+
+dev-setup: ## Set up development environment with all tools
+	@echo "Setting up development environment..."
+	@python3 -m venv venv || echo "Virtual environment already exists"
+	@source venv/bin/activate && pip install --upgrade pip
+	@source venv/bin/activate && pip install -r requirements.txt
+	@source venv/bin/activate && pip install -r requirements-dev.txt
+	@echo "✅ Development environment setup complete!"
+
+dev-install: ## Install package in development mode
+	@source venv/bin/activate && pip install -e .
+
+pre-commit-install: ## Install pre-commit hooks
+	@source venv/bin/activate && pre-commit install
+	@echo "✅ Pre-commit hooks installed!"
+
+format: ## Format code with black and isort
+	@source venv/bin/activate && black .
+	@source venv/bin/activate && isort .
+	@echo "✅ Code formatted!"
+
+security: ## Run security checks with bandit and safety
+	@echo "Running security checks..."
+	@source venv/bin/activate && bandit -r 01-ops/life-os/scripts/ || echo "⚠️  Security issues found"
+	@source venv/bin/activate && safety check || echo "⚠️  Vulnerability scan completed with warnings"
+
+type-check: ## Run type checking with mypy
+	@source venv/bin/activate && mypy 01-ops/life-os/scripts/ || echo "⚠️  Type checking completed with issues"
+
+quality: ## Run all quality checks (format, security, type-check, lint)
+	@echo "Running comprehensive quality checks..."
+	@$(MAKE) format
+	@$(MAKE) security
+	@$(MAKE) type-check
+	@$(MAKE) lint
+	@echo "✅ Quality checks completed!"
