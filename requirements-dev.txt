@@ -1,0 +1,24 @@
+# Development dependencies for life-os-scaffold
+# Install with: pip install -r requirements-dev.txt
+
+# Include base requirements
+-r requirements.txt
+
+# Code quality and linting
+ruff>=0.7.0,<1.0.0               # Fast Python linter and formatter
+mypy>=1.10.0,<2.0.0              # Static type checker
+black>=24.0.0,<25.0.0            # Code formatter
+
+# Security scanning
+bandit>=1.7.5,<2.0.0             # Security linter
+safety>=3.2.0,<4.0.0             # Check for known security vulnerabilities
+
+# Documentation
+sphinx>=7.3.0,<8.0.0             # Documentation generator
+sphinx-rtd-theme>=2.0.0,<3.0.0   # Read the Docs theme
+
+# Pre-commit hooks
+pre-commit>=3.7.0,<4.0.0         # Git pre-commit hooks framework
+
+# Performance profiling
+memory-profiler>=0.61.0,<1.0.0   # Memory usage profiling
