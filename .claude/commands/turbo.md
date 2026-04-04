@@ -23,7 +23,7 @@ Run the full morning sequence in one shot: check the time, fetch the calendar, s
    - Fill from highest priority tier down
    - Include breaks and transitions
 9. Present the combined dashboard + plan.
-10. Ask once: "Push to calendar?" If yes, push all blocks via `scripts/gcal.py`.
+10. Ask once: "Push to calendar?" If yes, push all blocks via ``01-ops/life-os/scripts/gcal.py``.
 
 ## Output Format
 

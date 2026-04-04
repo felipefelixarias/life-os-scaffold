@@ -81,8 +81,6 @@ If provided, write to `01-ops/life-os/data/canonical/goals.csv`.
 1. Write the completed profile.json.
 2. Confirm what was created:
    ```
-   Setup complete!
-
    Profile: 01-ops/life-os/config/profile.json
    Habits: X habits tracked
    Tasks: Y tasks added

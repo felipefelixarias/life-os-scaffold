@@ -16,7 +16,7 @@ Create a time-blocked plan for the day and optionally push it to Google Calendar
    - Break requirements between blocks
    - User preferences (workout as first activity, music as screen break, etc.)
 8. Present the plan to the user for approval/edits.
-9. If approved, push to Google Calendar using `scripts/gcal.py`.
+9. If approved, push to Google Calendar using ``01-ops/life-os/scripts/gcal.py``.
 
 ## Output Format
 

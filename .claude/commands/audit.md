@@ -25,12 +25,12 @@ Find rot in the system: stale data, broken habits, missed goals, empty logs. Pro
 - Goals with metric_current >= metric_target but status != done → **uncelebrated win**
 
 ### Projects (`01-ops/life-os/data/canonical/projects.csv`)
-- Projects with no associated tasks in tasks.csv → **empty project**
+- Projects with no associated tasks in `01-ops/life-os/data/canonical/tasks.csv` → **empty project**
 - Projects with all tasks done but project status still active → **closeable**
 
 ### Logs
-- Check if daily_log.csv has entries for the past 7 days → flag gaps
-- Check if time_logs.csv is being used at all
+- Check if `01-ops/life-os/logs/daily_log.csv` has entries for the past 7 days → flag gaps
+- Check if `01-ops/life-os/data/canonical/time_logs.csv` is being used at all
 
 3. **Generate the audit report** with findings and proposed actions.
 4. Ask the user to approve cleanup actions.
