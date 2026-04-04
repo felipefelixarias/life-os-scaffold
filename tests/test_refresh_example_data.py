@@ -33,11 +33,13 @@ class RefreshExampleDataTests(unittest.TestCase):
             headers = ["col1", "col2", "col3"]
             example_rows = [["val1", "val2", "val3"], ["val4", "val5", "val6"]]
 
-            with mock.patch.object(refresh_example_data, "REPO_ROOT", root):
-                with mock.patch("builtins.print"):  # Suppress print output
-                    refresh_example_data.write_csv_with_example(
-                        csv_path, headers, example_rows
-                    )
+            with (
+                mock.patch.object(refresh_example_data, "REPO_ROOT", root),
+                mock.patch("builtins.print"),  # Suppress print output
+            ):
+                refresh_example_data.write_csv_with_example(
+                    csv_path, headers, example_rows
+                )
 
             # Verify file was created
             assert csv_path.exists()
@@ -56,10 +58,12 @@ class RefreshExampleDataTests(unittest.TestCase):
             root = Path(temp_dir)
             data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
 
-            with mock.patch.object(refresh_example_data, "REPO_ROOT", root):
-                with mock.patch.object(refresh_example_data, "DATA_DIR", data_dir):
-                    with mock.patch("builtins.print"):  # Suppress print output
-                        refresh_example_data.refresh_canonical_csvs()
+            with (
+                mock.patch.object(refresh_example_data, "REPO_ROOT", root),
+                mock.patch.object(refresh_example_data, "DATA_DIR", data_dir),
+                mock.patch("builtins.print"),  # Suppress print output
+            ):
+                refresh_example_data.refresh_canonical_csvs()
 
             # Check that all expected files were created
             expected_files = [
@@ -87,10 +91,12 @@ class RefreshExampleDataTests(unittest.TestCase):
             root = Path(temp_dir)
             logs_dir = root / "01-ops" / "life-os" / "logs"
 
-            with mock.patch.object(refresh_example_data, "REPO_ROOT", root):
-                with mock.patch.object(refresh_example_data, "LOGS_DIR", logs_dir):
-                    with mock.patch("builtins.print"):  # Suppress print output
-                        refresh_example_data.refresh_log_csvs()
+            with (
+                mock.patch.object(refresh_example_data, "REPO_ROOT", root),
+                mock.patch.object(refresh_example_data, "LOGS_DIR", logs_dir),
+                mock.patch("builtins.print"),  # Suppress print output
+            ):
+                refresh_example_data.refresh_log_csvs()
 
             # Check that log files were created
             expected_files = ["daily_log.csv", "activity_log.csv"]

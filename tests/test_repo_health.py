@@ -40,12 +40,12 @@ class TestRepoHealth(unittest.TestCase):
 
     def test_run_command_failure(self):
         """Test command execution failure."""
-        result_code, stdout, stderr = repo_health.run_command(["false"])
+        result_code, _stdout, _stderr = repo_health.run_command(["false"])
         assert result_code == 1
 
     def test_run_command_not_found(self):
         """Test command not found."""
-        result_code, stdout, stderr = repo_health.run_command(
+        result_code, _stdout, stderr = repo_health.run_command(
             ["nonexistent_command_12345"]
         )
         assert result_code == 1

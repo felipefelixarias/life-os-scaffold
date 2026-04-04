@@ -49,9 +49,11 @@ class GcalCredentialsTests(unittest.TestCase):
         self.mock_token_path.exists.return_value = True
         self.mock_token_path.resolve.return_value = Path("/tmp/malicious_token")  # nosec B108
 
-        with mock.patch("pathlib.Path.home", return_value=Path("/home/user")):
-            with pytest.raises(PermissionError) as cm:
-                gcal.get_credentials()
+        with (
+            mock.patch("pathlib.Path.home", return_value=Path("/home/user")),
+            pytest.raises(PermissionError) as cm,
+        ):
+            gcal.get_credentials()
 
         assert "outside user home directory" in str(cm.value)
 
@@ -96,9 +98,11 @@ class GcalCredentialsTests(unittest.TestCase):
         self.mock_token_path.resolve.return_value = mock_resolved_path
         self.mock_token_path.stat.return_value = mock_stat
 
-        with mock.patch("pathlib.Path.home", return_value=Path("/home/user")):
-            with pytest.raises(PermissionError) as cm:
-                gcal.get_credentials()
+        with (
+            mock.patch("pathlib.Path.home", return_value=Path("/home/user")),
+            pytest.raises(PermissionError) as cm,
+        ):
+            gcal.get_credentials()
 
         assert "unexpectedly large" in str(cm.value)
 
@@ -332,7 +336,7 @@ class GcalTimezoneTests(unittest.TestCase):
         assert actual == expected
 
     def test_parse_block_time_rejects_invalid_values(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"invalid start time '25:00'"):
             gcal._parse_block_time(dt.date(2026, 1, 15), "25:00", "start")
 
 
