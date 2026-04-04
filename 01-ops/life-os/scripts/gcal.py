@@ -268,7 +268,7 @@ def create_event(
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while creating event '%s'", summary)
         return ""
-    except ValueError as e:
+    except ValueError:
         logger.exception("Invalid input while creating event '%s'", summary)
         return ""
     except Exception as e:
@@ -302,7 +302,7 @@ def update_event(
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while updating event %s", event_id)
         return {}
-    except ValueError as e:
+    except ValueError:
         logger.exception("Invalid input while updating event %s", event_id)
         return {}
     except Exception as e:
