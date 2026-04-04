@@ -47,7 +47,7 @@ life-os uses two approaches to interact with Google Calendar:
 1. **gcalcli CLI** — for quick reads (`gcalcli agenda`), used by skills like `/daily`
 2. **`01-ops/life-os/scripts/gcal.py`** — a Python wrapper around the Google Calendar API, used for creating, updating, and deleting events
 
-The Python wrapper (`gcal.py`) reuses gcalcli's saved OAuth token at `~/.gcalcli_oauth`, so you only authenticate once.
+The Python wrapper (`01-ops/life-os/scripts/gcal.py`) reuses gcalcli's saved OAuth token at `~/.gcalcli_oauth`, so you only authenticate once.
 
 ## What `01-ops/life-os/scripts/gcal.py` Provides
 
@@ -61,7 +61,7 @@ The Python wrapper (`gcal.py`) reuses gcalcli's saved OAuth token at `~/.gcalcli
 | `push_day_plan(blocks, date)` | Batch-create time blocks for a day |
 | `list_calendars()` | List all available calendars |
 
-All functions use the timezone from your `config/profile.json`. The helper resolves IANA zones through Python's timezone database, so non-US zones such as `Europe/Paris` work correctly too.
+All functions use the timezone from your `01-ops/life-os/config/profile.json`. The helper resolves IANA zones through Python's timezone database, so non-US zones such as `Europe/Paris` work correctly too.
 
 ## Day Plan Push
 
@@ -71,7 +71,7 @@ When you `/replan`, life-os first deletes all `[life-os]`-tagged events for the 
 
 ## Timezone
 
-All calendar operations use the timezone specified in `config/profile.json`. Make sure this matches your Google Calendar's primary timezone to avoid offset issues.
+All calendar operations use the timezone specified in `01-ops/life-os/config/profile.json`. Make sure this matches your Google Calendar's primary timezone to avoid offset issues.
 
 ## Troubleshooting
 
@@ -79,7 +79,7 @@ All calendar operations use the timezone specified in `config/profile.json`. Mak
 Run `gcalcli list` to re-authenticate.
 
 **Events show wrong time**
-Check that `timezone` in `config/profile.json` matches your actual timezone (e.g., `America/New_York`, `America/Los_Angeles`, `Europe/Paris`).
+Check that `timezone` in `01-ops/life-os/config/profile.json` matches your actual timezone (e.g., `America/New_York`, `America/Los_Angeles`, `Europe/Paris`).
 
 **"Access blocked" during OAuth**
 If using your own Google Cloud project, make sure:
