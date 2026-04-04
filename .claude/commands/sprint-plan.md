@@ -6,12 +6,12 @@ Generate a full weekly sprint plan with daily themes, task allocation, and habit
 
 1. Run `date` to get current date and identify the upcoming week (Monday-Sunday).
 2. Read all data files:
-   - `config/profile.json` — planning prefs, energy curve, domains
-   - `data/canonical/tasks.csv` — active tasks by priority and due date
-   - `data/canonical/goals.csv` — active goals and progress
-   - `data/canonical/habits.csv` — habit targets and frequencies
-   - `data/canonical/projects.csv` — active projects
-   - `logs/daily_log.csv` — last week's habit adherence (for gap analysis)
+   - `01-ops/life-os/config/profile.json` — planning prefs, energy curve, domains
+   - `01-ops/life-os/data/canonical/tasks.csv` — active tasks by priority and due date
+   - `01-ops/life-os/data/canonical/goals.csv` — active goals and progress
+   - `01-ops/life-os/data/canonical/habits.csv` — habit targets and frequencies
+   - `01-ops/life-os/data/canonical/projects.csv` — active projects
+   - `01-ops/life-os/logs/daily_log.csv` — last week's habit adherence (for gap analysis)
 3. Fetch next week's Google Calendar for fixed commitments.
 4. **Analyze capacity:**
    - Count available hours per day (total waking hours minus fixed events minus commute)

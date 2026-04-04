@@ -5,10 +5,10 @@ Guided reflection and planning session. Run every Sunday (or whenever the user t
 ## Steps
 
 1. Run `date` to confirm current day.
-2. Read `data/canonical/habits.csv` and `logs/daily_log.csv` — calculate adherence for each habit over the past 7 days.
-3. Read `data/canonical/tasks.csv` — list tasks completed this week, tasks that slipped, tasks still open.
-4. Read `data/canonical/goals.csv` — check progress toward active goals.
-5. Read `data/canonical/time_logs.csv` — summarize time spent per domain this week (if logged).
+2. Read `01-ops/life-os/data/canonical/habits.csv` and `01-ops/life-os/logs/daily_log.csv` — calculate adherence for each habit over the past 7 days.
+3. Read `01-ops/life-os/data/canonical/tasks.csv` — list tasks completed this week, tasks that slipped, tasks still open.
+4. Read `01-ops/life-os/data/canonical/goals.csv` — check progress toward active goals.
+5. Read `01-ops/life-os/data/canonical/time_logs.csv` — summarize time spent per domain this week (if logged).
 6. Fetch past week's Google Calendar to compare planned vs actual.
 
 ## Output Format

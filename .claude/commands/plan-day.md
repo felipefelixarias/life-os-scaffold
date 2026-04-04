@@ -5,10 +5,10 @@ Create a time-blocked plan for the day and optionally push it to Google Calendar
 ## Steps
 
 1. Run `date` to get the current date and time.
-2. Read `config/profile.json` for energy curve, bedtime, planning preferences.
+2. Read `01-ops/life-os/config/profile.json` for energy curve, bedtime, planning preferences.
 3. Fetch today's Google Calendar agenda to identify fixed commitments.
-4. Read `data/canonical/tasks.csv` — get active tasks sorted by priority.
-5. Read `data/canonical/habits.csv` — get habits due today.
+4. Read `01-ops/life-os/data/canonical/tasks.csv` — get active tasks sorted by priority.
+5. Read `01-ops/life-os/data/canonical/habits.csv` — get habits due today.
 6. Identify available time windows (gaps between fixed events, from now until bedtime).
 7. Allocate tasks and habits to windows, respecting:
    - Energy curve: deep work during peaks, admin during valleys

@@ -1,6 +1,6 @@
 # /add-task — Quick Task Capture
 
-Add a task to `data/canonical/tasks.csv` from a natural language description.
+Add a task to `01-ops/life-os/data/canonical/tasks.csv` from a natural language description.
 
 ## Steps
 
@@ -12,7 +12,7 @@ Add a task to `data/canonical/tasks.csv` from a natural language description.
    - Domain: infer from context (e.g., "workout" → health, "ship feature" → career)
    - Energy: medium unless specified
    - Status: queued
-4. Append the row to `data/canonical/tasks.csv`.
+4. Append the row to `01-ops/life-os/data/canonical/tasks.csv`.
 5. Confirm what was added.
 
 ## Examples

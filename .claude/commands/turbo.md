@@ -5,16 +5,16 @@ Run the full morning sequence in one shot: check the time, fetch the calendar, s
 ## Steps
 
 1. Run `date` to get the current date, time, and day of week.
-2. Read `config/profile.json` for timezone, energy curve, planning preferences, bedtime.
+2. Read `01-ops/life-os/config/profile.json` for timezone, energy curve, planning preferences, bedtime.
 3. Determine if today is a weekday or weekend. Apply the correct planning template:
    - **Weekday**: respect commute times, work hours, evening-only habits
    - **Weekend**: later start, longer hobby sessions, all instruments
 4. Fetch today's Google Calendar agenda via gcalcli.
 5. Read all data files:
-   - `data/canonical/tasks.csv` — active tasks by priority
-   - `data/canonical/habits.csv` — habits due today
-   - `data/canonical/goals.csv` — goals with upcoming deadlines
-   - `logs/daily_log.csv` — recent habit completion data
+   - `01-ops/life-os/data/canonical/tasks.csv` — active tasks by priority
+   - `01-ops/life-os/data/canonical/habits.csv` — habits due today
+   - `01-ops/life-os/data/canonical/goals.csv` — goals with upcoming deadlines
+   - `01-ops/life-os/logs/daily_log.csv` — recent habit completion data
 6. Generate the dashboard (same format as `/daily`).
 7. Identify available time windows from now until bedtime, excluding fixed calendar events.
 8. Generate a time-blocked day plan:
