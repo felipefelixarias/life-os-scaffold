@@ -73,7 +73,7 @@ def get_credentials() -> Any:
     if not OAUTH_TOKEN_PATH.exists():
         raise FileNotFoundError(
             f"OAuth token not found at {OAUTH_TOKEN_PATH}. "
-            "Install and authenticate gcalcli first: gcalcli list"
+            "Install and authenticate gcalcli first: gcalcli list",
         )
 
     # Ensure the token file is within the expected location for security
@@ -87,7 +87,7 @@ def get_credentials() -> Any:
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
             perms = oct(file_stat.st_mode)
             logger.warning(
-                "OAuth token file has overly permissive permissions: %s", perms
+                "OAuth token file has overly permissive permissions: %s", perms,
             )
 
     except (OSError, RuntimeError) as e:
@@ -125,7 +125,7 @@ def get_service() -> Any:
 
         creds = get_credentials()
         _service_cache = build(
-            "calendar", "v3", credentials=creds, cache_discovery=False
+            "calendar", "v3", credentials=creds, cache_discovery=False,
         )
     return _service_cache
 
@@ -226,7 +226,7 @@ def get_agenda(
         return events
     except (FileNotFoundError, PermissionError):
         logger.exception(
-            "Authentication error while fetching events for %s", start_date
+            "Authentication error while fetching events for %s", start_date,
         )
         return []
     except Exception as e:
@@ -317,7 +317,7 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     except Exception as e:
         if _is_http_error_status(e, 404):
             logger.warning(
-                "Event %s not found (already deleted or never existed)", event_id
+                "Event %s not found (already deleted or never existed)", event_id,
             )
         else:
             _log_google_api_error(f"deleting event {event_id}", e)
@@ -405,6 +405,7 @@ def push_day_plan(
 
     Raises:
         No exceptions are raised; errors are logged and operation continues.
+
     """
     cleared = clear_life_os_events(date, calendar_id=calendar_id)
     if cleared:
@@ -428,7 +429,7 @@ def push_day_plan(
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
                 logger.info(
-                    "Block '%s' spans midnight, end time adjusted to next day", title
+                    "Block '%s' spans midnight, end time adjusted to next day", title,
                 )
 
         except ValueError as e:
@@ -466,11 +467,11 @@ def push_day_plan(
         )
     if failed_blocks > 0:
         logger.error(
-            "Day plan push summary: %s blocks failed to create events", failed_blocks
+            "Day plan push summary: %s blocks failed to create events", failed_blocks,
         )
     if successful_blocks > 0:
         logger.info(
-            "Successfully created %s calendar events for %s", successful_blocks, date
+            "Successfully created %s calendar events for %s", successful_blocks, date,
         )
 
     return created_ids

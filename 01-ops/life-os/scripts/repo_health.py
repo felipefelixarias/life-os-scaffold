@@ -106,7 +106,7 @@ def check_python_health() -> None:
             continue
 
         exit_code, _, stderr = run_command(
-            [sys.executable, "-m", "py_compile", str(py_file)]
+            [sys.executable, "-m", "py_compile", str(py_file)],
         )
         if exit_code != 0:
             print(f"❌ Compilation error in {py_file.relative_to(REPO_ROOT)}: {stderr}")
@@ -117,7 +117,7 @@ def check_python_health() -> None:
 
     # Check for ruff if available
     exit_code, stdout, stderr = run_command(
-        [sys.executable, "-m", "ruff", "check", ".", "--quiet"]
+        [sys.executable, "-m", "ruff", "check", ".", "--quiet"],
     )
     if exit_code == 0:
         print("✅ No ruff linting issues")
@@ -149,7 +149,7 @@ def check_test_health() -> None:
 
     # Run tests
     exit_code, _stdout, stderr = run_command(
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests"]
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests"],
     )
     if exit_code == 0:
         print("✅ All tests passing")

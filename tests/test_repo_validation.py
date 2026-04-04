@@ -52,7 +52,7 @@ class RepoValidationTests(unittest.TestCase):
                 errors = validate_repo.validate_command_coverage()
 
         assert errors == [
-            "Command file is not referenced in docs: .claude/commands/orphan.md"
+            "Command file is not referenced in docs: .claude/commands/orphan.md",
         ]
 
     def test_csv_structure_validation_detects_column_mismatch(self) -> None:
@@ -69,10 +69,10 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = sorted(data_dir.glob("*.csv")) + sorted(
-                    log_dir.glob("*.csv")
+                    log_dir.glob("*.csv"),
                 )
                 with mock.patch.object(
-                    validate_repo, "csv_files", return_value=csv_files
+                    validate_repo, "csv_files", return_value=csv_files,
                 ):
                     errors = validate_repo.validate_csv_structure()
 
@@ -96,10 +96,10 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = sorted(data_dir.glob("*.csv")) + sorted(
-                    log_dir.glob("*.csv")
+                    log_dir.glob("*.csv"),
                 )
                 with mock.patch.object(
-                    validate_repo, "csv_files", return_value=csv_files
+                    validate_repo, "csv_files", return_value=csv_files,
                 ):
                     errors = validate_repo.validate_csv_schemas()
 
@@ -153,7 +153,7 @@ class RepoValidationTests(unittest.TestCase):
 
             (config_dir / "profile.example.json").write_text("{}", encoding="utf-8")
             (config_dir / "calendar_feeds.example.json").write_text(
-                "{}", encoding="utf-8"
+                "{}", encoding="utf-8",
             )
             (scripts_dir / "gcal.py").write_text("# gcal script", encoding="utf-8")
 
@@ -178,7 +178,7 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
                 with mock.patch.object(
-                    validate_repo, "csv_files", return_value=csv_files
+                    validate_repo, "csv_files", return_value=csv_files,
                 ):
                     errors = validate_repo.validate_csv_headers()
 
@@ -201,7 +201,7 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
                 with mock.patch.object(
-                    validate_repo, "csv_files", return_value=csv_files
+                    validate_repo, "csv_files", return_value=csv_files,
                 ):
                     errors = validate_repo.validate_csv_headers()
 
@@ -224,7 +224,7 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
                 with mock.patch.object(
-                    validate_repo, "csv_files", return_value=csv_files
+                    validate_repo, "csv_files", return_value=csv_files,
                 ):
                     errors = validate_repo.validate_csv_headers()
 
@@ -249,7 +249,7 @@ class RepoValidationTests(unittest.TestCase):
                 with (
                     mock.patch.object(validate_repo, "csv_files", return_value=csv_files),
                     mock.patch.object(
-                        Path, "open", side_effect=PermissionError("Access denied")
+                        Path, "open", side_effect=PermissionError("Access denied"),
                     ),
                 ):
                     errors = validate_repo.validate_csv_headers()
@@ -267,7 +267,7 @@ class RepoValidationTests(unittest.TestCase):
             # Create markdown with broken link
             readme = root / "README.md"
             readme.write_text(
-                "See [broken link](docs/missing.md) for details.", encoding="utf-8"
+                "See [broken link](docs/missing.md) for details.", encoding="utf-8",
             )
 
             with (
@@ -319,7 +319,7 @@ class RepoValidationTests(unittest.TestCase):
             # Create file with trailing whitespace
             readme = root / "README.md"
             readme.write_text(
-                "Line with trailing spaces   \nGood line\n", encoding="utf-8"
+                "Line with trailing spaces   \nGood line\n", encoding="utf-8",
             )
 
             with (

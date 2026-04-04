@@ -102,7 +102,7 @@ def validate_csv_headers() -> list[str]:
                 header = next(reader, None)
         except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
             errors.append(
-                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}"
+                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}",
             )
             continue
 
@@ -113,20 +113,20 @@ def validate_csv_headers() -> list[str]:
         # Check for blank header cells
         if any(not cell.strip() for cell in header):
             errors.append(
-                f"CSV has blank header cells: {csv_path.relative_to(REPO_ROOT)}"
+                f"CSV has blank header cells: {csv_path.relative_to(REPO_ROOT)}",
             )
 
         # Check for duplicate header cells
         if len(set(header)) != len(header):
             errors.append(
-                f"CSV has duplicate header cells: {csv_path.relative_to(REPO_ROOT)}"
+                f"CSV has duplicate header cells: {csv_path.relative_to(REPO_ROOT)}",
             )
 
         # Check for suspicious characters in headers
         for cell in header:
             if any(char in cell for char in ['"', "'", "\n", "\r", "\t"]):
                 errors.append(
-                    f"CSV header contains suspicious characters: {csv_path.relative_to(REPO_ROOT)}"
+                    f"CSV header contains suspicious characters: {csv_path.relative_to(REPO_ROOT)}",
                 )
                 break
 
@@ -152,7 +152,7 @@ def validate_csv_structure() -> list[str]:
                     if len(row) != header_count:
                         errors.append(
                             f"CSV row mismatch at line {line_num} in {csv_path.relative_to(REPO_ROOT)}: "
-                            f"expected {header_count} columns, got {len(row)}"
+                            f"expected {header_count} columns, got {len(row)}",
                         )
                         break  # Stop after first mismatch to avoid noise
                     line_num += 1
@@ -160,7 +160,7 @@ def validate_csv_structure() -> list[str]:
                     # Performance optimization: don't check infinite rows
                     if row_idx >= max_lines_to_check:
                         logger.info(
-                            f"Checked first {max_lines_to_check} rows of {csv_path.relative_to(REPO_ROOT)}"
+                            f"Checked first {max_lines_to_check} rows of {csv_path.relative_to(REPO_ROOT)}",
                         )
                         break
 
@@ -299,7 +299,7 @@ def validate_csv_schemas() -> list[str]:
 
                 if not header:
                     errors.append(
-                        f"CSV has no header: {csv_path.relative_to(REPO_ROOT)}"
+                        f"CSV has no header: {csv_path.relative_to(REPO_ROOT)}",
                     )
                     continue
 
@@ -311,14 +311,14 @@ def validate_csv_schemas() -> list[str]:
                 )
 
                 allowed_columns = set(schema["required_columns"]) | set(
-                    schema.get("optional_columns", [])
+                    schema.get("optional_columns", []),
                 )
                 unexpected_columns = [
                     column for column in header if column not in allowed_columns
                 ]
                 if unexpected_columns:
                     errors.append(
-                        f"Unexpected column(s) {unexpected_columns} in {csv_path.relative_to(REPO_ROOT)}"
+                        f"Unexpected column(s) {unexpected_columns} in {csv_path.relative_to(REPO_ROOT)}",
                     )
 
                 # Validate data rows
@@ -328,7 +328,7 @@ def validate_csv_schemas() -> list[str]:
                     for required_col in schema["required_columns"]:
                         if required_col in row and not row[required_col].strip():
                             errors.append(
-                                f"Empty required field '{required_col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}"
+                                f"Empty required field '{required_col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}",
                             )
 
                     # Validate enums
@@ -340,7 +340,7 @@ def validate_csv_schemas() -> list[str]:
                                 and row[col] not in valid_values
                             ):
                                 errors.append(
-                                    f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Valid: {valid_values}"
+                                    f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Valid: {valid_values}",
                                 )
 
                     # Validate date formats
@@ -350,7 +350,7 @@ def validate_csv_schemas() -> list[str]:
                                 datetime.strptime(row[col], "%Y-%m-%d")
                             except ValueError:
                                 errors.append(
-                                    f"Invalid date format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use YYYY-MM-DD"
+                                    f"Invalid date format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use YYYY-MM-DD",
                                 )
 
                     # Validate time formats
@@ -360,14 +360,14 @@ def validate_csv_schemas() -> list[str]:
                                 datetime.strptime(row[col], "%H:%M")
                             except ValueError:
                                 errors.append(
-                                    f"Invalid time format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use HH:MM"
+                                    f"Invalid time format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use HH:MM",
                                 )
 
                     line_num += 1
 
         except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
             errors.append(
-                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}"
+                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}",
             )
 
     return errors
@@ -384,7 +384,7 @@ def validate_markdown_links() -> list[str]:
             resolved = (doc_path.parent / target).resolve()
             if not resolved.exists():
                 errors.append(
-                    f"Broken relative link in {doc_path.relative_to(REPO_ROOT)}: {target}"
+                    f"Broken relative link in {doc_path.relative_to(REPO_ROOT)}: {target}",
                 )
     return errors
 
@@ -418,7 +418,7 @@ def validate_command_coverage() -> list[str]:
         command = f"/{command_path.stem}"
         if command not in referenced:
             errors.append(
-                f"Command file is not referenced in docs: {command_path.relative_to(REPO_ROOT)}"
+                f"Command file is not referenced in docs: {command_path.relative_to(REPO_ROOT)}",
             )
     return errors
 
@@ -429,11 +429,11 @@ def lint_whitespace() -> list[str]:
     paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
         for line_no, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1
+            path.read_text(encoding="utf-8").splitlines(), 1,
         ):
             if line.endswith((" ", "\t")):
                 errors.append(
-                    f"Trailing whitespace in {path.relative_to(REPO_ROOT)}:{line_no}"
+                    f"Trailing whitespace in {path.relative_to(REPO_ROOT)}:{line_no}",
                 )
     return errors
 
@@ -442,7 +442,7 @@ def main() -> int:
     """Main entry point for the validation script with optional lint checks."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--lint", action="store_true", help="Run lint-style checks too."
+        "--lint", action="store_true", help="Run lint-style checks too.",
     )
     args = parser.parse_args()
 

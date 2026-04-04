@@ -147,7 +147,7 @@ class GcalServiceTests(unittest.TestCase):
     @mock.patch.object(gcal, "get_credentials")
     @mock.patch("googleapiclient.discovery.build")
     def test_get_service_creates_calendar_service(
-        self, mock_build, mock_get_credentials
+        self, mock_build, mock_get_credentials,
     ):
         mock_creds = mock.Mock()
         mock_get_credentials.return_value = mock_creds
@@ -157,7 +157,7 @@ class GcalServiceTests(unittest.TestCase):
         result = gcal.get_service()
 
         mock_build.assert_called_once_with(
-            "calendar", "v3", credentials=mock_creds, cache_discovery=False
+            "calendar", "v3", credentials=mock_creds, cache_discovery=False,
         )
         assert result == mock_service
 
@@ -184,7 +184,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
     def setUp(self):
         self.mock_service = mock.Mock()
         self.service_patcher = mock.patch.object(
-            gcal, "get_service", return_value=self.mock_service
+            gcal, "get_service", return_value=self.mock_service,
         )
         self.service_patcher.start()
         self.addCleanup(self.service_patcher.stop)
@@ -261,7 +261,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
         gcal.delete_event("event_123", "calendar_456")
 
         mock_events.delete.assert_called_once_with(
-            calendarId="calendar_456", eventId="event_123"
+            calendarId="calendar_456", eventId="event_123",
         )
 
     def test_search_events_filters_by_query(self):
@@ -274,7 +274,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
         self.mock_service.events.return_value = mock_events
 
         result = gcal.search_events(
-            "meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16)
+            "meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16),
         )
 
         assert result == expected_events
@@ -322,7 +322,7 @@ class GcalTimezoneTests(unittest.TestCase):
         with mock.patch.object(gcal, "_load_timezone", return_value="Europe/Paris"):
             actual = gcal._rfc3339(dt.date(2026, 1, 15), "09:30:00")
         expected = dt.datetime(
-            2026, 1, 15, 9, 30, 0, tzinfo=ZoneInfo("Europe/Paris")
+            2026, 1, 15, 9, 30, 0, tzinfo=ZoneInfo("Europe/Paris"),
         ).isoformat()
         assert actual == expected
 
@@ -374,7 +374,7 @@ class GcalPlannerTests(unittest.TestCase):
         with (
             mock.patch.object(gcal, "clear_life_os_events", return_value=0),
             mock.patch.object(
-                gcal, "create_event", side_effect=["evt-1", "evt-2"]
+                gcal, "create_event", side_effect=["evt-1", "evt-2"],
             ) as create_event,
         ):
             created = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))

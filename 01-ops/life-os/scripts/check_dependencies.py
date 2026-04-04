@@ -90,7 +90,7 @@ def check_package_availability() -> None:
                         is_old_major or is_old_minor
                     ):
                         outdated_warnings.append(
-                            f"{pkg_name} {version} may have security vulnerabilities"
+                            f"{pkg_name} {version} may have security vulnerabilities",
                         )
                 except ValueError:
                     pass
