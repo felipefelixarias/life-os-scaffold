@@ -4,8 +4,11 @@ This document defines the structure and purpose of all CSV files in the life-os 
 
 ## File Locations
 
-- Canonical data files: `01-ops/life-os/data/canonical/`
-- Log files (daily_log, activity_log): `01-ops/life-os/logs/`
+**Canonical data files:** `01-ops/life-os/data/canonical/`
+- habits.csv, goals.csv, tasks.csv, projects.csv, time_blocks.csv, time_logs.csv, calendar_events.csv
+
+**Log files:** `01-ops/life-os/logs/`  
+- daily_log.csv, activity_log.csv
 
 ---
 

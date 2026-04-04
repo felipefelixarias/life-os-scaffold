@@ -6,9 +6,9 @@ When plans change mid-day, rebuild the schedule from now until bedtime.
 
 1. Run `date` to get the current time.
 2. Fetch remaining Google Calendar events for today.
-3. Read `data/canonical/tasks.csv` — active tasks by priority.
-4. Read `data/canonical/habits.csv` — habits still due today.
-5. Read `config/profile.json` — energy curve, bedtime, screen time limits.
+3. Read `01-ops/life-os/data/canonical/tasks.csv` — active tasks by priority.
+4. Read `01-ops/life-os/data/canonical/habits.csv` — habits still due today.
+5. Read `01-ops/life-os/config/profile.json` — energy curve, bedtime, screen time limits.
 6. Calculate available windows from NOW until bedtime, excluding fixed events.
 7. Rebuild the plan using priority tiers:
    - Tier 1 (non-negotiable): sleep, health essentials

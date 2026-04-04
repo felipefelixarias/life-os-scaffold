@@ -6,16 +6,16 @@ Plan, draft, and queue social media content across platforms.
 
 1. Run `date` to get current date.
 2. Read content-related data:
-   - `data/canonical/tasks.csv` — filter for content/brand tasks
-   - `data/canonical/goals.csv` — filter for brand/content goals
-   - `logs/daily_log.csv` — check recent content posting history
+   - `01-ops/life-os/data/canonical/tasks.csv` — filter for content/brand tasks
+   - `01-ops/life-os/data/canonical/goals.csv` — filter for brand/content goals
+   - `01-ops/life-os/logs/daily_log.csv` — check recent content posting history
 3. **Identify content opportunities from recent activity:**
    - Tasks completed this week → potential "building in public" posts
    - Goals with progress updates → milestone posts
    - Habits with strong streaks → "what's working for me" posts
    - Any wins logged → achievement posts
    - Upcoming events or deadlines → anticipation/countdown posts
-4. **Check the content queue** (if `data/canonical/content_pipeline.csv` exists):
+4. **Check the content queue** (if `01-ops/life-os/data/canonical/content_pipeline.csv` exists):
    - What's already drafted but not posted?
    - What's scheduled for today?
    - What topics have been covered recently (avoid repetition)?
@@ -26,7 +26,7 @@ Plan, draft, and queue social media content across platforms.
    - Call to action
    - Format (text, carousel, short video, story)
 6. If the user picks one, draft the full post.
-7. If `data/canonical/content_pipeline.csv` exists, append the draft to the queue.
+7. If `01-ops/life-os/data/canonical/content_pipeline.csv` exists, append the draft to the queue.
 
 ## Output Format
 

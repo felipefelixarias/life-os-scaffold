@@ -6,9 +6,9 @@ Analyze how the life-os system is being used, identify friction, and suggest or 
 
 1. Run `date`.
 2. **Analyze system usage patterns:**
-   - Read `logs/activity_log.csv` — which commands are used most/least?
-   - Read `logs/daily_log.csv` — how consistently is the system being used?
-   - Read all `data/canonical/*.csv` files — which schemas have data, which are empty?
+   - Read `01-ops/life-os/logs/activity_log.csv` — which commands are used most/least?
+   - Read `01-ops/life-os/logs/daily_log.csv` — how consistently is the system being used?
+   - Read all `01-ops/life-os/data/canonical/*.csv` files — which schemas have data, which are empty?
    - Check `outputs/` — what's being generated?
 3. **Identify friction points:**
    - Commands that are never used → maybe they're not useful or too hard to trigger

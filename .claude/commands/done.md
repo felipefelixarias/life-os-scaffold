@@ -15,7 +15,7 @@ What did you do today?
 ```
 
 5. User replies with whatever format (e.g. "marovi workout guitar" or "1,2,3" or "all except drums").
-6. Append one row per completed habit to `logs/daily_log.csv`:
+6. Append one row per completed habit to `01-ops/life-os/logs/daily_log.csv`:
    ```
    2026-03-09,marovi_build,1
    2026-03-09,workout_30m,1

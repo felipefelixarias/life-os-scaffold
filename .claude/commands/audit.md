@@ -7,24 +7,24 @@ Find rot in the system: stale data, broken habits, missed goals, empty logs. Pro
 1. Run `date` to get current date.
 2. Read all data files and check for issues:
 
-### Tasks (`data/canonical/tasks.csv`)
+### Tasks (`01-ops/life-os/data/canonical/tasks.csv`)
 - Tasks with status `queued` and last_updated > 21 days ago → **stale**
 - Tasks with status `in_progress` and last_updated > 7 days ago → **stuck**
 - Tasks with status `done` but no completion date → **incomplete record**
 - Tasks with due_date in the past and status != done → **overdue**
 - Count total active tasks — if > 30, flag as backlog bloat
 
-### Habits (`data/canonical/habits.csv` + `logs/daily_log.csv`)
+### Habits (`01-ops/life-os/data/canonical/habits.csv` + `01-ops/life-os/logs/daily_log.csv`)
 - Habits with 0 logged entries in the past 14 days → **dead habit**
 - Habits consistently below 50% of weekly target for 3+ weeks → **struggling**
 - Habits with `active=true` but no log entries ever → **never started**
 
-### Goals (`data/canonical/goals.csv`)
+### Goals (`01-ops/life-os/data/canonical/goals.csv`)
 - Goals past their target_date with status != done → **missed deadline**
 - Goals with no metric_current update in 30+ days → **stale progress**
 - Goals with metric_current >= metric_target but status != done → **uncelebrated win**
 
-### Projects (`data/canonical/projects.csv`)
+### Projects (`01-ops/life-os/data/canonical/projects.csv`)
 - Projects with no associated tasks in tasks.csv → **empty project**
 - Projects with all tasks done but project status still active → **closeable**
 
