@@ -121,7 +121,7 @@ def get_service() -> Any:
     """Build and return a Google Calendar API service with caching."""
     global _service_cache
     if _service_cache is None:
-        from googleapiclient.discovery import build
+        from googleapiclient.discovery import build  # type: ignore[import-untyped]
 
         creds = get_credentials()
         _service_cache = build(
@@ -133,7 +133,7 @@ def get_service() -> Any:
 def _log_google_api_error(action: str, exc: Exception) -> None:
     """Log Google API errors consistently without requiring the dependency at import time."""
     try:
-        from googleapiclient.errors import HttpError
+        from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
         if isinstance(exc, HttpError):
             logger.error(
