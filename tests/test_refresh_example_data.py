@@ -5,7 +5,6 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "refresh_example_data.py"
 SPEC = spec_from_file_location("life_os_refresh_example_data", MODULE_PATH)
@@ -36,7 +35,9 @@ class RefreshExampleDataTests(unittest.TestCase):
 
             with mock.patch.object(refresh_example_data, "REPO_ROOT", root):
                 with mock.patch("builtins.print"):  # Suppress print output
-                    refresh_example_data.write_csv_with_example(csv_path, headers, example_rows)
+                    refresh_example_data.write_csv_with_example(
+                        csv_path, headers, example_rows
+                    )
 
             # Verify file was created
             self.assertTrue(csv_path.exists())
@@ -68,7 +69,7 @@ class RefreshExampleDataTests(unittest.TestCase):
                 "projects.csv",
                 "time_blocks.csv",
                 "time_logs.csv",
-                "calendar_events.csv"
+                "calendar_events.csv",
             ]
 
             for filename in expected_files:
@@ -78,7 +79,9 @@ class RefreshExampleDataTests(unittest.TestCase):
                 # Verify the file has content (header + at least one row)
                 with csv_path.open("r", newline="", encoding="utf-8") as f:
                     lines = f.readlines()
-                self.assertGreaterEqual(len(lines), 2, f"{filename} should have header + data")
+                self.assertGreaterEqual(
+                    len(lines), 2, f"{filename} should have header + data"
+                )
 
     def test_refresh_log_csvs_creates_log_files(self) -> None:
         """Test that refresh_log_csvs creates log CSV files."""
@@ -101,7 +104,9 @@ class RefreshExampleDataTests(unittest.TestCase):
                 # Verify the file has content
                 with csv_path.open("r", newline="", encoding="utf-8") as f:
                     lines = f.readlines()
-                self.assertGreaterEqual(len(lines), 2, f"{filename} should have header + data")
+                self.assertGreaterEqual(
+                    len(lines), 2, f"{filename} should have header + data"
+                )
 
 
 if __name__ == "__main__":

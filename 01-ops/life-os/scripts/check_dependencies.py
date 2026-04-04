@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
 
@@ -27,7 +26,9 @@ def get_installed_packages() -> dict[str, str]:
             check=True,
         )
         packages = json.loads(result.stdout)
-        return {pkg["name"].lower().replace("-", "_"): pkg["version"] for pkg in packages}
+        return {
+            pkg["name"].lower().replace("-", "_"): pkg["version"] for pkg in packages
+        }
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
         print(f"Failed to get installed packages: {e}")
         return {}
@@ -81,10 +82,16 @@ def check_package_availability() -> None:
                 try:
                     major, minor = map(int, version.split(".")[:2])
                     is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
-                    is_old_minor = (major == REQUESTS_MIN_MAJOR_VERSION and
-                                    minor < REQUESTS_MIN_MINOR_VERSION)
-                    if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
-                        outdated_warnings.append(f"{pkg_name} {version} may have security vulnerabilities")
+                    is_old_minor = (
+                        major == REQUESTS_MIN_MAJOR_VERSION
+                        and minor < REQUESTS_MIN_MINOR_VERSION
+                    )
+                    if pkg_name.lower() == "requests" and (
+                        is_old_major or is_old_minor
+                    ):
+                        outdated_warnings.append(
+                            f"{pkg_name} {version} may have security vulnerabilities"
+                        )
                 except ValueError:
                     pass
 
@@ -107,11 +114,8 @@ def check_python_version() -> None:
     """Check if Python version meets minimum requirements."""
     print(f"\nPython version: {sys.version}")
 
-    # Check for minimum Python version (3.9+ recommended for zoneinfo)
-    if sys.version_info < (3, 9):
-        print("⚠️  Python 3.9+ recommended for zoneinfo support")
-    else:
-        print("✅ Python version is compatible")
+    # Python 3.12+ is required (enforced by pyproject.toml)
+    print("✅ Python version is compatible")
 
 
 def main() -> None:
