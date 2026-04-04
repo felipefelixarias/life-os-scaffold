@@ -6,8 +6,8 @@ Close out the day: review what happened, update records, and set up tomorrow.
 
 1. Run `date` to confirm current time.
 2. Fetch today's Google Calendar events (what was planned).
-3. Read `data/canonical/tasks.csv` — identify tasks that were scheduled or in_progress today.
-4. Read `data/canonical/habits.csv` and `logs/daily_log.csv` — check which habits were logged today.
+3. Read `01-ops/life-os/data/canonical/tasks.csv` — identify tasks that were scheduled or in_progress today.
+4. Read `01-ops/life-os/data/canonical/habits.csv` and `01-ops/life-os/logs/daily_log.csv` — check which habits were logged today.
 5. **Review the day with the user:**
    - Show planned vs actual: what was on the calendar vs what got done
    - List tasks that were in_progress — ask: done, carried, or blocked?

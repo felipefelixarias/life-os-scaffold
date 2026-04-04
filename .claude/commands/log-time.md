@@ -1,13 +1,13 @@
 # /log-time — Log Time Spent
 
-Log actual time spent on an activity to `data/canonical/time_logs.csv`.
+Log actual time spent on an activity to `01-ops/life-os/data/canonical/time_logs.csv`.
 
 ## Steps
 
 1. Parse the user's input: activity, duration, domain, optional notes.
 2. Run `date` for the current timestamp.
-3. Append to `data/canonical/time_logs.csv`.
-4. If the activity matches a habit in `habits.csv`, update the habit log in `logs/daily_log.csv`.
+3. Append to `01-ops/life-os/data/canonical/time_logs.csv`.
+4. If the activity matches a habit in `habits.csv`, update the habit log in `01-ops/life-os/logs/daily_log.csv`.
 5. Confirm what was logged.
 
 ## Examples

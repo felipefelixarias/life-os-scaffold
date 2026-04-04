@@ -5,11 +5,11 @@ Show the user their daily operating dashboard. This is the primary entry point e
 ## Steps
 
 1. Run `date` to get the current date and time.
-2. Read `config/profile.json` for timezone and planning preferences.
+2. Read `01-ops/life-os/config/profile.json` for timezone and planning preferences.
 3. Fetch today's Google Calendar agenda via gcalcli (if configured): `gcalcli agenda "TODAY" "TOMORROW"`
-4. Read `data/canonical/tasks.csv` — show active tasks sorted by priority, highlight any overdue.
-5. Read `data/canonical/habits.csv` — check which habits are due today based on frequency and last logged date in `logs/daily_log.csv`.
-6. Read `data/canonical/goals.csv` — show goals with upcoming target dates (next 30 days).
+4. Read `01-ops/life-os/data/canonical/tasks.csv` — show active tasks sorted by priority, highlight any overdue.
+5. Read `01-ops/life-os/data/canonical/habits.csv` — check which habits are due today based on frequency and last logged date in `01-ops/life-os/logs/daily_log.csv`.
+6. Read `01-ops/life-os/data/canonical/goals.csv` — show goals with upcoming target dates (next 30 days).
 
 ## Output Format
 

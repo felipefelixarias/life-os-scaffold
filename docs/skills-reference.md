@@ -14,7 +14,7 @@ All interactions are slash commands in Claude Code. This document describes the 
 ### `/daily` — Morning Dashboard
 **When:** Start of each day
 **What it does:** Shows today's calendar, top tasks by priority, habits due, upcoming goal deadlines, and suggested focus blocks based on your energy curve.
-**Reads:** profile.json, tasks.csv, habits.csv, goals.csv, daily_log.csv, Google Calendar
+**Reads:** profile.json, tasks.csv, habits.csv, goals.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
 
 ### `/plan-day` — Generate a Day Plan
 **When:** After `/daily`, or whenever you need a structured schedule
@@ -31,7 +31,7 @@ All interactions are slash commands in Claude Code. This document describes the 
 ### `/status` — Quick Snapshot
 **When:** Anytime you want a 5-second pulse check
 **What it does:** Shows task counts by status, habit adherence this week, active goal progress, and remaining calendar events today. Compact format, 5-10 lines max.
-**Reads:** tasks.csv, habits.csv, goals.csv, daily_log.csv, Google Calendar
+**Reads:** tasks.csv, habits.csv, goals.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
 
 ## Data Capture
 
@@ -52,7 +52,7 @@ All interactions are slash commands in Claude Code. This document describes the 
 **When:** After completing an activity
 **What it does:** Records actual time spent to time_logs.csv. If the activity matches a habit, also updates the daily log.
 **Reads:** habits.csv, time_logs.csv
-**Writes:** time_logs.csv, daily_log.csv
+**Writes:** time_logs.csv, 01-ops/life-os/logs/daily_log.csv
 
 **Examples:**
 ```
@@ -75,17 +75,17 @@ All interactions are slash commands in Claude Code. This document describes the 
 
 ### `/done` — Quick Habit Check-in
 **When:** When you want the fastest possible habit logging flow, especially on mobile
-**What it does:** Shows only habits that have not been logged today, accepts a compact reply, and appends one row per completed habit to `daily_log.csv`.
-**Reads:** habits.csv, daily_log.csv
-**Writes:** daily_log.csv
+**What it does:** Shows only habits that have not been logged today, accepts a compact reply, and appends one row per completed habit to `01-ops/life-os/logs/daily_log.csv`.
+**Reads:** habits.csv, 01-ops/life-os/logs/daily_log.csv
+**Writes:** 01-ops/life-os/logs/daily_log.csv
 
 ## Weekly
 
 ### `/weekly-review` — Weekly Review and Planning
 **When:** Sunday (or your configured review day)
 **What it does:** Calculates habit adherence for the past 7 days, lists completed/slipped/carried tasks, shows time allocation by domain, and guides you through a reflection: wins, what didn't work, next week's priorities.
-**Reads:** habits.csv, tasks.csv, goals.csv, time_logs.csv, daily_log.csv, Google Calendar
-**Writes:** Outputs a review document to `outputs/`
+**Reads:** habits.csv, tasks.csv, goals.csv, time_logs.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
+**Writes:** Outputs a review document to `01-ops/life-os/outputs/`
 
 ## Agents
 
@@ -94,14 +94,14 @@ Agents are autonomous workflows that chain multiple steps, make decisions, and u
 ### `/turbo` — Morning Startup Agent
 **When:** Start of day (replaces running `/daily` then `/plan-day` separately)
 **What it does:** Fetches calendar, generates dashboard, builds day plan, and pushes to Google Calendar — all in one shot. Detects weekday vs weekend and applies the right planning template.
-**Reads:** profile.json, tasks.csv, habits.csv, goals.csv, daily_log.csv, Google Calendar
+**Reads:** profile.json, tasks.csv, habits.csv, goals.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
 **Writes:** time_blocks.csv, Google Calendar (if approved)
 
 ### `/shutdown` — End of Day Agent
 **When:** End of day, before bed
 **What it does:** Reviews planned vs actual, asks what got done in a single batch, marks tasks complete/carried, logs habits, previews tomorrow. Keeps the interaction to 1-2 exchanges.
-**Reads:** tasks.csv, habits.csv, daily_log.csv, Google Calendar
-**Writes:** tasks.csv, daily_log.csv, activity_log.csv
+**Reads:** tasks.csv, habits.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
+**Writes:** tasks.csv, 01-ops/life-os/logs/daily_log.csv, 01-ops/life-os/logs/activity_log.csv
 
 ### `/triage` — Task Triage Agent
 **When:** Backlog feels overwhelming, or weekly during sprint planning
@@ -112,8 +112,8 @@ Agents are autonomous workflows that chain multiple steps, make decisions, and u
 ### `/sprint-plan` — Weekly Sprint Planning Agent
 **When:** Sunday/Monday, to set up the week
 **What it does:** Reads goals, tasks, habits, and next week's calendar. Calculates capacity, allocates tasks to specific days, distributes habits by frequency, assigns daily themes. Flags if demand exceeds capacity and suggests cuts.
-**Reads:** profile.json, tasks.csv, goals.csv, habits.csv, projects.csv, daily_log.csv, Google Calendar
-**Writes:** `outputs/sprint_[date].md`
+**Reads:** profile.json, tasks.csv, goals.csv, habits.csv, projects.csv, 01-ops/life-os/logs/daily_log.csv, Google Calendar
+**Writes:** `01-ops/life-os/outputs/sprint_[date].md`
 
 ### `/audit` — System Health Check Agent
 **When:** Monthly, or whenever the system feels stale
@@ -124,7 +124,7 @@ Agents are autonomous workflows that chain multiple steps, make decisions, and u
 ### `/content` — Social Media Content Agent
 **When:** When you want to post or plan content for the week
 **What it does:** Scans recent activity (completed tasks, goal milestones, habit streaks, wins) for content opportunities. Generates 3-5 post ideas with hooks, key points, and platform recommendations. Drafts full posts on request.
-**Reads:** tasks.csv, goals.csv, daily_log.csv, content_pipeline.csv (if exists)
+**Reads:** tasks.csv, goals.csv, 01-ops/life-os/logs/daily_log.csv, content_pipeline.csv (if exists)
 **Writes:** content_pipeline.csv (if exists)
 
 ### `/improve` — System Self-Improvement Agent

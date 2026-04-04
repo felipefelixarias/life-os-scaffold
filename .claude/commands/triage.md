@@ -5,9 +5,9 @@ Autonomously scan, prioritize, and clean up the task backlog.
 ## Steps
 
 1. Run `date` to get current date.
-2. Read `data/canonical/tasks.csv` — load all tasks.
-3. Read `data/canonical/goals.csv` — understand what the user is working toward.
-4. Read `data/canonical/projects.csv` — understand active projects.
+2. Read `01-ops/life-os/data/canonical/tasks.csv` — load all tasks.
+3. Read `01-ops/life-os/data/canonical/goals.csv` — understand what the user is working toward.
+4. Read `01-ops/life-os/data/canonical/projects.csv` — understand active projects.
 5. **Flag issues:**
    - **Overdue**: tasks with due_date before today and status != done
    - **Stale**: tasks with last_updated > 14 days ago and status = queued/in_progress
