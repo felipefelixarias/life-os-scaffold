@@ -34,22 +34,22 @@ class TestRepoHealth(unittest.TestCase):
     def test_run_command_success(self):
         """Test successful command execution."""
         result_code, stdout, stderr = repo_health.run_command(["echo", "test"])
-        self.assertEqual(result_code, 0)
-        self.assertEqual(stdout.strip(), "test")
-        self.assertEqual(stderr, "")
+        assert result_code == 0
+        assert stdout.strip() == "test"
+        assert stderr == ""
 
     def test_run_command_failure(self):
         """Test command execution failure."""
         result_code, stdout, stderr = repo_health.run_command(["false"])
-        self.assertEqual(result_code, 1)
+        assert result_code == 1
 
     def test_run_command_not_found(self):
         """Test command not found."""
         result_code, stdout, stderr = repo_health.run_command(
             ["nonexistent_command_12345"]
         )
-        self.assertEqual(result_code, 1)
-        self.assertIn("", stderr)  # Should have error message
+        assert result_code == 1
+        assert "" in stderr  # Should have error message
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -73,12 +73,8 @@ class TestRepoHealth(unittest.TestCase):
 
             # Verify print calls
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(
-                any("No uncommitted changes" in call for call in print_calls)
-            )
-            self.assertTrue(
-                any("Remote origin configured" in call for call in print_calls)
-            )
+            assert any("No uncommitted changes" in call for call in print_calls)
+            assert any("Remote origin configured" in call for call in print_calls)
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -100,9 +96,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_git_status()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(
-                any("Uncommitted changes: 2 files" in call for call in print_calls)
-            )
+            assert any("Uncommitted changes: 2 files" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_git_status_not_git_repo(self, mock_print):
@@ -111,7 +105,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_git_status()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("Not a git repository" in call for call in print_calls))
+            assert any("Not a git repository" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_file_integrity_all_present(self, mock_print):
@@ -141,9 +135,7 @@ class TestRepoHealth(unittest.TestCase):
             print_calls = [call[0][0] for call in mock_print.call_args_list]
             # Should have checkmarks for all required files
             checkmark_count = sum(1 for call in print_calls if "✅" in call)
-            self.assertGreaterEqual(
-                checkmark_count, 7
-            )  # At least 7 required files + commands
+            assert checkmark_count >= 7  # At least 7 required files + commands
 
     @patch("builtins.print")
     def test_check_file_integrity_missing_files(self, mock_print):
@@ -159,7 +151,7 @@ class TestRepoHealth(unittest.TestCase):
             missing_count = sum(
                 1 for call in print_calls if "❌" in call and "missing" in call
             )
-            self.assertGreaterEqual(missing_count, 1)
+            assert missing_count >= 1
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -179,12 +171,8 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_python_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(
-                any("Python files compile successfully" in call for call in print_calls)
-            )
-            self.assertTrue(
-                any("No ruff linting issues" in call for call in print_calls)
-            )
+            assert any("Python files compile successfully" in call for call in print_calls)
+            assert any("No ruff linting issues" in call for call in print_calls)
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -201,7 +189,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_python_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("Compilation error" in call for call in print_calls))
+            assert any("Compilation error" in call for call in print_calls)
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -220,8 +208,8 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_test_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("Found 2 test files" in call for call in print_calls))
-            self.assertTrue(any("All tests passing" in call for call in print_calls))
+            assert any("Found 2 test files" in call for call in print_calls)
+            assert any("All tests passing" in call for call in print_calls)
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -238,7 +226,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_test_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("Test failures" in call for call in print_calls))
+            assert any("Test failures" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_test_health_no_tests(self, mock_print):
@@ -247,7 +235,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_test_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("No tests directory" in call for call in print_calls))
+            assert any("No tests directory" in call for call in print_calls)
 
     @patch("repo_health.run_command")
     @patch("builtins.print")
@@ -273,10 +261,8 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_csv_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(any("Found 2 CSV files" in call for call in print_calls))
-            self.assertTrue(
-                any("CSV validation passed" in call for call in print_calls)
-            )
+            assert any("Found 2 CSV files" in call for call in print_calls)
+            assert any("CSV validation passed" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_security_clean(self, mock_print):
@@ -285,9 +271,7 @@ class TestRepoHealth(unittest.TestCase):
             repo_health.check_security()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            self.assertTrue(
-                any("No obvious security issues found" in call for call in print_calls)
-            )
+            assert any("No obvious security issues found" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_security_with_issues(self, mock_print):
@@ -301,12 +285,8 @@ class TestRepoHealth(unittest.TestCase):
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
             # Should detect environment file and private key
-            self.assertTrue(
-                any("Environment file found" in call for call in print_calls)
-            )
-            self.assertTrue(
-                any("Potential private key" in call for call in print_calls)
-            )
+            assert any("Environment file found" in call for call in print_calls)
+            assert any("Potential private key" in call for call in print_calls)
 
     @patch("repo_health.check_git_status")
     @patch("repo_health.check_file_integrity")
@@ -338,10 +318,8 @@ class TestRepoHealth(unittest.TestCase):
 
         # Verify header and footer are printed
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertTrue(
-            any("Life-OS Repository Health Check" in call for call in print_calls)
-        )
-        self.assertTrue(any("Health check complete!" in call for call in print_calls))
+        assert any("Life-OS Repository Health Check" in call for call in print_calls)
+        assert any("Health check complete!" in call for call in print_calls)
 
 
 if __name__ == "__main__":

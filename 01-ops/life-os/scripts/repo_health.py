@@ -16,7 +16,7 @@ COMMAND_NOT_FOUND_EXIT_CODE = 127
 def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             cmd,
             cwd=cwd,
             capture_output=True,

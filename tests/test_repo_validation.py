@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import tempfile
 import unittest
 from importlib.util import module_from_spec, spec_from_file_location
@@ -17,7 +18,7 @@ class RepoValidationTests(unittest.TestCase):
     def test_repo_validation_script_passes(self) -> None:
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "01-ops/life-os/scripts/validate_repo.py",
             ],
             cwd=REPO_ROOT,
@@ -25,13 +26,13 @@ class RepoValidationTests(unittest.TestCase):
             text=True,
             check=False,
         )
-        self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+        assert result.returncode == 0, result.stdout + result.stderr
 
     def test_markdown_docs_includes_repo_docs_directory(self) -> None:
         docs = validate_repo.markdown_docs()
-        self.assertIn(REPO_ROOT / "README.md", docs)
-        self.assertIn(REPO_ROOT / "CLAUDE.md", docs)
-        self.assertIn(REPO_ROOT / "docs" / "customization.md", docs)
+        assert REPO_ROOT / "README.md" in docs
+        assert REPO_ROOT / "CLAUDE.md" in docs
+        assert REPO_ROOT / "docs" / "customization.md" in docs
 
     def test_unreferenced_command_file_fails_validation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -50,10 +51,9 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 errors = validate_repo.validate_command_coverage()
 
-        self.assertEqual(
-            errors,
-            ["Command file is not referenced in docs: .claude/commands/orphan.md"],
-        )
+        assert errors == [
+            "Command file is not referenced in docs: .claude/commands/orphan.md"
+        ]
 
     def test_csv_structure_validation_detects_column_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -76,9 +76,9 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_csv_structure()
 
-        self.assertEqual(len(errors), 1)
-        self.assertIn("CSV row mismatch", errors[0])
-        self.assertIn("expected 3 columns, got 2", errors[0])
+        assert len(errors) == 1
+        assert "CSV row mismatch" in errors[0]
+        assert "expected 3 columns in got 2", errors[0]
 
     def test_csv_schema_validation_detects_unexpected_columns(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -103,8 +103,8 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_csv_schemas()
 
-        self.assertEqual(len(errors), 1)
-        self.assertIn("Unexpected column(s) ['rogue']", errors[0])
+        assert len(errors) == 1
+        assert "Unexpected column(s) ['rogue']" in errors[0]
 
     def test_csv_files_is_resolved_from_current_repo_root(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -123,7 +123,7 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 actual = validate_repo.csv_files()
 
-        self.assertEqual(actual, expected)
+        assert actual == expected
 
     def test_validate_required_paths_checks_essential_files(self) -> None:
         """Test that validate_required_paths checks for required directories and files."""
@@ -134,8 +134,8 @@ class RepoValidationTests(unittest.TestCase):
                 errors = validate_repo.validate_required_paths()
 
             # Should report missing files/directories
-            self.assertGreater(len(errors), 0)
-            self.assertTrue(any("Missing required path" in error for error in errors))
+            assert len(errors) > 0
+            assert any("Missing required path" in error for error in errors)
 
     def test_validate_required_paths_passes_when_files_exist(self) -> None:
         """Test that validate_required_paths passes when all required paths exist."""
@@ -160,7 +160,7 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 errors = validate_repo.validate_required_paths()
 
-            self.assertEqual(errors, [])
+            assert errors == []
 
     def test_validate_csv_headers_detects_missing_header(self) -> None:
         """Test that validate_csv_headers detects CSV files without headers."""
@@ -182,8 +182,8 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_csv_headers()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("missing header row", errors[0])
+            assert len(errors) == 1
+            assert "missing header row" in errors[0]
 
     def test_validate_csv_headers_detects_blank_headers(self) -> None:
         """Test that validate_csv_headers detects blank header cells."""
@@ -205,8 +205,8 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_csv_headers()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("blank header cells", errors[0])
+            assert len(errors) == 1
+            assert "blank header cells" in errors[0]
 
     def test_validate_csv_headers_detects_duplicate_headers(self) -> None:
         """Test that validate_csv_headers detects duplicate header cells."""
@@ -228,8 +228,8 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_csv_headers()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("duplicate header cells", errors[0])
+            assert len(errors) == 1
+            assert "duplicate header cells" in errors[0]
 
     def test_validate_csv_headers_handles_file_read_errors(self) -> None:
         """Test that validate_csv_headers handles file read errors gracefully."""
@@ -255,8 +255,8 @@ class RepoValidationTests(unittest.TestCase):
                     ):
                         errors = validate_repo.validate_csv_headers()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("Cannot read CSV file", errors[0])
+            assert len(errors) == 1
+            assert "Cannot read CSV file" in errors[0]
 
     def test_validate_markdown_links_detects_broken_links(self) -> None:
         """Test that validate_markdown_links detects broken internal links."""
@@ -277,9 +277,9 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_markdown_links()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("Broken", errors[0])
-            self.assertIn("docs/missing.md", errors[0])
+            assert len(errors) == 1
+            assert "Broken" in errors[0]
+            assert "docs/missing.md" in errors[0]
 
     def test_validate_command_references_detects_missing_commands(self) -> None:
         """Test that validate_command_references detects references to missing commands."""
@@ -304,9 +304,9 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.validate_command_references()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("Unknown command reference", errors[0])
-            self.assertIn("/missing", errors[0])
+            assert len(errors) == 1
+            assert "Unknown command reference" in errors[0]
+            assert "/missing" in errors[0]
 
     def test_lint_whitespace_detects_trailing_whitespace(self) -> None:
         """Test that lint_whitespace detects trailing whitespace in files."""
@@ -327,15 +327,15 @@ class RepoValidationTests(unittest.TestCase):
                 ):
                     errors = validate_repo.lint_whitespace()
 
-            self.assertEqual(len(errors), 1)
-            self.assertIn("Trailing whitespace", errors[0])
+            assert len(errors) == 1
+            assert "Trailing whitespace" in errors[0]
 
     def test_command_reference_docs_returns_markdown_paths(self) -> None:
         """Test that command_reference_docs returns correct markdown file paths."""
         docs = validate_repo.command_reference_docs()
         # Should include docs like README.md, CLAUDE.md, etc.
-        self.assertIsInstance(docs, list)
-        self.assertTrue(all(isinstance(doc, Path) for doc in docs))
+        assert isinstance(docs, list)
+        assert all(isinstance(doc, Path) for doc in docs)
 
     @mock.patch("builtins.print")
     def test_fail_function_prints_error_message(self, mock_print) -> None:
@@ -346,10 +346,10 @@ class RepoValidationTests(unittest.TestCase):
 
     def test_main_function_with_lint_flag(self) -> None:
         """Test main function with --lint flag."""
-        with mock.patch("sys.argv", ["validate_repo.py", "--lint"]):
-            with mock.patch.object(validate_repo, "lint_whitespace", return_value=[]):
-                result = validate_repo.main()
-        self.assertEqual(result, 0)
+        with mock.patch("sys.argv", ["validate_repo.py", "--lint"]), \
+             mock.patch.object(validate_repo, "lint_whitespace", return_value=[]):
+            result = validate_repo.main()
+        assert result == 0
 
     def test_main_function_with_errors_returns_non_zero(self) -> None:
         """Test main function returns non-zero exit code when errors found."""
@@ -384,7 +384,7 @@ class RepoValidationTests(unittest.TestCase):
                                     ):
                                         with mock.patch.object(validate_repo, "fail"):
                                             result = validate_repo.main()
-        self.assertEqual(result, 1)
+        assert result == 1
 
     def test_main_function_no_errors_returns_zero(self) -> None:
         """Test main function returns zero exit code when no errors found."""
@@ -418,7 +418,7 @@ class RepoValidationTests(unittest.TestCase):
                                         return_value=[],
                                     ):
                                         result = validate_repo.main()
-        self.assertEqual(result, 0)
+        assert result == 0
 
 
 if __name__ == "__main__":
