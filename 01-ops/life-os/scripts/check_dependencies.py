@@ -50,6 +50,53 @@ def parse_requirements() -> list[str]:
     return requirements
 
 
+def _extract_package_name(requirement: str) -> str:
+    """Extract package name from requirement string (before version specifiers)."""
+    return requirement.split(">=")[0].split("==")[0].split("<")[0].strip()
+
+
+def _normalize_package_name(pkg_name: str) -> str:
+    """Normalize package name for comparison with installed packages."""
+    return pkg_name.lower().replace("-", "_")
+
+
+def _check_security_vulnerabilities(pkg_name: str, version: str) -> str | None:
+    """Check if a package version has known security vulnerabilities."""
+    if pkg_name.lower() not in ["requests", "urllib3"] or not version.startswith("2."):
+        return None
+
+    try:
+        major, minor = map(int, version.split(".")[:2])
+        is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
+        is_old_minor = (
+            major == REQUESTS_MIN_MAJOR_VERSION
+            and minor < REQUESTS_MIN_MINOR_VERSION
+        )
+        if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
+            return f"{pkg_name} {version} may have security vulnerabilities"
+    except ValueError:
+        pass
+
+    return None
+
+
+def _print_dependency_results(missing: list[str], outdated_warnings: list[str]) -> None:
+    """Print the results of dependency checking."""
+    if missing:
+        print("\n❌ Missing packages:")
+        for pkg in missing:
+            print(f"   - {pkg}")
+        print("\nRun: pip install -r requirements.txt")
+
+    if outdated_warnings:
+        print("\n⚠️  Security warnings:")
+        for warning in outdated_warnings:
+            print(f"   - {warning}")
+
+    if not missing and not outdated_warnings:
+        print("\n✅ All dependencies look good!")
+
+
 def check_package_availability() -> None:
     """Check if all packages in requirements.txt are available/installed."""
     requirements = parse_requirements()
@@ -66,9 +113,8 @@ def check_package_availability() -> None:
     outdated_warnings = []
 
     for req in requirements:
-        # Simple parsing - extract package name (before any version specifiers)
-        pkg_name = req.split(">=")[0].split("==")[0].split("<")[0].strip()
-        normalized_name = pkg_name.lower().replace("-", "_")
+        pkg_name = _extract_package_name(req)
+        normalized_name = _normalize_package_name(pkg_name)
 
         if normalized_name not in installed:
             missing.append(pkg_name)
@@ -76,38 +122,11 @@ def check_package_availability() -> None:
             version = installed[normalized_name]
             print(f"✅ {pkg_name}: {version}")
 
-            # Check for potentially old versions of critical security packages
-            if pkg_name.lower() in ["requests", "urllib3"] and version.startswith("2."):
-                # Basic check for very old versions
-                try:
-                    major, minor = map(int, version.split(".")[:2])
-                    is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
-                    is_old_minor = (
-                        major == REQUESTS_MIN_MAJOR_VERSION
-                        and minor < REQUESTS_MIN_MINOR_VERSION
-                    )
-                    if pkg_name.lower() == "requests" and (
-                        is_old_major or is_old_minor
-                    ):
-                        outdated_warnings.append(
-                            f"{pkg_name} {version} may have security vulnerabilities"
-                        )
-                except ValueError:
-                    pass
+            warning = _check_security_vulnerabilities(pkg_name, version)
+            if warning:
+                outdated_warnings.append(warning)
 
-    if missing:
-        print("\n❌ Missing packages:")
-        for pkg in missing:
-            print(f"   - {pkg}")
-        print("\nRun: pip install -r requirements.txt")
-
-    if outdated_warnings:
-        print("\n⚠️  Security warnings:")
-        for warning in outdated_warnings:
-            print(f"   - {warning}")
-
-    if not missing and not outdated_warnings:
-        print("\n✅ All dependencies look good!")
+    _print_dependency_results(missing, outdated_warnings)
 
 
 def check_python_version() -> None:

@@ -18,7 +18,7 @@ def ensure_directory(path: Path) -> None:
 
 
 def write_csv_with_example(
-    file_path: Path, headers: list[str], example_rows: list[list[str]]
+    file_path: Path, headers: list[str], example_rows: list[list[str]],
 ) -> None:
     """Write a CSV file with headers and example data."""
     with file_path.open("w", newline="", encoding="utf-8") as f:
@@ -76,7 +76,7 @@ def refresh_canonical_csvs() -> None:
                 "",
                 today.isoformat(),
                 "Example task for testing",
-            ]
+            ],
         ],
     )
 
@@ -188,7 +188,7 @@ def refresh_canonical_csvs() -> None:
                 "active",
                 today.isoformat(),
                 "Improve sleep quality and consistency",
-            ]
+            ],
         ],
     )
 
@@ -219,7 +219,7 @@ def refresh_canonical_csvs() -> None:
                 today.isoformat(),
                 "Focus on consistency and energy",
                 "true",
-            ]
+            ],
         ],
     )
 
@@ -250,7 +250,7 @@ def refresh_canonical_csvs() -> None:
                 "manual",
                 "planned",
                 "Focus time for important tasks",
-            ]
+            ],
         ],
     )
 
@@ -279,7 +279,7 @@ def refresh_canonical_csvs() -> None:
                 "60",
                 "",
                 "Morning planning session",
-            ]
+            ],
         ],
     )
 
@@ -310,7 +310,7 @@ def refresh_canonical_csvs() -> None:
                 "manual",
                 "primary",
                 "Weekly sync",
-            ]
+            ],
         ],
     )
 
@@ -337,7 +337,7 @@ def refresh_log_csvs() -> None:
                 f"{today.isoformat()}T09:00:00Z",
                 "system_setup",
                 "Initial repository setup",
-            ]
+            ],
         ],
     )
 

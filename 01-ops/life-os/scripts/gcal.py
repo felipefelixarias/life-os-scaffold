@@ -71,10 +71,11 @@ def get_credentials() -> Any:
     from google.auth.transport.requests import Request
 
     if not OAUTH_TOKEN_PATH.exists():
-        raise FileNotFoundError(
+        error_msg = (
             f"OAuth token not found at {OAUTH_TOKEN_PATH}. "
             "Install and authenticate gcalcli first: gcalcli list"
         )
+        raise FileNotFoundError(error_msg)
 
     # Ensure the token file is within the expected location for security
     try:
@@ -87,11 +88,12 @@ def get_credentials() -> Any:
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
             perms = oct(file_stat.st_mode)
             logger.warning(
-                "OAuth token file has overly permissive permissions: %s", perms
+                "OAuth token file has overly permissive permissions: %s", perms,
             )
 
     except (OSError, RuntimeError) as e:
-        raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
+        error_msg = f"Cannot validate OAuth token path: {e}"
+        raise PermissionError(error_msg) from e
 
     # Note: pickle.load() can execute arbitrary code. This is acceptable because
     # the token file is in the user's home directory and managed by gcalcli.
@@ -125,7 +127,7 @@ def get_service() -> Any:
 
         creds = get_credentials()
         _service_cache = build(
-            "calendar", "v3", credentials=creds, cache_discovery=False
+            "calendar", "v3", credentials=creds, cache_discovery=False,
         )
     return _service_cache
 
@@ -164,7 +166,8 @@ def _parse_block_time(date: dt.date, time_str: str, field_name: str) -> dt.datet
     try:
         time_value = dt.time.fromisoformat(time_str)
     except ValueError as exc:
-        raise ValueError(f"invalid {field_name} time '{time_str}'") from exc
+        error_msg = f"invalid {field_name} time '{time_str}'"
+        raise ValueError(error_msg) from exc
 
     return dt.datetime.combine(
         date,
@@ -226,7 +229,7 @@ def get_agenda(
         return events
     except (FileNotFoundError, PermissionError):
         logger.exception(
-            "Authentication error while fetching events for %s", start_date
+            "Authentication error while fetching events for %s", start_date,
         )
         return []
     except Exception as e:
@@ -265,8 +268,8 @@ def create_event(
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while creating event '%s'", summary)
         return ""
-    except ValueError as e:
-        logger.error("Invalid input while creating event '%s': %s", summary, e)
+    except ValueError:
+        logger.exception("Invalid input while creating event '%s'", summary)
         return ""
     except Exception as e:
         _log_google_api_error(f"creating event '{summary}'", e)
@@ -299,8 +302,8 @@ def update_event(
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while updating event %s", event_id)
         return {}
-    except ValueError as e:
-        logger.error("Invalid input while updating event %s: %s", event_id, e)
+    except ValueError:
+        logger.exception("Invalid input while updating event %s", event_id)
         return {}
     except Exception as e:
         _log_google_api_error(f"updating event {event_id}", e)
@@ -317,7 +320,7 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     except Exception as e:
         if _is_http_error_status(e, 404):
             logger.warning(
-                "Event %s not found (already deleted or never existed)", event_id
+                "Event %s not found (already deleted or never existed)", event_id,
             )
         else:
             _log_google_api_error(f"deleting event {event_id}", e)
@@ -405,6 +408,7 @@ def push_day_plan(
 
     Raises:
         No exceptions are raised; errors are logged and operation continues.
+
     """
     cleared = clear_life_os_events(date, calendar_id=calendar_id)
     if cleared:
@@ -428,7 +432,7 @@ def push_day_plan(
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
                 logger.info(
-                    "Block '%s' spans midnight, end time adjusted to next day", title
+                    "Block '%s' spans midnight, end time adjusted to next day", title,
                 )
 
         except ValueError as e:
@@ -466,11 +470,11 @@ def push_day_plan(
         )
     if failed_blocks > 0:
         logger.error(
-            "Day plan push summary: %s blocks failed to create events", failed_blocks
+            "Day plan push summary: %s blocks failed to create events", failed_blocks,
         )
     if successful_blocks > 0:
         logger.info(
-            "Successfully created %s calendar events for %s", successful_blocks, date
+            "Successfully created %s calendar events for %s", successful_blocks, date,
         )
 
     return created_ids

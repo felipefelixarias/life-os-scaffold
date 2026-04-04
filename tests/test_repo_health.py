@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts")
+    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
 )
 
 import repo_health
@@ -46,7 +46,7 @@ class TestRepoHealth(unittest.TestCase):
     def test_run_command_not_found(self):
         """Test command not found."""
         result_code, _stdout, stderr = repo_health.run_command(
-            ["nonexistent_command_12345"]
+            ["nonexistent_command_12345"],
         )
         assert result_code == 1
         assert "" in stderr  # Should have error message

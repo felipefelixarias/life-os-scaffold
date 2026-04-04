@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts")
+    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
 )
 
 import check_dependencies
@@ -43,7 +43,7 @@ class TestCheckDependencies(unittest.TestCase):
                 {"name": "requests", "version": "2.31.0"},
                 {"name": "urllib3", "version": "2.0.4"},
                 {"name": "test-package", "version": "1.0.0"},
-            ]
+            ],
         )
         mock_result.returncode = 0
 
@@ -60,7 +60,7 @@ class TestCheckDependencies(unittest.TestCase):
     def test_get_installed_packages_failure(self):
         """Test package list retrieval failure handling."""
         with patch(
-            "subprocess.run", side_effect=subprocess.CalledProcessError(1, "pip")
+            "subprocess.run", side_effect=subprocess.CalledProcessError(1, "pip"),
         ):
             packages = check_dependencies.get_installed_packages()
 
@@ -91,7 +91,7 @@ pytest
         self.test_requirements.write_text(requirements_content)
 
         with patch.object(
-            check_dependencies, "REQUIREMENTS_FILE", self.test_requirements
+            check_dependencies, "REQUIREMENTS_FILE", self.test_requirements,
         ):
             requirements = check_dependencies.parse_requirements()
 
@@ -112,7 +112,7 @@ pytest
         self.test_requirements.write_text("")
 
         with patch.object(
-            check_dependencies, "REQUIREMENTS_FILE", self.test_requirements
+            check_dependencies, "REQUIREMENTS_FILE", self.test_requirements,
         ):
             requirements = check_dependencies.parse_requirements()
 
@@ -122,7 +122,7 @@ pytest
     @patch("check_dependencies.parse_requirements")
     @patch("builtins.print")
     def test_check_package_availability_all_installed(
-        self, mock_print, mock_parse, mock_get
+        self, mock_print, mock_parse, mock_get,
     ):
         """Test check when all packages are installed."""
         mock_parse.return_value = ["requests>=2.31.0", "urllib3==2.0.4"]
@@ -140,7 +140,7 @@ pytest
     @patch("check_dependencies.parse_requirements")
     @patch("builtins.print")
     def test_check_package_availability_missing_packages(
-        self, mock_print, mock_parse, mock_get
+        self, mock_print, mock_parse, mock_get,
     ):
         """Test check with missing packages."""
         mock_parse.return_value = ["requests>=2.31.0", "missing-package==1.0.0"]
@@ -163,7 +163,7 @@ pytest
     @patch("check_dependencies.parse_requirements")
     @patch("builtins.print")
     def test_check_package_availability_security_warning(
-        self, mock_print, mock_parse, mock_get
+        self, mock_print, mock_parse, mock_get,
     ):
         """Test security warning for old versions."""
         mock_parse.return_value = ["requests>=2.31.0"]
@@ -182,7 +182,7 @@ pytest
     @patch("check_dependencies.parse_requirements")
     @patch("builtins.print")
     def test_check_package_availability_no_requirements(
-        self, mock_print, mock_parse, mock_get
+        self, mock_print, mock_parse, mock_get,
     ):
         """Test behavior with no requirements."""
         mock_parse.return_value = []
@@ -220,10 +220,9 @@ pytest
         mock_check_packages.assert_called_once()
 
         # Check that recommendations are printed
-        print_calls = []
-        for call in mock_print.call_args_list:
-            if call[0]:  # Check if call args are not empty
-                print_calls.append(call[0][0])
+        print_calls = [
+            call[0][0] for call in mock_print.call_args_list if call[0]
+        ]
         recommendations_found = any(
             "pip list --outdated" in call for call in print_calls
         )

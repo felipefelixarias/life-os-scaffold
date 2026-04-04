@@ -38,7 +38,7 @@ class RefreshExampleDataTests(unittest.TestCase):
                 mock.patch("builtins.print"),  # Suppress print output
             ):
                 refresh_example_data.write_csv_with_example(
-                    csv_path, headers, example_rows
+                    csv_path, headers, example_rows,
                 )
 
             # Verify file was created
