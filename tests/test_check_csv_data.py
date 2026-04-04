@@ -22,11 +22,11 @@ class CheckCSVDataTests(unittest.TestCase):
             with mock.patch.object(check_csv_data, "REPO_ROOT", root):
                 stats = check_csv_data.analyze_csv_file(nonexistent_path)
 
-            self.assertFalse(stats["exists"])
-            self.assertEqual(stats["rows"], 0)
-            self.assertEqual(stats["columns"], 0)
-            self.assertFalse(stats["has_data"])
-            self.assertIsNone(stats["sample_row"])
+            assert not stats["exists"]
+            assert stats["rows"] == 0
+            assert stats["columns"] == 0
+            assert not stats["has_data"]
+            assert stats["sample_row"] is None
 
     def test_analyze_csv_file_with_data(self) -> None:
         """Test analyzing a CSV file with valid data."""
@@ -38,13 +38,13 @@ class CheckCSVDataTests(unittest.TestCase):
             with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
                 stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertEqual(stats["rows"], 2)
-            self.assertEqual(stats["columns"], 3)
-            self.assertTrue(stats["has_data"])
-            self.assertEqual(stats["sample_row"], ["val1", "val2", "val3"])
-            self.assertEqual(stats["header"], ["col1", "col2", "col3"])
-            self.assertGreater(stats["size_bytes"], 0)
+            assert stats["exists"]
+            assert stats["rows"] == 2
+            assert stats["columns"] == 3
+            assert stats["has_data"]
+            assert stats["sample_row"] == ["val1", "val2", "val3"]
+            assert stats["header"] == ["col1", "col2", "col3"]
+            assert stats["size_bytes"] > 0
 
     def test_analyze_csv_file_header_only(self) -> None:
         """Test analyzing a CSV file with header but no data."""
@@ -56,12 +56,12 @@ class CheckCSVDataTests(unittest.TestCase):
             with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
                 stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertEqual(stats["rows"], 0)
-            self.assertEqual(stats["columns"], 3)
-            self.assertFalse(stats["has_data"])
-            self.assertIsNone(stats["sample_row"])
-            self.assertEqual(stats["header"], ["col1", "col2", "col3"])
+            assert stats["exists"]
+            assert stats["rows"] == 0
+            assert stats["columns"] == 3
+            assert not stats["has_data"]
+            assert stats["sample_row"] is None
+            assert stats["header"] == ["col1", "col2", "col3"]
 
     def test_analyze_csv_file_handles_encoding_errors(self) -> None:
         """Test that encoding errors are handled gracefully."""
@@ -74,9 +74,9 @@ class CheckCSVDataTests(unittest.TestCase):
             with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
                 stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertIn("error", stats)
-            self.assertIn("Encoding error", stats["error"])
+            assert stats["exists"]
+            assert "error" in stats
+            assert "Encoding error" in stats["error"]
 
     def test_process_large_csv_with_sampling(self) -> None:
         """Test processing large CSV files with row sampling."""
@@ -96,9 +96,9 @@ class CheckCSVDataTests(unittest.TestCase):
         stats = {"rows": 0, "has_data": False, "sample_row": None}
         result = check_csv_data._process_large_csv(reader, stats)
 
-        self.assertIn("large file, sampling", str(result["rows"]))
-        self.assertTrue(result["has_data"])
-        self.assertIsNotNone(result["sample_row"])
+        assert "large file in sampling", str(result["rows"])
+        assert result["has_data"]
+        assert result["sample_row"] is not None
 
     def test_process_small_csv_loads_all_data(self) -> None:
         """Test processing small CSV files that load all data."""
@@ -112,9 +112,9 @@ class CheckCSVDataTests(unittest.TestCase):
         stats = {"rows": 0, "has_data": False, "sample_row": None}
         result = check_csv_data._process_small_csv(reader, stats)
 
-        self.assertEqual(result["rows"], 2)
-        self.assertTrue(result["has_data"])
-        self.assertEqual(result["sample_row"], ["val1", "val2", "val3"])
+        assert result["rows"] == 2
+        assert result["has_data"]
+        assert result["sample_row"] == ["val1", "val2", "val3"]
 
     def test_process_small_csv_empty_data(self) -> None:
         """Test processing small CSV with no data rows."""
@@ -127,9 +127,9 @@ class CheckCSVDataTests(unittest.TestCase):
         stats = {"rows": 0, "has_data": False, "sample_row": None}
         result = check_csv_data._process_small_csv(reader, stats)
 
-        self.assertEqual(result["rows"], 0)
-        self.assertFalse(result["has_data"])
-        self.assertIsNone(result["sample_row"])
+        assert result["rows"] == 0
+        assert not result["has_data"]
+        assert result["sample_row"] is None
 
     def test_init_csv_stats(self) -> None:
         """Test initialization of CSV stats dictionary."""
@@ -139,13 +139,13 @@ class CheckCSVDataTests(unittest.TestCase):
             with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
                 stats = check_csv_data._init_csv_stats(csv_path)
 
-            self.assertEqual(stats["file"], Path("test.csv"))
-            self.assertFalse(stats["exists"])
-            self.assertEqual(stats["rows"], 0)
-            self.assertEqual(stats["columns"], 0)
-            self.assertFalse(stats["has_data"])
-            self.assertIsNone(stats["sample_row"])
-            self.assertEqual(stats["size_bytes"], 0)
+            assert stats["file"] == Path("test.csv")
+            assert not stats["exists"]
+            assert stats["rows"] == 0
+            assert stats["columns"] == 0
+            assert not stats["has_data"]
+            assert stats["sample_row"] is None
+            assert stats["size_bytes"] == 0
 
     def test_analyze_csv_file_handles_permission_error(self) -> None:
         """Test handling of permission errors when reading CSV files."""
@@ -160,9 +160,9 @@ class CheckCSVDataTests(unittest.TestCase):
                 ):
                     stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertIn("error", stats)
-            self.assertEqual(stats["error"], "Permission denied")
+            assert stats["exists"]
+            assert "error" in stats
+            assert stats["error"] == "Permission denied"
 
     def test_analyze_csv_file_handles_csv_error(self) -> None:
         """Test handling of CSV parsing errors."""
@@ -179,9 +179,9 @@ class CheckCSVDataTests(unittest.TestCase):
                 ):
                     stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertIn("error", stats)
-            self.assertIn("Error: Malformed CSV", stats["error"])
+            assert stats["exists"]
+            assert "error" in stats
+            assert "Error: Malformed CSV" in stats["error"]
 
     def test_analyze_csv_file_large_file_threshold(self) -> None:
         """Test that large files use sampling logic."""
@@ -200,15 +200,15 @@ class CheckCSVDataTests(unittest.TestCase):
 
                     stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
+            assert stats["exists"]
             self.assertEqual(
                 stats["size_bytes"], check_csv_data.LARGE_FILE_THRESHOLD + 1
             )
-            self.assertTrue(stats["has_data"])
+            assert stats["has_data"]
 
     def test_main_function_exists_and_callable(self) -> None:
         """Test that main function exists and is callable."""
-        self.assertTrue(callable(check_csv_data.main))
+        assert callable(check_csv_data.main)
         # Basic smoke test - just ensure it doesn't crash when called
         # We won't test the full output since it depends on actual file structure
 
@@ -229,9 +229,9 @@ class CheckCSVDataTests(unittest.TestCase):
                 ):
                     stats = check_csv_data.analyze_csv_file(csv_path)
 
-            self.assertTrue(stats["exists"])
-            self.assertIn("error", stats)
-            self.assertIn("Encoding error", stats["error"])
+            assert stats["exists"]
+            assert "error" in stats
+            assert "Encoding error" in stats["error"]
 
 
 if __name__ == "__main__":

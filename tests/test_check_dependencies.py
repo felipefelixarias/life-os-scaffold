@@ -55,7 +55,7 @@ class TestCheckDependencies(unittest.TestCase):
             "urllib3": "2.0.4",
             "test_package": "1.0.0",  # test-package normalized to test_package
         }
-        self.assertEqual(packages, expected)
+        assert packages == expected
 
     def test_get_installed_packages_failure(self):
         """Test package list retrieval failure handling."""
@@ -64,7 +64,7 @@ class TestCheckDependencies(unittest.TestCase):
         ):
             packages = check_dependencies.get_installed_packages()
 
-        self.assertEqual(packages, {})
+        assert packages == {}
 
     def test_get_installed_packages_json_error(self):
         """Test JSON parsing error handling."""
@@ -75,7 +75,7 @@ class TestCheckDependencies(unittest.TestCase):
         with patch("subprocess.run", return_value=mock_result):
             packages = check_dependencies.get_installed_packages()
 
-        self.assertEqual(packages, {})
+        assert packages == {}
 
     def test_parse_requirements_success(self):
         """Test successful requirements parsing."""
@@ -96,7 +96,7 @@ pytest
             requirements = check_dependencies.parse_requirements()
 
         expected = ["requests>=2.31.0", "urllib3==2.0.4", "django<5.0", "pytest"]
-        self.assertEqual(requirements, expected)
+        assert requirements == expected
 
     def test_parse_requirements_missing_file(self):
         """Test handling of missing requirements file."""
@@ -105,7 +105,7 @@ pytest
         with patch.object(check_dependencies, "REQUIREMENTS_FILE", non_existent):
             requirements = check_dependencies.parse_requirements()
 
-        self.assertEqual(requirements, [])
+        assert requirements == []
 
     def test_parse_requirements_empty_file(self):
         """Test parsing empty requirements file."""
@@ -116,7 +116,7 @@ pytest
         ):
             requirements = check_dependencies.parse_requirements()
 
-        self.assertEqual(requirements, [])
+        assert requirements == []
 
     @patch("check_dependencies.get_installed_packages")
     @patch("check_dependencies.parse_requirements")
@@ -132,9 +132,9 @@ pytest
 
         # Verify success messages were printed
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertIn("✅ requests: 2.31.0", print_calls)
-        self.assertIn("✅ urllib3: 2.0.4", print_calls)
-        self.assertIn("\n✅ All dependencies look good!", print_calls)
+        assert "✅ requests: 2.31.0" in print_calls
+        assert "✅ urllib3: 2.0.4" in print_calls
+        assert "\n✅ All dependencies look good!" in print_calls
 
     @patch("check_dependencies.get_installed_packages")
     @patch("check_dependencies.parse_requirements")
@@ -176,7 +176,7 @@ pytest
         security_warning_found = any(
             "Security warnings:" in call for call in print_calls
         )
-        self.assertTrue(security_warning_found)
+        assert security_warning_found
 
     @patch("check_dependencies.get_installed_packages")
     @patch("check_dependencies.parse_requirements")
@@ -190,7 +190,7 @@ pytest
         check_dependencies.check_package_availability()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertIn("No requirements found.", print_calls)
+        assert "No requirements found." in print_calls
 
     @patch("builtins.print")
     def test_check_python_version_compatible(self, mock_print):
@@ -209,7 +209,7 @@ pytest
         check_dependencies.check_python_version()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertTrue(any("✅ Python version is compatible" in call for call in print_calls))
+        assert any("✅ Python version is compatible" in call for call in print_calls)
 
     @patch("check_dependencies.check_python_version")
     @patch("check_dependencies.check_package_availability")
@@ -229,7 +229,7 @@ pytest
         recommendations_found = any(
             "pip list --outdated" in call for call in print_calls
         )
-        self.assertTrue(recommendations_found)
+        assert recommendations_found
 
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ class GcalCredentialsTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError) as cm:
             gcal.get_credentials()
 
-        self.assertIn("OAuth token not found", str(cm.exception))
+        assert "OAuth token not found" in str(cm.exception)
 
     def test_get_credentials_validates_file_location_security(self):
         self.mock_token_path.exists.return_value = True
@@ -51,7 +51,7 @@ class GcalCredentialsTests(unittest.TestCase):
             with self.assertRaises(PermissionError) as cm:
                 gcal.get_credentials()
 
-        self.assertIn("outside user home directory", str(cm.exception))
+        assert "outside user home directory" in str(cm.exception)
 
     def test_get_credentials_warns_about_permissive_file_permissions(self):
         mock_stat = mock.Mock()
@@ -79,7 +79,7 @@ class GcalCredentialsTests(unittest.TestCase):
 
         mock_logger.warning.assert_called_once()
         warning_msg = mock_logger.warning.call_args[0][0]
-        self.assertIn("overly permissive permissions", warning_msg)
+        assert "overly permissive permissions" in warning_msg
 
     def test_get_credentials_rejects_oversized_token_file(self):
         mock_stat = mock.Mock()
@@ -98,7 +98,7 @@ class GcalCredentialsTests(unittest.TestCase):
             with self.assertRaises(PermissionError) as cm:
                 gcal.get_credentials()
 
-        self.assertIn("unexpectedly large", str(cm.exception))
+        assert "unexpectedly large" in str(cm.exception)
 
     @mock.patch("pickle.load")
     @mock.patch("builtins.open", mock.mock_open())
@@ -130,7 +130,7 @@ class GcalCredentialsTests(unittest.TestCase):
 
         mock_creds.refresh.assert_called_once()
         mock_pickle_dump.assert_called_once_with(mock_creds, mock.ANY)
-        self.assertEqual(result, mock_creds)
+        assert result == mock_creds
 
 
 class GcalServiceTests(unittest.TestCase):
@@ -153,7 +153,7 @@ class GcalServiceTests(unittest.TestCase):
         mock_build.assert_called_once_with(
             "calendar", "v3", credentials=mock_creds, cache_discovery=False
         )
-        self.assertEqual(result, mock_service)
+        assert result == mock_service
 
     @mock.patch.object(gcal, "get_credentials")
     @mock.patch("googleapiclient.discovery.build")
@@ -169,9 +169,9 @@ class GcalServiceTests(unittest.TestCase):
         result2 = gcal.get_service()
 
         # Should only build service once due to caching
-        self.assertEqual(mock_build.call_count, 1)
-        self.assertEqual(result1, result2)
-        self.assertEqual(result1, mock_service)
+        assert mock_build.call_count == 1
+        assert result1 == result2
+        assert result1 == mock_service
 
 
 class GcalCalendarOperationsTests(unittest.TestCase):
@@ -197,7 +197,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
 
         result = gcal.list_calendars()
 
-        self.assertEqual(result, expected_calendars)
+        assert result == expected_calendars
         mock_calendar_list.list.assert_called_once()
 
     def test_get_agenda_retrieves_events_for_date_range(self):
@@ -217,7 +217,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
 
         result = gcal.get_agenda(start_date, end_date)
 
-        self.assertEqual(result, expected_events)
+        assert result == expected_events
         mock_events.list.assert_called_once()
 
     def test_create_event_builds_proper_event_structure(self):
@@ -237,16 +237,16 @@ class GcalCalendarOperationsTests(unittest.TestCase):
             description="Test Description",
         )
 
-        self.assertEqual(result, "new_event_id")
+        assert result == "new_event_id"
 
         # Verify the event structure passed to the API
         call_args = mock_events.insert.call_args
         event_body = call_args.kwargs["body"]
 
-        self.assertEqual(event_body["summary"], "Test Event")
-        self.assertEqual(event_body["description"], "Test Description")
-        self.assertIn("dateTime", event_body["start"])
-        self.assertIn("dateTime", event_body["end"])
+        assert event_body["summary"] == "Test Event"
+        assert event_body["description"] == "Test Description"
+        assert "dateTime" in event_body["start"]
+        assert "dateTime" in event_body["end"]
 
     def test_delete_event_calls_api_with_correct_parameters(self):
         mock_events = mock.Mock()
@@ -271,11 +271,11 @@ class GcalCalendarOperationsTests(unittest.TestCase):
             "meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16)
         )
 
-        self.assertEqual(result, expected_events)
+        assert result == expected_events
 
         # Verify search query was passed
         call_args = mock_events.list.call_args
-        self.assertEqual(call_args.kwargs["q"], "meeting")
+        assert call_args.kwargs["q"] == "meeting"
 
 
 class GcalUtilityTests(unittest.TestCase):
@@ -288,17 +288,17 @@ class GcalUtilityTests(unittest.TestCase):
 
         result = gcal.format_event_line(event)
 
-        self.assertIn("Test Meeting", result)
-        self.assertIn("09:00", result)
-        self.assertIn("10:00", result)
+        assert "Test Meeting" in result
+        assert "09:00" in result
+        assert "10:00" in result
 
     def test_format_event_line_handles_all_day_events(self):
         event = {"start": {"date": "2026-01-15"}, "summary": "All Day Event"}
 
         result = gcal.format_event_line(event)
 
-        self.assertIn("All Day Event", result)
-        self.assertIn("2026-01-15", result)
+        assert "All Day Event" in result
+        assert "2026-01-15" in result
 
     def test_format_event_line_handles_missing_summary(self):
         event = {
@@ -308,7 +308,7 @@ class GcalUtilityTests(unittest.TestCase):
 
         result = gcal.format_event_line(event)
 
-        self.assertIn("(no title)", result)
+        assert "(no title)" in result
 
 
 class GcalTimezoneTests(unittest.TestCase):
@@ -318,16 +318,16 @@ class GcalTimezoneTests(unittest.TestCase):
         expected = dt.datetime(
             2026, 1, 15, 9, 30, 0, tzinfo=ZoneInfo("Europe/Paris")
         ).isoformat()
-        self.assertEqual(actual, expected)
+        assert actual == expected
 
     def test_invalid_timezone_falls_back_to_default(self) -> None:
         fallback = gcal._get_zoneinfo("Mars/Olympus_Mons")
-        self.assertEqual(str(fallback), "America/Los_Angeles")
+        assert str(fallback) == "America/Los_Angeles"
 
     def test_parse_block_time_accepts_seconds_and_discards_them(self) -> None:
         actual = gcal._parse_block_time(dt.date(2026, 1, 15), "09:30:45", "start")
         expected = dt.datetime(2026, 1, 15, 9, 30)
-        self.assertEqual(actual, expected)
+        assert actual == expected
 
     def test_parse_block_time_rejects_invalid_values(self) -> None:
         with self.assertRaises(ValueError):
@@ -349,7 +349,7 @@ class GcalPlannerTests(unittest.TestCase):
         ):
             deleted = gcal.clear_life_os_events(dt.date(2026, 1, 15))
 
-        self.assertEqual(deleted, 1)
+        assert deleted == 1
         delete_event.assert_called_once_with("1", calendar_id="primary")
 
     def test_push_day_plan_skips_invalid_blocks_and_rolls_over_midnight(self) -> None:
@@ -373,20 +373,20 @@ class GcalPlannerTests(unittest.TestCase):
         ):
             created = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))
 
-        self.assertEqual(created, ["evt-1", "evt-2"])
-        self.assertEqual(create_event.call_count, 2)
+        assert created == ["evt-1", "evt-2"]
+        assert create_event.call_count == 2
 
         first_call = create_event.call_args_list[0].kwargs
-        self.assertEqual(first_call["summary"], "[work] Focus")
-        self.assertEqual(first_call["start_dt"], dt.datetime(2026, 1, 15, 9, 0))
-        self.assertEqual(first_call["end_dt"], dt.datetime(2026, 1, 15, 10, 0))
-        self.assertIn(gcal.LIFE_OS_TAG, first_call["description"])
-        self.assertIn("Task: T-1", first_call["description"])
+        assert first_call["summary"] == "[work] Focus"
+        assert first_call["start_dt"] == dt.datetime(2026, 1, 15, 9, 0)
+        assert first_call["end_dt"] == dt.datetime(2026, 1, 15, 10, 0)
+        assert gcal.LIFE_OS_TAG in first_call["description"]
+        assert "Task: T-1" in first_call["description"]
 
         second_call = create_event.call_args_list[1].kwargs
-        self.assertEqual(second_call["summary"], "[ops] Late wrap")
-        self.assertEqual(second_call["start_dt"], dt.datetime(2026, 1, 15, 23, 30))
-        self.assertEqual(second_call["end_dt"], dt.datetime(2026, 1, 16, 0, 15))
+        assert second_call["summary"] == "[ops] Late wrap"
+        assert second_call["start_dt"] == dt.datetime(2026, 1, 15, 23, 30)
+        assert second_call["end_dt"] == dt.datetime(2026, 1, 16, 0, 15)
 
 
 if __name__ == "__main__":

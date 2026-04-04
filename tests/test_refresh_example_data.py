@@ -18,12 +18,12 @@ class RefreshExampleDataTests(unittest.TestCase):
         """Test that ensure_directory creates directories."""
         with tempfile.TemporaryDirectory() as temp_dir:
             new_dir = Path(temp_dir) / "subdir" / "nested"
-            self.assertFalse(new_dir.exists())
+            assert not new_dir.exists()
 
             refresh_example_data.ensure_directory(new_dir)
 
-            self.assertTrue(new_dir.exists())
-            self.assertTrue(new_dir.is_dir())
+            assert new_dir.exists()
+            assert new_dir.is_dir()
 
     def test_write_csv_with_example(self) -> None:
         """Test writing CSV file with headers and example data."""
@@ -40,7 +40,7 @@ class RefreshExampleDataTests(unittest.TestCase):
                     )
 
             # Verify file was created
-            self.assertTrue(csv_path.exists())
+            assert csv_path.exists()
 
             # Verify content
             with csv_path.open("r", newline="", encoding="utf-8") as f:
@@ -48,7 +48,7 @@ class RefreshExampleDataTests(unittest.TestCase):
                 actual_rows = list(reader)
 
             expected = [headers] + example_rows
-            self.assertEqual(actual_rows, expected)
+            assert actual_rows == expected
 
     def test_refresh_canonical_csvs_creates_all_files(self) -> None:
         """Test that refresh_canonical_csvs creates all expected CSV files."""
@@ -74,14 +74,12 @@ class RefreshExampleDataTests(unittest.TestCase):
 
             for filename in expected_files:
                 csv_path = data_dir / filename
-                self.assertTrue(csv_path.exists(), f"{filename} was not created")
+                assert csv_path.exists(), f"{filename} was not created"
 
                 # Verify the file has content (header + at least one row)
                 with csv_path.open("r", newline="", encoding="utf-8") as f:
                     lines = f.readlines()
-                self.assertGreaterEqual(
-                    len(lines), 2, f"{filename} should have header + data"
-                )
+                assert len(lines) >= 2, f"{filename} should have header + data"
 
     def test_refresh_log_csvs_creates_log_files(self) -> None:
         """Test that refresh_log_csvs creates log CSV files."""
@@ -99,14 +97,12 @@ class RefreshExampleDataTests(unittest.TestCase):
 
             for filename in expected_files:
                 csv_path = logs_dir / filename
-                self.assertTrue(csv_path.exists(), f"{filename} was not created")
+                assert csv_path.exists(), f"{filename} was not created"
 
                 # Verify the file has content
                 with csv_path.open("r", newline="", encoding="utf-8") as f:
                     lines = f.readlines()
-                self.assertGreaterEqual(
-                    len(lines), 2, f"{filename} should have header + data"
-                )
+                assert len(lines) >= 2, f"{filename} should have header + data"
 
 
 if __name__ == "__main__":
