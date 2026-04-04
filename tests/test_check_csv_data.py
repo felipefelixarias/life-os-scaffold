@@ -85,8 +85,10 @@ class CheckCSVDataTests(unittest.TestCase):
 
         # Create a mock reader that simulates a large file
         large_data = [["col1", "col2", "col3"]]
-        for i in range(check_csv_data.MAX_SAMPLING_ROWS + 100):
-            large_data.append([f"val{i}_1", f"val{i}_2", f"val{i}_3"])
+        large_data.extend(
+            [f"val{i}_1", f"val{i}_2", f"val{i}_3"]
+            for i in range(check_csv_data.MAX_SAMPLING_ROWS + 100)
+        )
 
         # Simulate a CSV reader
         string_data = "\n".join([",".join(row) for row in large_data])

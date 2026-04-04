@@ -220,10 +220,9 @@ pytest
         mock_check_packages.assert_called_once()
 
         # Check that recommendations are printed
-        print_calls = []
-        for call in mock_print.call_args_list:
-            if call[0]:  # Check if call args are not empty
-                print_calls.append(call[0][0])
+        print_calls = [
+            call[0][0] for call in mock_print.call_args_list if call[0]
+        ]
         recommendations_found = any(
             "pip list --outdated" in call for call in print_calls
         )
