@@ -153,12 +153,10 @@ class CheckCSVDataTests(unittest.TestCase):
             csv_path = Path(temp_dir) / "permission_denied.csv"
             csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
 
-            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
+                 mock.patch.object(Path, "open", side_effect=PermissionError("Access denied")):
                 # Mock Path.open specifically to raise PermissionError
-                with mock.patch.object(
-                    Path, "open", side_effect=PermissionError("Access denied")
-                ):
-                    stats = check_csv_data.analyze_csv_file(csv_path)
+                stats = check_csv_data.analyze_csv_file(csv_path)
 
             assert stats["exists"]
             assert "error" in stats
@@ -172,12 +170,10 @@ class CheckCSVDataTests(unittest.TestCase):
             csv_path = Path(temp_dir) / "malformed.csv"
             csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
 
-            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
+                 mock.patch("csv.reader", side_effect=csv_module.Error("Malformed CSV")):
                 # Mock csv.reader to raise a CSV error
-                with mock.patch(
-                    "csv.reader", side_effect=csv_module.Error("Malformed CSV")
-                ):
-                    stats = check_csv_data.analyze_csv_file(csv_path)
+                stats = check_csv_data.analyze_csv_file(csv_path)
 
             assert stats["exists"]
             assert "error" in stats
@@ -191,19 +187,17 @@ class CheckCSVDataTests(unittest.TestCase):
             csv_content = "col1,col2,col3\nval1,val2,val3\n"
             csv_path.write_text(csv_content, encoding="utf-8")
 
-            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
+                 mock.patch.object(Path, "stat") as mock_stat:
                 # Mock the file size to exceed the large file threshold
-                with mock.patch.object(Path, "stat") as mock_stat:
-                    mock_stat_result = mock.Mock()
-                    mock_stat_result.st_size = check_csv_data.LARGE_FILE_THRESHOLD + 1
-                    mock_stat.return_value = mock_stat_result
+                mock_stat_result = mock.Mock()
+                mock_stat_result.st_size = check_csv_data.LARGE_FILE_THRESHOLD + 1
+                mock_stat.return_value = mock_stat_result
 
-                    stats = check_csv_data.analyze_csv_file(csv_path)
+                stats = check_csv_data.analyze_csv_file(csv_path)
 
             assert stats["exists"]
-            self.assertEqual(
-                stats["size_bytes"], check_csv_data.LARGE_FILE_THRESHOLD + 1
-            )
+            assert stats["size_bytes"] == check_csv_data.LARGE_FILE_THRESHOLD + 1
             assert stats["has_data"]
 
     def test_main_function_exists_and_callable(self) -> None:
@@ -219,15 +213,11 @@ class CheckCSVDataTests(unittest.TestCase):
             # Write some valid content first
             csv_path.write_text("col1,col2\n", encoding="utf-8")
 
-            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)):
+            with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
+                 mock.patch("builtins.next", side_effect=UnicodeDecodeError(
+                     "utf-8", b"\x80\x81", 0, 1, "invalid start byte")):
                 # Mock the CSV reader's next() call to raise UnicodeDecodeError
-                with mock.patch(
-                    "builtins.next",
-                    side_effect=UnicodeDecodeError(
-                        "utf-8", b"\x80\x81", 0, 1, "invalid start byte"
-                    ),
-                ):
-                    stats = check_csv_data.analyze_csv_file(csv_path)
+                stats = check_csv_data.analyze_csv_file(csv_path)
 
             assert stats["exists"]
             assert "error" in stats

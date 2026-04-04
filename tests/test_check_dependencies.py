@@ -199,9 +199,7 @@ pytest
             check_dependencies.check_python_version()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertTrue(
-            any("Python version is compatible" in call for call in print_calls)
-        )
+        assert any("Python version is compatible" in call for call in print_calls)
 
     @patch("builtins.print")
     def test_check_python_version_always_compatible(self, mock_print):

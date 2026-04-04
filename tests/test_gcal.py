@@ -8,6 +8,8 @@ from pathlib import Path
 from unittest import mock
 from zoneinfo import ZoneInfo
 
+import pytest
+
 mock_google = mock.MagicMock()
 mock_google.auth.transport.requests.Request = mock.MagicMock()
 mock_google.auth.exceptions.RefreshError = Exception
@@ -38,20 +40,20 @@ class GcalCredentialsTests(unittest.TestCase):
     def test_get_credentials_raises_error_when_token_file_missing(self):
         self.mock_token_path.exists.return_value = False
 
-        with self.assertRaises(FileNotFoundError) as cm:
+        with pytest.raises(FileNotFoundError) as cm:
             gcal.get_credentials()
 
-        assert "OAuth token not found" in str(cm.exception)
+        assert "OAuth token not found" in str(cm.value)
 
     def test_get_credentials_validates_file_location_security(self):
         self.mock_token_path.exists.return_value = True
-        self.mock_token_path.resolve.return_value = Path("/tmp/malicious_token")
+        self.mock_token_path.resolve.return_value = Path("/tmp/malicious_token")  # nosec B108
 
         with mock.patch("pathlib.Path.home", return_value=Path("/home/user")):
-            with self.assertRaises(PermissionError) as cm:
+            with pytest.raises(PermissionError) as cm:
                 gcal.get_credentials()
 
-        assert "outside user home directory" in str(cm.exception)
+        assert "outside user home directory" in str(cm.value)
 
     def test_get_credentials_warns_about_permissive_file_permissions(self):
         mock_stat = mock.Mock()
@@ -95,10 +97,10 @@ class GcalCredentialsTests(unittest.TestCase):
         self.mock_token_path.stat.return_value = mock_stat
 
         with mock.patch("pathlib.Path.home", return_value=Path("/home/user")):
-            with self.assertRaises(PermissionError) as cm:
+            with pytest.raises(PermissionError) as cm:
                 gcal.get_credentials()
 
-        assert "unexpectedly large" in str(cm.exception)
+        assert "unexpectedly large" in str(cm.value)
 
     @mock.patch("pickle.load")
     @mock.patch("builtins.open", mock.mock_open())
@@ -113,7 +115,7 @@ class GcalCredentialsTests(unittest.TestCase):
 
         mock_creds = mock.Mock()
         mock_creds.expired = True
-        mock_creds.refresh_token = "refresh_token"
+        mock_creds.refresh_token = "refresh_token"  # nosec B105
         mock_pickle_load.return_value = mock_creds
 
         self.mock_token_path.exists.return_value = True
@@ -330,7 +332,7 @@ class GcalTimezoneTests(unittest.TestCase):
         assert actual == expected
 
     def test_parse_block_time_rejects_invalid_values(self) -> None:
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             gcal._parse_block_time(dt.date(2026, 1, 15), "25:00", "start")
 
 

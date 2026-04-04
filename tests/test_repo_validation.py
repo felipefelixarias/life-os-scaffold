@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import tempfile
 import unittest
 from importlib.util import module_from_spec, spec_from_file_location
@@ -17,7 +18,7 @@ class RepoValidationTests(unittest.TestCase):
     def test_repo_validation_script_passes(self) -> None:
         result = subprocess.run(
             [
-                "python3",
+                sys.executable,
                 "01-ops/life-os/scripts/validate_repo.py",
             ],
             cwd=REPO_ROOT,
@@ -50,10 +51,9 @@ class RepoValidationTests(unittest.TestCase):
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 errors = validate_repo.validate_command_coverage()
 
-        self.assertEqual(
-            errors,
-            ["Command file is not referenced in docs: .claude/commands/orphan.md"],
-        )
+        assert errors == [
+            "Command file is not referenced in docs: .claude/commands/orphan.md"
+        ]
 
     def test_csv_structure_validation_detects_column_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -334,7 +334,7 @@ class RepoValidationTests(unittest.TestCase):
         """Test that command_reference_docs returns correct markdown file paths."""
         docs = validate_repo.command_reference_docs()
         # Should include docs like README.md, CLAUDE.md, etc.
-        self.assertIsInstance(docs, list)
+        assert isinstance(docs, list)
         assert all(isinstance(doc, Path) for doc in docs)
 
     @mock.patch("builtins.print")
@@ -346,9 +346,9 @@ class RepoValidationTests(unittest.TestCase):
 
     def test_main_function_with_lint_flag(self) -> None:
         """Test main function with --lint flag."""
-        with mock.patch("sys.argv", ["validate_repo.py", "--lint"]):
-            with mock.patch.object(validate_repo, "lint_whitespace", return_value=[]):
-                result = validate_repo.main()
+        with mock.patch("sys.argv", ["validate_repo.py", "--lint"]), \
+             mock.patch.object(validate_repo, "lint_whitespace", return_value=[]):
+            result = validate_repo.main()
         assert result == 0
 
     def test_main_function_with_errors_returns_non_zero(self) -> None:
