@@ -45,11 +45,11 @@ make gcal-test
 life-os uses two approaches to interact with Google Calendar:
 
 1. **gcalcli CLI** — for quick reads (`gcalcli agenda`), used by skills like `/daily`
-2. **`scripts/gcal.py`** — a Python wrapper around the Google Calendar API, used for creating, updating, and deleting events
+2. **`01-ops/life-os/scripts/gcal.py`** — a Python wrapper around the Google Calendar API, used for creating, updating, and deleting events
 
 The Python wrapper (`gcal.py`) reuses gcalcli's saved OAuth token at `~/.gcalcli_oauth`, so you only authenticate once.
 
-## What `scripts/gcal.py` Provides
+## What `01-ops/life-os/scripts/gcal.py` Provides
 
 | Function | Description |
 |----------|-------------|
