@@ -47,7 +47,7 @@ class RefreshExampleDataTests(unittest.TestCase):
                 reader = csv.reader(f)
                 actual_rows = list(reader)
 
-            expected = [headers] + example_rows
+            expected = [headers, *example_rows]
             assert actual_rows == expected
 
     def test_refresh_canonical_csvs_creates_all_files(self) -> None:
