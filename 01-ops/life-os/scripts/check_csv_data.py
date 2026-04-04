@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import csv
+import re
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Set, Tuple
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -16,6 +18,92 @@ LOGS_DIR = REPO_ROOT / "01-ops" / "life-os" / "logs"
 LARGE_FILE_THRESHOLD = 1024 * 1024  # 1MB
 MAX_SAMPLING_ROWS = 1000
 SIZE_THRESHOLD_BYTES = 1024  # 1KB
+
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TIME_RE = re.compile(r"^\d{2}:\d{2}$")
+
+# Expected headers and validation rules per CSV file.
+# "id_col" is the column used for duplicate detection.
+# "required" lists columns that must not be empty.
+# "date_cols" / "time_cols" list columns whose non-empty values are validated.
+SCHEMAS: Dict[str, Dict[str, Any]] = {
+    "tasks.csv": {
+        "header": [
+            "task_id", "title", "domain", "project_id", "status", "priority",
+            "effort_mins", "due_date", "energy", "context", "source",
+            "next_step", "scheduled_date", "scheduled_start", "scheduled_end",
+            "last_updated", "notes",
+        ],
+        "id_col": "task_id",
+        "required": ["task_id", "title", "domain"],
+        "date_cols": ["due_date", "scheduled_date", "last_updated"],
+        "time_cols": ["scheduled_start", "scheduled_end"],
+    },
+    "goals.csv": {
+        "header": [
+            "goal_id", "area", "title", "horizon", "target_date",
+            "metric_name", "metric_target", "metric_current", "status",
+            "last_updated", "notes",
+        ],
+        "id_col": "goal_id",
+        "required": ["goal_id", "area", "title"],
+        "date_cols": ["target_date", "last_updated"],
+        "time_cols": [],
+    },
+    "habits.csv": {
+        "header": [
+            "habit_id", "area", "name", "frequency", "target_per_week",
+            "min_value", "unit", "active", "notes", "last_updated",
+        ],
+        "id_col": "habit_id",
+        "required": [
+            "habit_id", "area", "name", "frequency", "target_per_week",
+            "min_value", "unit", "active",
+        ],
+        "date_cols": ["last_updated"],
+        "time_cols": [],
+    },
+    "projects.csv": {
+        "header": [
+            "project_id", "area", "name", "status", "start_date",
+            "target_date", "description", "last_updated", "notes", "active",
+        ],
+        "id_col": "project_id",
+        "required": ["project_id", "area", "name"],
+        "date_cols": ["start_date", "target_date", "last_updated"],
+        "time_cols": [],
+    },
+    "calendar_events.csv": {
+        "header": [
+            "event_id", "date", "start_time", "end_time", "title",
+            "location", "attendees", "source", "calendar", "notes",
+        ],
+        "id_col": "event_id",
+        "required": ["event_id", "date", "start_time", "end_time", "title"],
+        "date_cols": ["date"],
+        "time_cols": ["start_time", "end_time"],
+    },
+    "time_blocks.csv": {
+        "header": [
+            "block_id", "date", "start", "end", "title", "domain",
+            "task_id", "source", "status", "notes",
+        ],
+        "id_col": "block_id",
+        "required": ["block_id", "date", "start", "end", "title"],
+        "date_cols": ["date"],
+        "time_cols": ["start", "end"],
+    },
+    "time_logs.csv": {
+        "header": [
+            "log_id", "date", "start_time", "end_time", "activity",
+            "domain", "duration_mins", "task_id", "notes",
+        ],
+        "id_col": "log_id",
+        "required": ["log_id", "date", "start_time", "end_time", "activity"],
+        "date_cols": ["date"],
+        "time_cols": ["start_time", "end_time"],
+    },
+}
 
 
 def _init_csv_stats(csv_path: Path) -> dict:
@@ -100,7 +188,80 @@ def analyze_csv_file(csv_path: Path) -> dict:
     return stats
 
 
-def main() -> None:
+def validate_csv_file(csv_path: Path) -> List[str]:
+    """Validate a CSV file against its schema. Returns a list of error strings."""
+    errors: List[str] = []
+    filename = csv_path.name
+    schema = SCHEMAS.get(filename)
+    if schema is None:
+        return errors  # no schema defined, skip validation
+
+    if not csv_path.exists():
+        errors.append(f"{filename}: file not found")
+        return errors
+
+    try:
+        with csv_path.open(newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                errors.append(f"{filename}: empty file, no header row")
+                return errors
+
+            actual = list(reader.fieldnames)
+            expected = schema["header"]
+            if actual != expected:
+                errors.append(
+                    f"{filename}: header mismatch — got {actual}, expected {expected}"
+                )
+                return errors  # can't validate rows if header is wrong
+
+            id_col: str = schema["id_col"]
+            required: List[str] = schema["required"]
+            date_cols: List[str] = schema["date_cols"]
+            time_cols: List[str] = schema["time_cols"]
+
+            seen_ids: Set[str] = set()
+            for row_num, row in enumerate(reader, start=2):
+                row_id = row.get(id_col, "")
+
+                # Duplicate ID check
+                if row_id:
+                    if row_id in seen_ids:
+                        errors.append(
+                            f"{filename}:{row_num}: duplicate {id_col} '{row_id}'"
+                        )
+                    seen_ids.add(row_id)
+
+                # Required fields
+                for col in required:
+                    if not row.get(col, "").strip():
+                        errors.append(
+                            f"{filename}:{row_num}: required field '{col}' is empty"
+                        )
+
+                # Date format
+                for col in date_cols:
+                    val = row.get(col, "").strip()
+                    if val and not DATE_RE.match(val):
+                        errors.append(
+                            f"{filename}:{row_num}: invalid date in '{col}': '{val}'"
+                        )
+
+                # Time format
+                for col in time_cols:
+                    val = row.get(col, "").strip()
+                    if val and not TIME_RE.match(val):
+                        errors.append(
+                            f"{filename}:{row_num}: invalid time in '{col}': '{val}'"
+                        )
+
+    except (OSError, csv.Error) as e:
+        errors.append(f"{filename}: read error — {e}")
+
+    return errors
+
+
+def main() -> int:
     """Analyze all CSV files and print summary."""
     print("CSV Data Analysis")
     print("=" * 50)
@@ -146,9 +307,29 @@ def main() -> None:
         else:
             print("   📝 Header only (no data)")
 
+    # Validation pass
     print("\n" + "=" * 50)
-    print("Analysis complete. Use this during development to check CSV state.")
+    print("\nCSV Validation")
+    print("=" * 50)
+
+    all_errors: List[str] = []
+    for csv_file in all_files:
+        file_errors = validate_csv_file(csv_file)
+        if file_errors:
+            all_errors.extend(file_errors)
+            for err in file_errors:
+                print(f"   ❌ {err}")
+        elif csv_file.exists() and csv_file.name in SCHEMAS:
+            print(f"   ✅ {csv_file.name} — valid")
+
+    print("\n" + "=" * 50)
+    if all_errors:
+        print(f"Validation found {len(all_errors)} error(s).")
+    else:
+        print("All CSV files valid.")
+
+    return len(all_errors)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

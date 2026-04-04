@@ -4,7 +4,8 @@ This document defines the structure and purpose of all CSV files in the life-os 
 
 ## File Locations
 
-All canonical data files are stored in: `01-ops/life-os/data/canonical/`
+- Canonical data files: `01-ops/life-os/data/canonical/`
+- Log files (daily_log, activity_log): `01-ops/life-os/logs/`
 
 ---
 
@@ -73,15 +74,15 @@ Specific actions to complete, organized by priority and context.
 
 ### Schema
 ```csv
-task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes
+task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes
 ```
 
 | Column | Type | Required | Description |
 |--------|------|----------|-------------|
 | `task_id` | String | Yes | Unique identifier |
-| `project_id` | String | No | Link to projects.csv |
 | `title` | String | Yes | Task description |
 | `domain` | String | Yes | Life area this belongs to |
+| `project_id` | String | No | Link to projects.csv |
 | `status` | Enum | No | "queued", "in_progress", "blocked", "completed" |
 | `priority` | Integer | No | 1-5 (1=highest priority) |
 | `effort_mins` | Integer | No | Estimated minutes to complete |
@@ -167,24 +168,24 @@ Actual time spent tracking for analysis and reflection.
 
 ### Schema
 ```csv
-log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated
+log_id,date,start_time,end_time,activity,domain,duration_mins,task_id,notes
 ```
 
 | Column | Type | Required | Description |
 |--------|------|----------|-------------|
 | `log_id` | String | Yes | Unique identifier |
 | `date` | Date | Yes | ISO format date |
+| `start_time` | Time | Yes | HH:MM format when started |
+| `end_time` | Time | Yes | HH:MM format when finished |
 | `activity` | String | Yes | What was done |
 | `domain` | String | No | Life area |
 | `duration_mins` | Integer | No | Total minutes spent, if logged directly |
-| `start_time` | Time | Yes | HH:MM format when started |
-| `end_time` | Time | Yes | HH:MM format when finished |
+| `task_id` | String | No | Link to tasks.csv |
 | `notes` | String | No | Additional context |
-| `last_updated` | Date | No | ISO format when logged |
 
 ### Example
 ```csv
-log_001,2026-04-01,Code review session,work,75,14:30,15:45,Very productive session,2026-04-01
+log_001,2026-04-01,14:30,15:45,Code review session,work,75,,Very productive session
 ```
 
 ---

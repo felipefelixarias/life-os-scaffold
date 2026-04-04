@@ -226,5 +226,99 @@ class CheckCSVDataTests(unittest.TestCase):
             assert "Encoding error" in stats["error"]
 
 
+    def test_validate_csv_file_valid(self) -> None:
+        """Test validation passes for a well-formed CSV."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "tasks.csv"
+            csv_path.write_text(
+                "task_id,title,domain,project_id,status,priority,effort_mins,"
+                "due_date,energy,context,source,next_step,scheduled_date,"
+                "scheduled_start,scheduled_end,last_updated,notes\n"
+                "t1,Do thing,work,,queued,medium,30,2026-04-01,medium,desk,"
+                "manual,Start,,,,,\n",
+                encoding="utf-8",
+            )
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert errors == []
+
+    def test_validate_csv_file_header_mismatch(self) -> None:
+        """Test validation catches header mismatch."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "tasks.csv"
+            csv_path.write_text("wrong,headers\nval1,val2\n", encoding="utf-8")
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert len(errors) == 1
+            assert "header mismatch" in errors[0]
+
+    def test_validate_csv_file_duplicate_id(self) -> None:
+        """Test validation catches duplicate IDs."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "habits.csv"
+            csv_path.write_text(
+                "habit_id,area,name,frequency,target_per_week,min_value,unit,"
+                "active,notes,last_updated\n"
+                "h1,health,Sleep,daily,7,7,hours,true,,2026-04-01\n"
+                "h1,health,Run,daily,5,1,session,true,,2026-04-01\n",
+                encoding="utf-8",
+            )
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert any("duplicate" in e for e in errors)
+
+    def test_validate_csv_file_bad_date(self) -> None:
+        """Test validation catches invalid date formats."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "goals.csv"
+            csv_path.write_text(
+                "goal_id,area,title,horizon,target_date,metric_name,"
+                "metric_target,metric_current,status,last_updated,notes\n"
+                "g1,health,Run,quarter,04/01/2026,,,,active,,\n",
+                encoding="utf-8",
+            )
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert any("invalid date" in e for e in errors)
+
+    def test_validate_csv_file_empty_required(self) -> None:
+        """Test validation catches empty required fields."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "goals.csv"
+            csv_path.write_text(
+                "goal_id,area,title,horizon,target_date,metric_name,"
+                "metric_target,metric_current,status,last_updated,notes\n"
+                "g1,,My goal,quarter,,,,,active,,\n",
+                encoding="utf-8",
+            )
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert any("required field 'area' is empty" in e for e in errors)
+
+    def test_validate_csv_file_unknown_schema(self) -> None:
+        """Test validation skips files without a defined schema."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "unknown.csv"
+            csv_path.write_text("a,b,c\n1,2,3\n", encoding="utf-8")
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert errors == []
+
+    def test_validate_csv_file_nonexistent(self) -> None:
+        """Test validation reports missing file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "tasks.csv"
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert len(errors) == 1
+            assert "file not found" in errors[0]
+
+    def test_validate_csv_file_bad_time(self) -> None:
+        """Test validation catches invalid time formats."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            csv_path = Path(temp_dir) / "calendar_events.csv"
+            csv_path.write_text(
+                "event_id,date,start_time,end_time,title,location,attendees,"
+                "source,calendar,notes\n"
+                "e1,2026-04-01,9am,10am,Meeting,,,manual,,\n",
+                encoding="utf-8",
+            )
+            errors = check_csv_data.validate_csv_file(csv_path)
+            assert any("invalid time" in e for e in errors)
+
+
 if __name__ == "__main__":
     unittest.main()
