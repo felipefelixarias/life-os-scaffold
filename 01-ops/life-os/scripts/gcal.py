@@ -71,10 +71,11 @@ def get_credentials() -> Any:
     from google.auth.transport.requests import Request
 
     if not OAUTH_TOKEN_PATH.exists():
-        raise FileNotFoundError(
+        error_msg = (
             f"OAuth token not found at {OAUTH_TOKEN_PATH}. "
-            "Install and authenticate gcalcli first: gcalcli list",
+            "Install and authenticate gcalcli first: gcalcli list"
         )
+        raise FileNotFoundError(error_msg)
 
     # Ensure the token file is within the expected location for security
     try:
@@ -91,7 +92,8 @@ def get_credentials() -> Any:
             )
 
     except (OSError, RuntimeError) as e:
-        raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
+        error_msg = f"Cannot validate OAuth token path: {e}"
+        raise PermissionError(error_msg) from e
 
     # Note: pickle.load() can execute arbitrary code. This is acceptable because
     # the token file is in the user's home directory and managed by gcalcli.
@@ -164,7 +166,8 @@ def _parse_block_time(date: dt.date, time_str: str, field_name: str) -> dt.datet
     try:
         time_value = dt.time.fromisoformat(time_str)
     except ValueError as exc:
-        raise ValueError(f"invalid {field_name} time '{time_str}'") from exc
+        error_msg = f"invalid {field_name} time '{time_str}'"
+        raise ValueError(error_msg) from exc
 
     return dt.datetime.combine(
         date,
@@ -266,7 +269,7 @@ def create_event(
         logger.exception("Authentication error while creating event '%s'", summary)
         return ""
     except ValueError as e:
-        logger.error("Invalid input while creating event '%s': %s", summary, e)
+        logger.exception("Invalid input while creating event '%s'", summary)
         return ""
     except Exception as e:
         _log_google_api_error(f"creating event '{summary}'", e)
@@ -300,7 +303,7 @@ def update_event(
         logger.exception("Authentication error while updating event %s", event_id)
         return {}
     except ValueError as e:
-        logger.error("Invalid input while updating event %s: %s", event_id, e)
+        logger.exception("Invalid input while updating event %s", event_id)
         return {}
     except Exception as e:
         _log_google_api_error(f"updating event {event_id}", e)

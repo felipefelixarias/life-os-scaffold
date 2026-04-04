@@ -22,11 +22,12 @@ def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
             capture_output=True,
             text=True,
             timeout=30,
+            check=False,  # We handle return codes manually
         )
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return 1, "", "Command timed out"
-    except Exception as e:
+    except (OSError, ValueError) as e:
         return 1, "", str(e)
 
 
