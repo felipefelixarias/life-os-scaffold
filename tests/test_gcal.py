@@ -1,24 +1,24 @@
 import datetime as dt
-import unittest
-from unittest import mock
-from pathlib import Path
-from zoneinfo import ZoneInfo
-
-from importlib.util import module_from_spec, spec_from_file_location
 
 # Mock Google API modules before importing gcal
 import sys
+import unittest
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+from unittest import mock
+from zoneinfo import ZoneInfo
+
 mock_google = mock.MagicMock()
 mock_google.auth.transport.requests.Request = mock.MagicMock()
 mock_google.auth.exceptions.RefreshError = Exception
-sys.modules['google'] = mock_google
-sys.modules['google.auth'] = mock_google.auth
-sys.modules['google.auth.transport'] = mock_google.auth.transport
-sys.modules['google.auth.transport.requests'] = mock_google.auth.transport.requests
-sys.modules['google.auth.exceptions'] = mock_google.auth.exceptions
-sys.modules['googleapiclient'] = mock.MagicMock()
-sys.modules['googleapiclient.discovery'] = mock.MagicMock()
-sys.modules['googleapiclient.errors'] = mock.MagicMock()
+sys.modules["google"] = mock_google
+sys.modules["google.auth"] = mock_google.auth
+sys.modules["google.auth.transport"] = mock_google.auth.transport
+sys.modules["google.auth.transport.requests"] = mock_google.auth.transport.requests
+sys.modules["google.auth.exceptions"] = mock_google.auth.exceptions
+sys.modules["googleapiclient"] = mock.MagicMock()
+sys.modules["googleapiclient.discovery"] = mock.MagicMock()
+sys.modules["googleapiclient.errors"] = mock.MagicMock()
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts" / "gcal.py"
@@ -73,7 +73,7 @@ class GcalCredentialsTests(unittest.TestCase):
             mock.patch("pathlib.Path.home", return_value=Path("/home/user")),
             mock.patch.object(gcal, "logger") as mock_logger,
             mock.patch("pickle.load", return_value=mock_creds),
-            mock.patch("builtins.open", mock.mock_open())
+            mock.patch("builtins.open", mock.mock_open()),
         ):
             gcal.get_credentials()
 
@@ -94,9 +94,7 @@ class GcalCredentialsTests(unittest.TestCase):
         self.mock_token_path.resolve.return_value = mock_resolved_path
         self.mock_token_path.stat.return_value = mock_stat
 
-        with (
-            mock.patch("pathlib.Path.home", return_value=Path("/home/user"))
-        ):
+        with mock.patch("pathlib.Path.home", return_value=Path("/home/user")):
             with self.assertRaises(PermissionError) as cm:
                 gcal.get_credentials()
 
@@ -126,7 +124,7 @@ class GcalCredentialsTests(unittest.TestCase):
         with (
             mock.patch("pathlib.Path.home", return_value=Path("/home/user")),
             mock.patch("google.auth.transport.requests.Request"),
-            mock.patch("pickle.dump") as mock_pickle_dump
+            mock.patch("pickle.dump") as mock_pickle_dump,
         ):
             result = gcal.get_credentials()
 
@@ -142,7 +140,9 @@ class GcalServiceTests(unittest.TestCase):
 
     @mock.patch.object(gcal, "get_credentials")
     @mock.patch("googleapiclient.discovery.build")
-    def test_get_service_creates_calendar_service(self, mock_build, mock_get_credentials):
+    def test_get_service_creates_calendar_service(
+        self, mock_build, mock_get_credentials
+    ):
         mock_creds = mock.Mock()
         mock_get_credentials.return_value = mock_creds
         mock_service = mock.Mock()
@@ -150,7 +150,9 @@ class GcalServiceTests(unittest.TestCase):
 
         result = gcal.get_service()
 
-        mock_build.assert_called_once_with("calendar", "v3", credentials=mock_creds, cache_discovery=False)
+        mock_build.assert_called_once_with(
+            "calendar", "v3", credentials=mock_creds, cache_discovery=False
+        )
         self.assertEqual(result, mock_service)
 
     @mock.patch.object(gcal, "get_credentials")
@@ -175,14 +177,16 @@ class GcalServiceTests(unittest.TestCase):
 class GcalCalendarOperationsTests(unittest.TestCase):
     def setUp(self):
         self.mock_service = mock.Mock()
-        self.service_patcher = mock.patch.object(gcal, "get_service", return_value=self.mock_service)
+        self.service_patcher = mock.patch.object(
+            gcal, "get_service", return_value=self.mock_service
+        )
         self.service_patcher.start()
         self.addCleanup(self.service_patcher.stop)
 
     def test_list_calendars_returns_calendar_list(self):
         expected_calendars = [
             {"id": "primary", "summary": "Primary Calendar"},
-            {"id": "test@example.com", "summary": "Test Calendar"}
+            {"id": "test@example.com", "summary": "Test Calendar"},
         ]
 
         mock_calendar_list = mock.Mock()
@@ -199,7 +203,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
     def test_get_agenda_retrieves_events_for_date_range(self):
         expected_events = [
             {"id": "event1", "summary": "Meeting 1"},
-            {"id": "event2", "summary": "Meeting 2"}
+            {"id": "event2", "summary": "Meeting 2"},
         ]
 
         mock_events = mock.Mock()
@@ -230,7 +234,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
             summary="Test Event",
             start_dt=start_dt,
             end_dt=end_dt,
-            description="Test Description"
+            description="Test Description",
         )
 
         self.assertEqual(result, "new_event_id")
@@ -251,8 +255,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
         gcal.delete_event("event_123", "calendar_456")
 
         mock_events.delete.assert_called_once_with(
-            calendarId="calendar_456",
-            eventId="event_123"
+            calendarId="calendar_456", eventId="event_123"
         )
 
     def test_search_events_filters_by_query(self):
@@ -264,7 +267,9 @@ class GcalCalendarOperationsTests(unittest.TestCase):
         mock_events.list.return_value = mock_list_call
         self.mock_service.events.return_value = mock_events
 
-        result = gcal.search_events("meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16))
+        result = gcal.search_events(
+            "meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16)
+        )
 
         self.assertEqual(result, expected_events)
 
@@ -278,7 +283,7 @@ class GcalUtilityTests(unittest.TestCase):
         event = {
             "start": {"dateTime": "2026-01-15T09:00:00-08:00"},
             "end": {"dateTime": "2026-01-15T10:00:00-08:00"},
-            "summary": "Test Meeting"
+            "summary": "Test Meeting",
         }
 
         result = gcal.format_event_line(event)
@@ -288,10 +293,7 @@ class GcalUtilityTests(unittest.TestCase):
         self.assertIn("10:00", result)
 
     def test_format_event_line_handles_all_day_events(self):
-        event = {
-            "start": {"date": "2026-01-15"},
-            "summary": "All Day Event"
-        }
+        event = {"start": {"date": "2026-01-15"}, "summary": "All Day Event"}
 
         result = gcal.format_event_line(event)
 
@@ -301,7 +303,7 @@ class GcalUtilityTests(unittest.TestCase):
     def test_format_event_line_handles_missing_summary(self):
         event = {
             "start": {"dateTime": "2026-01-15T09:00:00-08:00"},
-            "end": {"dateTime": "2026-01-15T10:00:00-08:00"}
+            "end": {"dateTime": "2026-01-15T10:00:00-08:00"},
         }
 
         result = gcal.format_event_line(event)
@@ -352,14 +354,22 @@ class GcalPlannerTests(unittest.TestCase):
 
     def test_push_day_plan_skips_invalid_blocks_and_rolls_over_midnight(self) -> None:
         blocks = [
-            {"start": "09:00", "end": "10:00", "title": "Focus", "domain": "work", "task_id": "T-1"},
+            {
+                "start": "09:00",
+                "end": "10:00",
+                "title": "Focus",
+                "domain": "work",
+                "task_id": "T-1",
+            },
             {"start": "23:30", "end": "00:15", "title": "Late wrap", "domain": "ops"},
             {"start": "nope", "end": "10:00", "title": "Broken"},
         ]
 
         with (
             mock.patch.object(gcal, "clear_life_os_events", return_value=0),
-            mock.patch.object(gcal, "create_event", side_effect=["evt-1", "evt-2"]) as create_event,
+            mock.patch.object(
+                gcal, "create_event", side_effect=["evt-1", "evt-2"]
+            ) as create_event,
         ):
             created = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))
 

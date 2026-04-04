@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Google Calendar API wrapper using gcalcli's saved OAuth token."""
+
 from __future__ import annotations
 
 import datetime as dt
@@ -14,7 +15,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     handler = logging.StreamHandler()
-    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     formatter = logging.Formatter(log_format)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -85,7 +86,9 @@ def get_credentials() -> Any:
         file_stat = resolved_path.stat()
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
             perms = oct(file_stat.st_mode)
-            logger.warning("OAuth token file has overly permissive permissions: %s", perms)
+            logger.warning(
+                "OAuth token file has overly permissive permissions: %s", perms
+            )
 
     except (OSError, RuntimeError) as e:
         raise PermissionError(f"Cannot validate OAuth token path: {e}") from e
@@ -100,7 +103,8 @@ def get_credentials() -> Any:
             raise ValueError(error_msg)
 
         with OAUTH_TOKEN_PATH.open("rb") as f:
-            creds = pickle.load(f)
+            # This follows Google's official OAuth credential storage pattern
+            creds = pickle.load(f)  # nosec B301
     except (OSError, pickle.PickleError, ValueError) as e:
         error_msg = f"Cannot load OAuth credentials: {e}"
         raise PermissionError(error_msg) from e
@@ -118,8 +122,11 @@ def get_service() -> Any:
     global _service_cache
     if _service_cache is None:
         from googleapiclient.discovery import build
+
         creds = get_credentials()
-        _service_cache = build("calendar", "v3", credentials=creds, cache_discovery=False)
+        _service_cache = build(
+            "calendar", "v3", credentials=creds, cache_discovery=False
+        )
     return _service_cache
 
 
@@ -127,8 +134,14 @@ def _log_google_api_error(action: str, exc: Exception) -> None:
     """Log Google API errors consistently without requiring the dependency at import time."""
     try:
         from googleapiclient.errors import HttpError
+
         if isinstance(exc, HttpError):
-            logger.error("Google Calendar API error while %s (HTTP %s): %s", action, exc.resp.status, exc)
+            logger.error(
+                "Google Calendar API error while %s (HTTP %s): %s",
+                action,
+                exc.resp.status,
+                exc,
+            )
             return
     except ImportError:
         pass
@@ -140,6 +153,7 @@ def _is_http_error_status(exc: Exception, status: int) -> bool:
     """Return whether the given exception is a matching Google API HttpError."""
     try:
         from googleapiclient.errors import HttpError
+
         return isinstance(exc, HttpError) and exc.resp.status == status
     except ImportError:
         return False
@@ -191,15 +205,19 @@ def get_agenda(
         page_token = None
 
         while True:
-            result = service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                timeZone=tz,
-                singleEvents=True,
-                orderBy="startTime",
-                pageToken=page_token,
-            ).execute()
+            result = (
+                service.events()
+                .list(
+                    calendarId=calendar_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    timeZone=tz,
+                    singleEvents=True,
+                    orderBy="startTime",
+                    pageToken=page_token,
+                )
+                .execute()
+            )
 
             events.extend(result.get("items", []))
             page_token = result.get("nextPageToken")
@@ -211,10 +229,12 @@ def get_agenda(
 
         return events
     except (FileNotFoundError, PermissionError):
-        logger.exception("Authentication error while fetching events for %s", start_date)
+        logger.exception(
+            "Authentication error while fetching events for %s", start_date
+        )
         return []
     except Exception as e:
-        _log_google_api_error("fetching events for %s" % start_date, e)
+        _log_google_api_error(f"fetching events for {start_date}", e)
         return []
 
 
@@ -253,7 +273,7 @@ def create_event(
         logger.error("Invalid input while creating event '%s': %s", summary, e)
         return ""
     except Exception as e:
-        _log_google_api_error("creating event '%s'" % summary, e)
+        _log_google_api_error(f"creating event '{summary}'", e)
         return ""
 
 
@@ -274,9 +294,11 @@ def update_event(
             else:
                 event[key] = value
 
-        updated = service.events().update(
-            calendarId=calendar_id, eventId=event_id, body=event
-        ).execute()
+        updated = (
+            service.events()
+            .update(calendarId=calendar_id, eventId=event_id, body=event)
+            .execute()
+        )
         return updated
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while updating event %s", event_id)
@@ -285,7 +307,7 @@ def update_event(
         logger.error("Invalid input while updating event %s: %s", event_id, e)
         return {}
     except Exception as e:
-        _log_google_api_error("updating event %s" % event_id, e)
+        _log_google_api_error(f"updating event {event_id}", e)
         return {}
 
 
@@ -298,9 +320,11 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
         logger.exception("Authentication error while deleting event %s", event_id)
     except Exception as e:
         if _is_http_error_status(e, 404):
-            logger.warning("Event %s not found (already deleted or never existed)", event_id)
+            logger.warning(
+                "Event %s not found (already deleted or never existed)", event_id
+            )
         else:
-            _log_google_api_error("deleting event %s" % event_id, e)
+            _log_google_api_error(f"deleting event {event_id}", e)
 
 
 def search_events(
@@ -316,21 +340,25 @@ def search_events(
         time_max = _rfc3339(end_date)
 
         service = get_service()
-        result = service.events().list(
-            calendarId=calendar_id,
-            timeMin=time_min,
-            timeMax=time_max,
-            timeZone=tz,
-            q=query,
-            singleEvents=True,
-            orderBy="startTime",
-        ).execute()
+        result = (
+            service.events()
+            .list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                timeZone=tz,
+                q=query,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
         return result.get("items", [])
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while searching events for '%s'", query)
         return []
     except Exception as e:
-        _log_google_api_error("searching events for '%s'" % query, e)
+        _log_google_api_error(f"searching events for '{query}'", e)
         return []
 
 
@@ -403,7 +431,9 @@ def push_day_plan(
             # Handle end time on next day if earlier than start time
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
-                logger.info("Block '%s' spans midnight, end time adjusted to next day", title)
+                logger.info(
+                    "Block '%s' spans midnight, end time adjusted to next day", title
+                )
 
         except ValueError as e:
             logger.warning("Skipping block '%s': invalid time format - %s", title, e)
@@ -432,11 +462,20 @@ def push_day_plan(
     failed_blocks = total_blocks - successful_blocks - skipped_blocks
 
     if skipped_blocks > 0:
-        logger.warning("Day plan push summary: %s/%s created, %s skipped due to invalid time format", successful_blocks, total_blocks, skipped_blocks)
+        logger.warning(
+            "Day plan push summary: %s/%s created, %s skipped due to invalid time format",
+            successful_blocks,
+            total_blocks,
+            skipped_blocks,
+        )
     if failed_blocks > 0:
-        logger.error("Day plan push summary: %s blocks failed to create events", failed_blocks)
+        logger.error(
+            "Day plan push summary: %s blocks failed to create events", failed_blocks
+        )
     if successful_blocks > 0:
-        logger.info("Successfully created %s calendar events for %s", successful_blocks, date)
+        logger.info(
+            "Successfully created %s calendar events for %s", successful_blocks, date
+        )
 
     return created_ids
 

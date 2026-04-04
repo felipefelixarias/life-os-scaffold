@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 # Exit code constants
@@ -106,7 +105,9 @@ def check_python_health() -> None:
         if ".git" in str(py_file):
             continue
 
-        exit_code, _, stderr = run_command([sys.executable, "-m", "py_compile", str(py_file)])
+        exit_code, _, stderr = run_command(
+            [sys.executable, "-m", "py_compile", str(py_file)]
+        )
         if exit_code != 0:
             print(f"❌ Compilation error in {py_file.relative_to(REPO_ROOT)}: {stderr}")
             compile_errors += 1
@@ -115,14 +116,20 @@ def check_python_health() -> None:
         print(f"✅ All {len(python_files)} Python files compile successfully")
 
     # Check for ruff if available
-    exit_code, stdout, stderr = run_command([sys.executable, "-m", "ruff", "check", ".", "--quiet"])
+    exit_code, stdout, stderr = run_command(
+        [sys.executable, "-m", "ruff", "check", ".", "--quiet"]
+    )
     if exit_code == 0:
         print("✅ No ruff linting issues")
     elif exit_code == COMMAND_NOT_FOUND_EXIT_CODE or "No module named 'ruff'" in stderr:
         print("⚠️  ruff not available (optional)")
     else:
         # Count actual issues by lines that aren't empty or summary lines
-        issue_lines = [line for line in stdout.splitlines() if line.strip() and not line.startswith("Found")]
+        issue_lines = [
+            line
+            for line in stdout.splitlines()
+            if line.strip() and not line.startswith("Found")
+        ]
         print(f"⚠️  Ruff found {len(issue_lines)} issues")
 
 
@@ -141,7 +148,9 @@ def check_test_health() -> None:
     print(f"📁 Found {len(test_files)} test files")
 
     # Run tests
-    exit_code, stdout, stderr = run_command([sys.executable, "-m", "unittest", "discover", "-s", "tests"])
+    exit_code, _stdout, stderr = run_command(
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests"]
+    )
     if exit_code == 0:
         print("✅ All tests passing")
     else:
@@ -163,7 +172,9 @@ def check_csv_health() -> None:
         print(f"✅ Found {len(csv_files)} CSV files")
 
         # Run CSV validation
-        validation_script = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+        validation_script = (
+            REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+        )
         if validation_script.exists():
             exit_code, _, stderr = run_command([sys.executable, str(validation_script)])
             if exit_code == 0:

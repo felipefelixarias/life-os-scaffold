@@ -5,7 +5,6 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
 SPEC = spec_from_file_location("life_os_validate_repo", MODULE_PATH)
@@ -69,8 +68,12 @@ class RepoValidationTests(unittest.TestCase):
             (data_dir / "test.csv").write_text(csv_content, encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(
+                    log_dir.glob("*.csv")
+                )
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     errors = validate_repo.validate_csv_structure()
 
         self.assertEqual(len(errors), 1)
@@ -92,8 +95,12 @@ class RepoValidationTests(unittest.TestCase):
             (data_dir / "habits.csv").write_text(csv_content, encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                csv_files = sorted(data_dir.glob("*.csv")) + sorted(log_dir.glob("*.csv"))
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                csv_files = sorted(data_dir.glob("*.csv")) + sorted(
+                    log_dir.glob("*.csv")
+                )
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     errors = validate_repo.validate_csv_schemas()
 
         self.assertEqual(len(errors), 1)
@@ -145,7 +152,9 @@ class RepoValidationTests(unittest.TestCase):
             scripts_dir.mkdir(parents=True)
 
             (config_dir / "profile.example.json").write_text("{}", encoding="utf-8")
-            (config_dir / "calendar_feeds.example.json").write_text("{}", encoding="utf-8")
+            (config_dir / "calendar_feeds.example.json").write_text(
+                "{}", encoding="utf-8"
+            )
             (scripts_dir / "gcal.py").write_text("# gcal script", encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
@@ -168,7 +177,9 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     errors = validate_repo.validate_csv_headers()
 
             self.assertEqual(len(errors), 1)
@@ -189,7 +200,9 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     errors = validate_repo.validate_csv_headers()
 
             self.assertEqual(len(errors), 1)
@@ -210,7 +223,9 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     errors = validate_repo.validate_csv_headers()
 
             self.assertEqual(len(errors), 1)
@@ -231,9 +246,13 @@ class RepoValidationTests(unittest.TestCase):
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
                 csv_files = [csv_path]
-                with mock.patch.object(validate_repo, "csv_files", return_value=csv_files):
+                with mock.patch.object(
+                    validate_repo, "csv_files", return_value=csv_files
+                ):
                     # Mock Path.open specifically to raise PermissionError
-                    with mock.patch.object(Path, "open", side_effect=PermissionError("Access denied")):
+                    with mock.patch.object(
+                        Path, "open", side_effect=PermissionError("Access denied")
+                    ):
                         errors = validate_repo.validate_csv_headers()
 
             self.assertEqual(len(errors), 1)
@@ -248,10 +267,14 @@ class RepoValidationTests(unittest.TestCase):
 
             # Create markdown with broken link
             readme = root / "README.md"
-            readme.write_text("See [broken link](docs/missing.md) for details.", encoding="utf-8")
+            readme.write_text(
+                "See [broken link](docs/missing.md) for details.", encoding="utf-8"
+            )
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                with mock.patch.object(validate_repo, "markdown_docs", return_value=[readme]):
+                with mock.patch.object(
+                    validate_repo, "markdown_docs", return_value=[readme]
+                ):
                     errors = validate_repo.validate_markdown_links()
 
             self.assertEqual(len(errors), 1)
@@ -274,7 +297,11 @@ class RepoValidationTests(unittest.TestCase):
             claude_md.write_text("", encoding="utf-8")
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                with mock.patch.object(validate_repo, "command_reference_docs", return_value=[readme, claude_md]):
+                with mock.patch.object(
+                    validate_repo,
+                    "command_reference_docs",
+                    return_value=[readme, claude_md],
+                ):
                     errors = validate_repo.validate_command_references()
 
             self.assertEqual(len(errors), 1)
@@ -290,10 +317,14 @@ class RepoValidationTests(unittest.TestCase):
 
             # Create file with trailing whitespace
             readme = root / "README.md"
-            readme.write_text("Line with trailing spaces   \nGood line\n", encoding="utf-8")
+            readme.write_text(
+                "Line with trailing spaces   \nGood line\n", encoding="utf-8"
+            )
 
             with mock.patch.object(validate_repo, "REPO_ROOT", root):
-                with mock.patch.object(validate_repo, "markdown_docs", return_value=[readme]):
+                with mock.patch.object(
+                    validate_repo, "markdown_docs", return_value=[readme]
+                ):
                     errors = validate_repo.lint_whitespace()
 
             self.assertEqual(len(errors), 1)
@@ -324,13 +355,33 @@ class RepoValidationTests(unittest.TestCase):
         """Test main function returns non-zero exit code when errors found."""
         with mock.patch("sys.argv", ["validate_repo.py"]):
             # Mock one validation function to return errors
-            with mock.patch.object(validate_repo, "validate_required_paths", return_value=["Error"]):
-                with mock.patch.object(validate_repo, "validate_csv_headers", return_value=[]):
-                    with mock.patch.object(validate_repo, "validate_csv_structure", return_value=[]):
-                        with mock.patch.object(validate_repo, "validate_csv_schemas", return_value=[]):
-                            with mock.patch.object(validate_repo, "validate_markdown_links", return_value=[]):
-                                with mock.patch.object(validate_repo, "validate_command_references", return_value=[]):
-                                    with mock.patch.object(validate_repo, "validate_command_coverage", return_value=[]):
+            with mock.patch.object(
+                validate_repo, "validate_required_paths", return_value=["Error"]
+            ):
+                with mock.patch.object(
+                    validate_repo, "validate_csv_headers", return_value=[]
+                ):
+                    with mock.patch.object(
+                        validate_repo, "validate_csv_structure", return_value=[]
+                    ):
+                        with mock.patch.object(
+                            validate_repo, "validate_csv_schemas", return_value=[]
+                        ):
+                            with mock.patch.object(
+                                validate_repo,
+                                "validate_markdown_links",
+                                return_value=[],
+                            ):
+                                with mock.patch.object(
+                                    validate_repo,
+                                    "validate_command_references",
+                                    return_value=[],
+                                ):
+                                    with mock.patch.object(
+                                        validate_repo,
+                                        "validate_command_coverage",
+                                        return_value=[],
+                                    ):
                                         with mock.patch.object(validate_repo, "fail"):
                                             result = validate_repo.main()
         self.assertEqual(result, 1)
@@ -339,13 +390,33 @@ class RepoValidationTests(unittest.TestCase):
         """Test main function returns zero exit code when no errors found."""
         with mock.patch("sys.argv", ["validate_repo.py"]):
             # Mock all validation functions to return no errors
-            with mock.patch.object(validate_repo, "validate_required_paths", return_value=[]):
-                with mock.patch.object(validate_repo, "validate_csv_headers", return_value=[]):
-                    with mock.patch.object(validate_repo, "validate_csv_structure", return_value=[]):
-                        with mock.patch.object(validate_repo, "validate_csv_schemas", return_value=[]):
-                            with mock.patch.object(validate_repo, "validate_markdown_links", return_value=[]):
-                                with mock.patch.object(validate_repo, "validate_command_references", return_value=[]):
-                                    with mock.patch.object(validate_repo, "validate_command_coverage", return_value=[]):
+            with mock.patch.object(
+                validate_repo, "validate_required_paths", return_value=[]
+            ):
+                with mock.patch.object(
+                    validate_repo, "validate_csv_headers", return_value=[]
+                ):
+                    with mock.patch.object(
+                        validate_repo, "validate_csv_structure", return_value=[]
+                    ):
+                        with mock.patch.object(
+                            validate_repo, "validate_csv_schemas", return_value=[]
+                        ):
+                            with mock.patch.object(
+                                validate_repo,
+                                "validate_markdown_links",
+                                return_value=[],
+                            ):
+                                with mock.patch.object(
+                                    validate_repo,
+                                    "validate_command_references",
+                                    return_value=[],
+                                ):
+                                    with mock.patch.object(
+                                        validate_repo,
+                                        "validate_command_coverage",
+                                        return_value=[],
+                                    ):
                                         result = validate_repo.main()
         self.assertEqual(result, 0)
 
