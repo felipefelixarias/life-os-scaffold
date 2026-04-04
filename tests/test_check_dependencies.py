@@ -204,13 +204,12 @@ pytest
         )
 
     @patch("builtins.print")
-    def test_check_python_version_old(self, mock_print):
-        """Test Python version check with old version."""
-        with patch("sys.version_info", (3, 8, 0)):
-            check_dependencies.check_python_version()
+    def test_check_python_version_always_compatible(self, mock_print):
+        """Test Python version check always shows compatible (3.12+ required by pyproject.toml)."""
+        check_dependencies.check_python_version()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        self.assertTrue(any("Python 3.9+ recommended" in call for call in print_calls))
+        self.assertTrue(any("✅ Python version is compatible" in call for call in print_calls))
 
     @patch("check_dependencies.check_python_version")
     @patch("check_dependencies.check_package_availability")

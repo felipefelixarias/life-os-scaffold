@@ -121,7 +121,7 @@ def get_service() -> Any:
     """Build and return a Google Calendar API service with caching."""
     global _service_cache
     if _service_cache is None:
-        from googleapiclient.discovery import build
+        from googleapiclient.discovery import build  # type: ignore[import-untyped]
 
         creds = get_credentials()
         _service_cache = build(
@@ -133,7 +133,7 @@ def get_service() -> Any:
 def _log_google_api_error(action: str, exc: Exception) -> None:
     """Log Google API errors consistently without requiring the dependency at import time."""
     try:
-        from googleapiclient.errors import HttpError
+        from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
         if isinstance(exc, HttpError):
             logger.error(
@@ -177,7 +177,7 @@ def list_calendars() -> list[dict[str, Any]]:
     try:
         service = get_service()
         result = service.calendarList().list().execute()
-        return result.get("items", [])
+        return result.get("items", [])  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while fetching calendar list")
         return []
@@ -223,10 +223,6 @@ def get_agenda(
             page_token = result.get("nextPageToken")
             if not page_token:
                 break
-        else:
-            # This else block is associated with the while loop and runs after normal completion
-            pass
-
         return events
     except (FileNotFoundError, PermissionError):
         logger.exception(
@@ -265,7 +261,7 @@ def create_event(
 
         service = get_service()
         event = service.events().insert(calendarId=calendar_id, body=body).execute()
-        return event["id"]
+        return event["id"]  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while creating event '%s'", summary)
         return ""
@@ -299,7 +295,7 @@ def update_event(
             .update(calendarId=calendar_id, eventId=event_id, body=event)
             .execute()
         )
-        return updated
+        return updated  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while updating event %s", event_id)
         return {}
@@ -353,7 +349,7 @@ def search_events(
             )
             .execute()
         )
-        return result.get("items", [])
+        return result.get("items", [])  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while searching events for '%s'", query)
         return []

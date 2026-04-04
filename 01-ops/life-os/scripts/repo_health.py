@@ -191,7 +191,7 @@ def check_security() -> None:
     print("-" * 40)
 
     # Check for common security issues
-    security_issues = []
+    security_issues: list[str] = []
 
     # Check .env files
     env_files = list(REPO_ROOT.glob("**/.env*"))

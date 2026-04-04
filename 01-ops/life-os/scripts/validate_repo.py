@@ -10,6 +10,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 # Configure basic logging
 logger = logging.getLogger(__name__)
@@ -172,10 +173,10 @@ def validate_csv_structure() -> list[str]:
 
 def validate_csv_schemas() -> list[str]:
     """Validate CSV files against expected schemas and data quality."""
-    errors = []
+    errors: list[str] = []
 
     # Define expected schemas for each canonical file
-    schemas = {
+    schemas: dict[str, dict[str, Any]] = {
         "habits.csv": {
             "required_columns": [
                 "habit_id",
@@ -392,7 +393,7 @@ def validate_command_references() -> list[str]:
     """Validate that command references in documentation point to existing command files."""
     command_dir = REPO_ROOT / ".claude" / "commands"
     defined = {f"/{path.stem}" for path in command_dir.glob("*.md")}
-    errors = []
+    errors: list[str] = []
     for doc_path in command_reference_docs():
         content = doc_path.read_text(encoding="utf-8")
         errors.extend(
