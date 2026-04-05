@@ -89,6 +89,48 @@ ENUM_FIELDS = {
     }
 }
 
+# Numeric field validation
+NUMERIC_FIELDS = {
+    "habits.csv": {
+        "target_per_week": {"min": 1, "max": 7, "type": "int"},
+        "min_value": {"min": 0, "type": "float"}
+    },
+    "tasks.csv": {
+        "priority": {"min": 1, "max": 5, "type": "int"},
+        "effort_mins": {"min": 1, "max": 480, "type": "int"}  # Max 8 hours
+    },
+    "goals.csv": {
+        "metric_target": {"min": 0, "type": "float"},
+        "metric_current": {"min": 0, "type": "float"}
+    },
+    "time_logs.csv": {
+        "duration_mins": {"min": 1, "max": 1440, "type": "int"}  # Max 24 hours
+    }
+}
+
+# Time range validation (start must be before end)
+TIME_RANGE_FIELDS = {
+    "time_blocks.csv": {"start": "start", "end": "end"},
+    "time_logs.csv": {"start": "start_time", "end": "end_time"},
+    "calendar_events.csv": {"start": "start_time", "end": "end_time"},
+    "tasks.csv": {"start": "scheduled_start", "end": "scheduled_end"}
+}
+
+# Duration consistency validation
+DURATION_CONSISTENCY_FIELDS = {
+    "time_logs.csv": {
+        "start_time": "start_time",
+        "end_time": "end_time",
+        "duration": "duration_mins"
+    }
+}
+
+# Date range validation (start must be before end)
+DATE_RANGE_FIELDS = {
+    "projects.csv": {"start": "start_date", "end": "target_date"},
+    "tasks.csv": {"start": "scheduled_date", "end": "due_date"}
+}
+
 # Date and time fields
 DATE_FIELDS = {
     "habits.csv": {"last_updated"},
@@ -158,6 +200,146 @@ def validate_time_format(time_str: str) -> bool:
     return bool(re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', time_str))
 
 
+def validate_numeric_field(value_str: str, field_name: str, min_val: Union[int, float] = None, max_val: Union[int, float] = None, is_integer: bool = True) -> tuple[bool, str]:
+    """
+    Validate numeric fields with optional range constraints.
+
+    Args:
+        value_str: The string value to validate
+        field_name: Name of the field for error messages
+        min_val: Minimum allowed value (inclusive)
+        max_val: Maximum allowed value (inclusive)
+        is_integer: Whether the value should be an integer
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not value_str.strip():
+        return True, ""  # Empty values are often optional
+
+    try:
+        if is_integer:
+            value = int(value_str)
+        else:
+            value = float(value_str)
+    except ValueError:
+        return False, f"'{value_str}' is not a valid {'integer' if is_integer else 'number'} for {field_name}"
+
+    if min_val is not None and value < min_val:
+        return False, f"{field_name} value {value} is below minimum allowed value {min_val}"
+
+    if max_val is not None and value > max_val:
+        return False, f"{field_name} value {value} exceeds maximum allowed value {max_val}"
+
+    return True, ""
+
+
+def validate_time_range(start_time: str, end_time: str) -> tuple[bool, str]:
+    """
+    Validate that start time is before end time.
+
+    Args:
+        start_time: Start time in HH:MM format
+        end_time: End time in HH:MM format
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not start_time.strip() or not end_time.strip():
+        return True, ""  # Skip validation if either time is empty
+
+    if not (validate_time_format(start_time) and validate_time_format(end_time)):
+        return True, ""  # Skip if either time format is invalid (will be caught by format validation)
+
+    try:
+        from datetime import datetime
+        start_dt = datetime.strptime(start_time, "%H:%M")
+        end_dt = datetime.strptime(end_time, "%H:%M")
+
+        if start_dt >= end_dt:
+            return False, f"Start time {start_time} must be before end time {end_time}"
+
+    except ValueError:
+        return True, ""  # Skip validation if parsing fails
+
+    return True, ""
+
+
+def validate_duration_consistency(start_time: str, end_time: str, duration_mins: str) -> tuple[bool, str]:
+    """
+    Validate that duration_mins matches the calculated duration from start to end time.
+
+    Args:
+        start_time: Start time in HH:MM format
+        end_time: End time in HH:MM format
+        duration_mins: Duration in minutes as string
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not all([start_time.strip(), end_time.strip(), duration_mins.strip()]):
+        return True, ""  # Skip if any field is empty
+
+    if not (validate_time_format(start_time) and validate_time_format(end_time)):
+        return True, ""  # Skip if time formats are invalid
+
+    try:
+        duration = int(duration_mins)
+    except ValueError:
+        return True, ""  # Skip if duration is not a valid integer
+
+    try:
+        from datetime import datetime
+        start_dt = datetime.strptime(start_time, "%H:%M")
+        end_dt = datetime.strptime(end_time, "%H:%M")
+
+        # Handle midnight rollover
+        if end_dt <= start_dt:
+            from datetime import timedelta
+            end_dt += timedelta(days=1)
+
+        calculated_mins = int((end_dt - start_dt).total_seconds() / 60)
+
+        if abs(calculated_mins - duration) > 1:  # Allow 1-minute tolerance for rounding
+            return False, f"Duration {duration} minutes doesn't match calculated duration {calculated_mins} minutes (from {start_time} to {end_time})"
+
+    except (ValueError, OverflowError):
+        return True, ""  # Skip validation if parsing fails
+
+    return True, ""
+
+
+def validate_date_range(start_date: str, end_date: str, field_names: tuple[str, str]) -> tuple[bool, str]:
+    """
+    Validate that start date is before or equal to end date.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        field_names: Tuple of (start_field_name, end_field_name) for error messages
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not start_date.strip() or not end_date.strip():
+        return True, ""  # Skip validation if either date is empty
+
+    if not (validate_date_format(start_date) and validate_date_format(end_date)):
+        return True, ""  # Skip if either date format is invalid
+
+    try:
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+
+        if start_dt > end_dt:
+            return False, f"{field_names[0]} ({start_date}) must be before or equal to {field_names[1]} ({end_date})"
+
+    except ValueError:
+        return True, ""  # Skip validation if parsing fails
+
+    return True, ""
+
+
 def validate_csv_schema(file_path: Path) -> ValidationResult:
     """Validate CSV file schema and data integrity."""
     result = ValidationResult(file_path)
@@ -197,6 +379,10 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
             enum_fields = ENUM_FIELDS.get(filename, {})
             date_fields = DATE_FIELDS.get(filename, set())
             time_fields = TIME_FIELDS.get(filename, set())
+            numeric_fields = NUMERIC_FIELDS.get(filename, {})
+            time_range_fields = TIME_RANGE_FIELDS.get(filename, {})
+            duration_fields = DURATION_CONSISTENCY_FIELDS.get(filename, {})
+            date_range_fields = DATE_RANGE_FIELDS.get(filename, {})
 
             # Validate data rows
             for row_num, row in enumerate(reader, start=2):
@@ -238,6 +424,51 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                     if field in row_data and row_data[field].strip():
                         if not validate_time_format(row_data[field]):
                             result.add_error(f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}")
+
+                # Check numeric fields
+                for field, constraints in numeric_fields.items():
+                    if field in row_data and row_data[field].strip():
+                        is_valid, error_msg = validate_numeric_field(
+                            row_data[field],
+                            field,
+                            min_val=constraints.get("min"),
+                            max_val=constraints.get("max"),
+                            is_integer=constraints.get("type") == "int"
+                        )
+                        if not is_valid:
+                            result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+                # Check time ranges (start < end)
+                if time_range_fields:
+                    start_field = time_range_fields.get("start")
+                    end_field = time_range_fields.get("end")
+                    if start_field and end_field and start_field in row_data and end_field in row_data:
+                        is_valid, error_msg = validate_time_range(row_data[start_field], row_data[end_field])
+                        if not is_valid:
+                            result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+                # Check duration consistency
+                if duration_fields:
+                    start_field = duration_fields.get("start_time")
+                    end_field = duration_fields.get("end_time")
+                    duration_field = duration_fields.get("duration")
+                    if all(f in row_data for f in [start_field, end_field, duration_field]):
+                        is_valid, error_msg = validate_duration_consistency(
+                            row_data[start_field], row_data[end_field], row_data[duration_field]
+                        )
+                        if not is_valid:
+                            result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+                # Check date ranges (start <= end)
+                if date_range_fields:
+                    start_field = date_range_fields.get("start")
+                    end_field = date_range_fields.get("end")
+                    if start_field and end_field and start_field in row_data and end_field in row_data:
+                        is_valid, error_msg = validate_date_range(
+                            row_data[start_field], row_data[end_field], (start_field, end_field)
+                        )
+                        if not is_valid:
+                            result.add_error(f"{filename}: {error_msg} at row {row_num}")
 
     except UnicodeDecodeError as e:
         result.add_error(f"{filename}: Encoding error - {e}")
