@@ -4,6 +4,7 @@
 import re
 from pathlib import Path
 
+
 def extract_file_paths(content):
     """Extract file paths from markdown content."""
     # Look for patterns like 01-ops/life-os/... and similar directory structures
@@ -40,7 +41,7 @@ def main():
             paths = extract_file_paths(content)
 
             if not paths:
-                print("   ℹ️  No file paths found")
+                print("   i️  No file paths found")
                 continue
 
             for path in sorted(paths):
