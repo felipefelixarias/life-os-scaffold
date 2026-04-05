@@ -150,7 +150,7 @@ class TestCsvSchemaValidation:
         import shutil
         shutil.rmtree(self.temp_dir)
 
-    def create_test_csv(self, filename: str, headers: list, rows: list = None) -> Path:
+    def create_test_csv(self, filename: str, headers: list, rows: list | None = None) -> Path:
         """Create a test CSV file."""
         csv_path = self.temp_path / filename
 
@@ -348,7 +348,7 @@ class TestForeignKeyValidation:
         import shutil
         shutil.rmtree(self.temp_dir)
 
-    def create_test_csv(self, filename: str, headers: list, rows: list = None) -> Path:
+    def create_test_csv(self, filename: str, headers: list, rows: list | None = None) -> Path:
         """Create a test CSV file."""
         csv_path = self.temp_path / filename
 
@@ -416,16 +416,15 @@ class TestForeignKeyValidation:
             self.create_test_csv(filename, headers, [])
 
         # Mock the paths to use our temp directory
-        with patch("validate_csv_integrity.CANONICAL_DIR", self.temp_path):
-            with patch("validate_csv_integrity.LOGS_DIR", self.temp_path):
-                with patch("validate_csv_integrity.REPO_ROOT", self.temp_path):
-                    # This should not raise an exception
-                    from validate_csv_integrity import main
-                    try:
-                        main()
-                    except SystemExit as e:
-                        # main() calls exit(1) if there are errors
-                        assert e.code in [0, 1]
+        with (
+            patch("validate_csv_integrity.CANONICAL_DIR", self.temp_path),
+            patch("validate_csv_integrity.LOGS_DIR", self.temp_path),
+            patch("validate_csv_integrity.REPO_ROOT", self.temp_path)
+        ):
+            # This should complete successfully without exit()
+            from validate_csv_integrity import main
+            # main() should return normally on success (no SystemExit)
+            main()  # This should not raise SystemExit
 
     @patch("builtins.print")  # Suppress print output during tests
     def test_main_function_with_errors(self, mock_print):
@@ -434,14 +433,16 @@ class TestForeignKeyValidation:
         self.create_test_csv("tasks.csv", ["wrong", "headers"], [])
 
         # Mock the paths to use our temp directory
-        with patch("validate_csv_integrity.CANONICAL_DIR", self.temp_path):
-            with patch("validate_csv_integrity.LOGS_DIR", self.temp_path):
-                with patch("validate_csv_integrity.REPO_ROOT", self.temp_path):
-                    from validate_csv_integrity import main
-                    with pytest.raises(SystemExit) as exc_info:
-                        main()
+        with (
+            patch("validate_csv_integrity.CANONICAL_DIR", self.temp_path),
+            patch("validate_csv_integrity.LOGS_DIR", self.temp_path),
+            patch("validate_csv_integrity.REPO_ROOT", self.temp_path)
+        ):
+            from validate_csv_integrity import main
+            with pytest.raises(SystemExit) as exc_info:
+                main()
 
-                    assert exc_info.value.code == 1
+            assert exc_info.value.code == 1
 
 
 class TestConstants:
@@ -480,3 +481,75 @@ class TestConstants:
             if filename in EXPECTED_SCHEMAS:
                 schema_fields = set(EXPECTED_SCHEMAS[filename])
                 assert id_field in schema_fields, f"ID field {id_field} for {filename} not in schema"
+
+
+class TestExceptionHandling:
+    """Test exception handling in validation functions."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_validate_csv_schema_exception_handling(self):
+        """Test exception handling in validate_csv_schema."""
+        # Create a file with invalid encoding
+        csv_path = self.temp_path / "habits.csv"
+        csv_path.write_bytes(b'\xff\xfe\x00\x00')  # Invalid UTF-8
+
+        result = validate_csv_schema(csv_path)
+
+        assert not result.passed
+        assert len(result.errors) >= 1
+        assert any("error" in error.lower() for error in result.errors)
+
+    def test_validate_foreign_keys_exception_handling(self):
+        """Test exception handling in validate_foreign_keys."""
+        # Create files that will cause read errors
+        projects_file = self.temp_path / "projects.csv"
+        projects_file.write_bytes(b'\xff\xfe')  # Invalid encoding
+
+        errors = validate_foreign_keys(self.temp_path)
+
+        # Should have error messages for file reading failures
+        assert any("Failed to load project IDs" in error for error in errors)
+
+    def test_csv_schema_unicode_decode_error(self):
+        """Test validate_csv_schema with UnicodeDecodeError."""
+        # Create a file with invalid UTF-8 encoding specifically to trigger UnicodeDecodeError
+        csv_path = self.temp_path / "habits.csv"
+
+        # Write content that will definitely cause UnicodeDecodeError
+        with csv_path.open("wb") as f:
+            f.write(b'\x80\x81\x82')  # Invalid UTF-8 sequence
+
+        result = validate_csv_schema(csv_path)
+
+        assert not result.passed
+        assert len(result.errors) >= 1
+        assert any("Encoding error" in error for error in result.errors)
+
+    def test_foreign_keys_with_file_read_errors(self):
+        """Test validate_foreign_keys with file read errors."""
+        # Create actual files that exist but are corrupted
+        projects_file = self.temp_path / "projects.csv"
+        tasks_file = self.temp_path / "tasks.csv"
+        habits_file = self.temp_path / "habits.csv"
+
+        # Write invalid data that will cause CSV parsing errors
+        projects_file.write_bytes(b'\xff\xfe\x00')
+        tasks_file.write_bytes(b'\xff\xfe\x00')
+        habits_file.write_bytes(b'\xff\xfe\x00')
+
+        errors = validate_foreign_keys(self.temp_path)
+
+        # Should have multiple error messages for file reading failures
+        assert len(errors) >= 3
+        assert any("Failed to load project IDs" in error for error in errors)
+        assert any("Failed to load task IDs" in error for error in errors)
+        assert any("Failed to load habit IDs" in error for error in errors)

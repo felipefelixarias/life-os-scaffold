@@ -7,7 +7,6 @@ import csv
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -244,7 +243,7 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
     return result
 
 
-def validate_foreign_keys(canonical_dir: Path) -> List[str]:
+def validate_foreign_keys(canonical_dir: Path) -> list[str]:
     """Validate foreign key references between CSV files."""
     errors = []
 

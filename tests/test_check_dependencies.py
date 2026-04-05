@@ -78,7 +78,7 @@ def test_get_installed_packages_json_error():
 
 def test_parse_requirements_success(temp_requirements):
     """Test successful requirements parsing."""
-    temp_path, test_requirements = temp_requirements
+    _temp_path, test_requirements = temp_requirements
     requirements_content = """
 # Comment line
 requests>=2.31.0
@@ -162,7 +162,7 @@ def test_check_package_availability_missing_packages(
         elif missing_section and "missing-package" in call:
             break
     else:
-        assert False, "Missing package warning not found"
+        pytest.fail("Missing package warning not found")
 
 @patch("check_dependencies.get_installed_packages")
 @patch("check_dependencies.parse_requirements")
