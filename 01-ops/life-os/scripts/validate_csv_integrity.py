@@ -7,7 +7,7 @@ import csv
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Set, Union
+from typing import List
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -124,8 +124,8 @@ class ValidationResult:
 
     def __init__(self, file_path: Path):
         self.file_path = file_path
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
         self.passed = True
 
     def add_error(self, message: str) -> None:
@@ -191,7 +191,7 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                 )
 
             # Track data for validation
-            seen_ids: Set[str] = set()
+            seen_ids: set[str] = set()
             id_field = ID_FIELDS.get(filename)
             required_fields = REQUIRED_FIELDS.get(filename, set())
             enum_fields = ENUM_FIELDS.get(filename, {})
@@ -204,7 +204,7 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                     result.add_error(f"{filename}: Row {row_num} has {len(row)} columns, expected {len(headers)}")
                     continue
 
-                row_data = dict(zip(headers, row))
+                row_data = dict(zip(headers, row, strict=False))
 
                 # Check for duplicate IDs
                 if id_field and id_field in row_data:
@@ -220,24 +220,21 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
 
                 # Check enum values
                 for field, allowed_values in enum_fields.items():
-                    if field in row_data and row_data[field].strip():
-                        if row_data[field] not in allowed_values:
-                            result.add_error(
-                                f"{filename}: Invalid value '{row_data[field]}' for field '{field}' at row {row_num}. "
-                                f"Allowed values: {allowed_values}"
-                            )
+                    if field in row_data and row_data[field].strip() and row_data[field] not in allowed_values:
+                        result.add_error(
+                            f"{filename}: Invalid value '{row_data[field]}' for field '{field}' at row {row_num}. "
+                            f"Allowed values: {allowed_values}"
+                        )
 
                 # Check date formats
                 for field in date_fields:
-                    if field in row_data and row_data[field].strip():
-                        if not validate_date_format(row_data[field]):
-                            result.add_error(f"{filename}: Invalid date format '{row_data[field]}' for field '{field}' at row {row_num}")
+                    if field in row_data and row_data[field].strip() and not validate_date_format(row_data[field]):
+                        result.add_error(f"{filename}: Invalid date format '{row_data[field]}' for field '{field}' at row {row_num}")
 
                 # Check time formats
                 for field in time_fields:
-                    if field in row_data and row_data[field].strip():
-                        if not validate_time_format(row_data[field]):
-                            result.add_error(f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}")
+                    if field in row_data and row_data[field].strip() and not validate_time_format(row_data[field]):
+                        result.add_error(f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}")
 
     except UnicodeDecodeError as e:
         result.add_error(f"{filename}: Encoding error - {e}")
@@ -335,7 +332,7 @@ def main() -> None:
     all_files = []
 
     # Canonical data files
-    for filename in EXPECTED_SCHEMAS.keys():
+    for filename in EXPECTED_SCHEMAS:
         if filename in ["daily_log.csv", "activity_log.csv"]:
             all_files.append(LOGS_DIR / filename)
         else:
@@ -362,10 +359,10 @@ def main() -> None:
                 total_warnings += 1
 
         if result.passed and not result.warnings:
-            print(f"   ✅ Schema and data validation passed")
+            print("   ✅ Schema and data validation passed")
 
     # Validate foreign key references
-    print(f"\n🔗 Foreign Key Validation")
+    print("\n🔗 Foreign Key Validation")
     foreign_key_errors = validate_foreign_keys(CANONICAL_DIR)
 
     if foreign_key_errors:
@@ -377,7 +374,7 @@ def main() -> None:
 
     # Summary
     print("\n" + "=" * 60)
-    print(f"📊 Validation Summary:")
+    print("📊 Validation Summary:")
     print(f"   • Total errors: {total_errors}")
     print(f"   • Total warnings: {total_warnings}")
 
