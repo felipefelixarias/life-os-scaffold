@@ -7,7 +7,7 @@ import csv
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 # Repository root path
 REPO_ROOT = Path(__file__).resolve().parent
@@ -133,7 +133,7 @@ def validate_datetime_format(datetime_str: str) -> bool:
         return False
 
 
-def validate_csv_file(csv_path: Path, schema: Dict[str, Any]) -> List[str]:
+def validate_csv_file(csv_path: Path, schema: dict[str, Any]) -> list[str]:
     """Validate a single CSV file against its schema."""
     errors = []
 
@@ -152,7 +152,7 @@ def validate_csv_file(csv_path: Path, schema: Dict[str, Any]) -> List[str]:
                 return errors  # Can't continue validation with wrong headers
 
             # Track IDs for duplicate detection
-            seen_ids: Set[str] = set()
+            seen_ids: set[str] = set()
             row_num = 1
 
             for row in reader:
@@ -201,7 +201,7 @@ def validate_csv_file(csv_path: Path, schema: Dict[str, Any]) -> List[str]:
     return errors
 
 
-def validate_all_csv_files() -> List[str]:
+def validate_all_csv_files() -> list[str]:
     """Validate all CSV files in canonical data and logs directories."""
     all_errors = []
 
@@ -222,7 +222,7 @@ def validate_all_csv_files() -> List[str]:
     return all_errors
 
 
-def validate_command_file_paths() -> List[str]:
+def validate_command_file_paths() -> list[str]:
     """Validate that .claude/commands/*.md files reference correct file paths."""
     errors = []
     commands_dir = REPO_ROOT / ".claude" / "commands"
@@ -264,7 +264,7 @@ def validate_command_file_paths() -> List[str]:
     return errors
 
 
-def check_docs_for_broken_links() -> List[str]:
+def check_docs_for_broken_links() -> list[str]:
     """Check docs/ directory for broken links or outdated content."""
     errors = []
     docs_dir = REPO_ROOT / "docs"
@@ -279,7 +279,7 @@ def check_docs_for_broken_links() -> List[str]:
             # Look for relative file references
             file_references = re.findall(r'`([^`]+\.(csv|py|json|md))`', content)
             for file_ref, _ in file_references:
-                if file_ref.startswith('/') or file_ref.startswith('~'):
+                if file_ref.startswith(('/', '~')):
                     continue  # Skip absolute paths
 
                 # Skip example files and placeholders
