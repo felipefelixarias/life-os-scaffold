@@ -1,2 +1,2 @@
-timestamp,activity,notes
+timestamp,event,details
 2026-04-02T09:00:00Z,system_setup,Initial repository setup
