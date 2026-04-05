@@ -23,8 +23,8 @@ Generate a full weekly sprint plan with daily themes, task allocation, and habit
    - Distribute habits across the week per their frequency targets
    - Assign daily themes based on heaviest domain that day (e.g., "Deep Work Monday", "Admin Wednesday")
    - Flag if capacity < demand and suggest what to cut using priority tiers
-6. **Generate the sprint document** using `templates/sprint_template.md` as the base.
-7. Save to `outputs/sprint_[start_date].md`.
+6. **Generate the sprint document** using ``01-ops/life-os/templates/sprint_template.md`` as the base.
+7. Save to ``01-ops/life-os/outputs/sprint_[start_date].md``.
 
 ## Output Format
 

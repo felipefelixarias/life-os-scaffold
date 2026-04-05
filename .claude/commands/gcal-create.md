@@ -5,14 +5,14 @@ Create an event on Google Calendar from natural language.
 ## Prerequisites
 
 - gcalcli installed and authenticated (`~/.gcalcli_oauth` exists)
-- `scripts/gcal.py` available
+- ``01-ops/life-os/scripts/gcal.py`` available
 
 ## Steps
 
 1. Parse the user's input: event title, date, start time, end time, location (optional).
 2. Run `date` to resolve relative dates ("tomorrow", "this Saturday").
 3. Read `01-ops/life-os/config/profile.json` for timezone.
-4. Create the event using `scripts/gcal.py` or the Google Calendar API directly.
+4. Create the event using ``01-ops/life-os/scripts/gcal.py`` or the Google Calendar API directly.
 5. Confirm: event name, date, time, location.
 
 ## Examples

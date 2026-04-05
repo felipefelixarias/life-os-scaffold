@@ -20,7 +20,7 @@ Autonomously scan, prioritize, and clean up the task backlog.
    - Quick wins (effort < 30m, priority 2+) that have been sitting for a week — suggest scheduling today
 7. **Present the triage report** with proposed actions.
 8. Ask the user to approve, modify, or reject the batch.
-9. Apply approved changes to tasks.csv.
+9. Apply approved changes to `01-ops/life-os/data/canonical/tasks.csv`.
 
 ## Output Format
 

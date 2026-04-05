@@ -13,10 +13,10 @@ Close out the day: review what happened, update records, and set up tomorrow.
    - List tasks that were in_progress — ask: done, carried, or blocked?
    - List habits due today — ask: which did you complete?
 6. **Update files based on responses:**
-   - Mark completed tasks as `done` in tasks.csv with today's date
+   - Mark completed tasks as `done` in `01-ops/life-os/data/canonical/tasks.csv` with today's date
    - Mark carried tasks with tomorrow's scheduled_date
-   - Log completed habits to daily_log.csv
-   - Append a summary row to logs/activity_log.csv
+   - Log completed habits to `01-ops/life-os/logs/daily_log.csv`
+   - Append a summary row to `01-ops/life-os/logs/activity_log.csv`
 7. **Preview tomorrow:**
    - Show tomorrow's calendar events
    - List high-priority tasks due soon
@@ -44,8 +44,8 @@ Use box-drawing characters. Show the day's results at a glance, then tomorrow's 
   Habits   ██████████░░░░░░░░░░  4/6 logged
 
   FILES UPDATED
-  tasks.csv       3 done · 1 carried · 1 dropped
-  daily_log.csv   4 habits logged
+  `01-ops/life-os/data/canonical/tasks.csv`       3 done · 1 carried · 1 dropped
+  `01-ops/life-os/logs/daily_log.csv`   4 habits logged
 
   ┌─ tomorrow ─────────────────────────────────────────┐
   │  09:00  Meeting                                     │

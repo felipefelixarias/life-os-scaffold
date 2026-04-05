@@ -50,7 +50,7 @@ Analyze how the life-os system is being used, identify friction, and suggest or 
 - [ ] `/habits` — quick habit check-in without the full dashboard
 
 ### Schema Changes
-- [ ] Add `actual_effort_mins` to tasks.csv for planned vs actual tracking
+- [ ] Add `actual_effort_mins` to `01-ops/life-os/data/canonical/tasks.csv` for planned vs actual tracking
 
 Implement any of these? (list numbers or "all")
 ```
