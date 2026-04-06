@@ -7,6 +7,7 @@ import csv
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -199,7 +200,7 @@ def validate_time_format(time_str: str) -> bool:
     return bool(re.match(r'^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$', time_str))
 
 
-def validate_numeric_field(value_str: str, field_name: str, min_val: Union[int, float] = None, max_val: Union[int, float] = None, is_integer: bool = True) -> tuple[bool, str]:
+def validate_numeric_field(value_str: str, field_name: str, min_val: int | float | None = None, max_val: int | float | None = None, is_integer: bool = True) -> tuple[bool, str]:
     """
     Validate numeric fields with optional range constraints.
 
@@ -217,10 +218,7 @@ def validate_numeric_field(value_str: str, field_name: str, min_val: Union[int, 
         return True, ""  # Empty values are often optional
 
     try:
-        if is_integer:
-            value = int(value_str)
-        else:
-            value = float(value_str)
+        value = int(value_str) if is_integer else float(value_str)
     except ValueError:
         return False, f"'{value_str}' is not a valid {'integer' if is_integer else 'number'} for {field_name}"
 
@@ -424,11 +422,15 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                 # Check numeric fields
                 for field, constraints in numeric_fields.items():
                     if field in row_data and row_data[field].strip():
+                        min_val_raw = constraints.get("min")
+                        max_val_raw = constraints.get("max")
+                        min_val = None if min_val_raw is None else cast(int | float, min_val_raw)
+                        max_val = None if max_val_raw is None else cast(int | float, max_val_raw)
                         is_valid, error_msg = validate_numeric_field(
                             row_data[field],
                             field,
-                            min_val=constraints.get("min"),
-                            max_val=constraints.get("max"),
+                            min_val=min_val,
+                            max_val=max_val,
                             is_integer=constraints.get("type") == "int"
                         )
                         if not is_valid:
@@ -448,7 +450,11 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                     start_field = duration_fields.get("start_time")
                     end_field = duration_fields.get("end_time")
                     duration_field = duration_fields.get("duration")
-                    if all(f in row_data for f in [start_field, end_field, duration_field]):
+                    if all(f is not None and f in row_data for f in [start_field, end_field, duration_field]):
+                        # Type checking: at this point we know all fields are not None
+                        assert start_field is not None
+                        assert end_field is not None
+                        assert duration_field is not None
                         is_valid, error_msg = validate_duration_consistency(
                             row_data[start_field], row_data[end_field], row_data[duration_field]
                         )
