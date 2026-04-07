@@ -171,24 +171,24 @@ Actual time spent tracking for analysis and reflection.
 
 ### Schema
 ```csv
-log_id,date,start_time,end_time,activity,domain,duration_mins,task_id,notes
+log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated
 ```
 
 | Column | Type | Required | Description |
 |--------|------|----------|-------------|
 | `log_id` | String | Yes | Unique identifier |
 | `date` | Date | Yes | ISO format date |
-| `start_time` | Time | Yes | HH:MM format when started |
-| `end_time` | Time | Yes | HH:MM format when finished |
 | `activity` | String | Yes | What was done |
 | `domain` | String | No | Life area |
 | `duration_mins` | Integer | No | Total minutes spent |
-| `task_id` | String | No | Link to tasks.csv |
+| `start_time` | Time | Yes | HH:MM format when started |
+| `end_time` | Time | Yes | HH:MM format when finished |
 | `notes` | String | No | Additional context |
+| `last_updated` | Date | No | ISO format (YYYY-MM-DD) when last modified |
 
 ### Example
 ```csv
-log_001,2026-04-01,14:30,15:45,Code review session,work,75,,Very productive session
+log_001,2026-04-01,Code review session,work,75,14:30,15:45,Very productive session,2026-04-01
 ```
 
 ---

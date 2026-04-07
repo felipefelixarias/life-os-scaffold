@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import subprocess
 import sys
 import tempfile
-import unittest
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
@@ -14,7 +15,7 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(validate_repo)
 
 
-class RepoValidationTests(unittest.TestCase):
+class TestRepoValidation:
     def test_repo_validation_script_passes(self) -> None:
         result = subprocess.run(
             [
@@ -382,7 +383,3 @@ class RepoValidationTests(unittest.TestCase):
         ):
             result = validate_repo.main()
         assert result == 0
-
-
-if __name__ == "__main__":
-    unittest.main()

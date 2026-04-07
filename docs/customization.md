@@ -148,9 +148,9 @@ Name the file to match the command: `.claude/commands/my-skill.md` → `/my-skil
 
 Templates are markdown files used for recurring documents (sprints, check-ins). Modify them to ask the questions that matter to you.
 
-## Calendar Feeds (`01-ops/life-os/config/calendar_feeds.json`)
+## Calendar Feeds
 
-If you have ICS feed URLs (from Google Calendar, Outlook, etc.), add them here for automatic import:
+If you have ICS feed URLs (from Google Calendar, Outlook, etc.), create a `01-ops/life-os/config/calendar_feeds.json` file for automatic import:
 
 ```json
 [

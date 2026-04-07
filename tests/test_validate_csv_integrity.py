@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 import tempfile
-import unittest
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_csv_integrity.py"
@@ -17,7 +18,7 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(validate_csv_integrity)
 
 
-class ValidationResultTests(unittest.TestCase):
+class TestValidationResult:
     """Test the ValidationResult class."""
 
     def test_initialization(self) -> None:
@@ -60,41 +61,33 @@ class ValidationResultTests(unittest.TestCase):
         assert result.passed is False
 
 
-class DateTimeValidationTests(unittest.TestCase):
+class TestDateTimeValidation:
     """Test date and time validation functions."""
 
-    def test_validate_date_format_valid_dates(self) -> None:
+    @pytest.mark.parametrize("date_str", ["2026-04-05", "2025-01-01", "2026-12-31"])
+    def test_validate_date_format_valid_dates(self, date_str: str) -> None:
         """Test date validation accepts valid YYYY-MM-DD dates."""
-        valid_dates = ["2026-04-05", "2025-01-01", "2026-12-31"]
-        for date_str in valid_dates:
-            with self.subTest(date=date_str):
-                assert validate_csv_integrity.validate_date_format(date_str)
+        assert validate_csv_integrity.validate_date_format(date_str)
 
-    def test_validate_date_format_invalid_dates(self) -> None:
+    @pytest.mark.parametrize("date_str", ["04-05-2026", "2026/04/05", "invalid", "2026-13-01"])
+    def test_validate_date_format_invalid_dates(self, date_str: str) -> None:
         """Test date validation rejects invalid dates."""
-        invalid_dates = ["04-05-2026", "2026/04/05", "invalid", "2026-13-01"]
-        for date_str in invalid_dates:
-            with self.subTest(date=date_str):
-                assert not validate_csv_integrity.validate_date_format(date_str)
+        assert not validate_csv_integrity.validate_date_format(date_str)
 
     def test_validate_date_format_empty_string(self) -> None:
         """Test empty dates are considered valid (optional)."""
         assert validate_csv_integrity.validate_date_format("")
         assert validate_csv_integrity.validate_date_format("   ")
 
-    def test_validate_time_format_valid_times(self) -> None:
+    @pytest.mark.parametrize("time_str", ["09:30", "23:59", "00:00", "12:00"])
+    def test_validate_time_format_valid_times(self, time_str: str) -> None:
         """Test time validation accepts valid HH:MM times."""
-        valid_times = ["09:30", "23:59", "00:00", "12:00"]
-        for time_str in valid_times:
-            with self.subTest(time=time_str):
-                assert validate_csv_integrity.validate_time_format(time_str)
+        assert validate_csv_integrity.validate_time_format(time_str)
 
-    def test_validate_time_format_invalid_times(self) -> None:
+    @pytest.mark.parametrize("time_str", ["24:00", "12:60", "invalid", "12:30:45"])
+    def test_validate_time_format_invalid_times(self, time_str: str) -> None:
         """Test time validation rejects invalid times."""
-        invalid_times = ["24:00", "12:60", "invalid", "12:30:45"]
-        for time_str in invalid_times:
-            with self.subTest(time=time_str):
-                assert not validate_csv_integrity.validate_time_format(time_str)
+        assert not validate_csv_integrity.validate_time_format(time_str)
 
     def test_validate_time_format_empty_string(self) -> None:
         """Test empty times are considered valid (optional)."""
@@ -102,10 +95,10 @@ class DateTimeValidationTests(unittest.TestCase):
         assert validate_csv_integrity.validate_time_format("   ")
 
 
-class CsvSchemaValidationTests(unittest.TestCase):
+class TestCsvSchemaValidation:
     """Test CSV schema validation functionality."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.test_root = Path(self.temp_dir)
@@ -264,10 +257,10 @@ class CsvSchemaValidationTests(unittest.TestCase):
         assert "Encoding error" in result.errors[0]
 
 
-class ForeignKeyValidationTests(unittest.TestCase):
+class TestForeignKeyValidation:
     """Test foreign key validation functionality."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.test_root = Path(self.temp_dir)
@@ -380,7 +373,7 @@ class ForeignKeyValidationTests(unittest.TestCase):
         assert len(errors) == 0
 
 
-class MainFunctionTests(unittest.TestCase):
+class TestMainFunction:
     """Test the main validation function."""
 
     @mock.patch("builtins.print")
@@ -444,7 +437,3 @@ class MainFunctionTests(unittest.TestCase):
 
         # Should call exit(1)
         mock_exit.assert_called_once_with(1)
-
-
-if __name__ == "__main__":
-    unittest.main()
