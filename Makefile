@@ -12,7 +12,7 @@ setup: ## Copy example configs and get started
 
 test: ## Run repo validation and unit tests
 	@python3 $(LIFE_OS)/scripts/validate_repo.py
-	@python3 -m unittest discover -s tests
+	@python3 -m pytest tests/ -q
 
 lint: ## Run lightweight lint checks for docs and scaffold integrity
 	@python3 $(LIFE_OS)/scripts/validate_repo.py --lint

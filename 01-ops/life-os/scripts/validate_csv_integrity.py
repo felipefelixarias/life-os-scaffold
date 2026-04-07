@@ -38,8 +38,8 @@ EXPECTED_SCHEMAS = {
         "task_id", "source", "status", "notes"
     ],
     "time_logs.csv": [
-        "log_id", "date", "start_time", "end_time", "activity", "domain",
-        "duration_mins", "task_id", "notes"
+        "log_id", "date", "activity", "domain", "duration_mins",
+        "start_time", "end_time", "notes", "last_updated"
     ],
     "calendar_events.csv": [
         "event_id", "date", "start_time", "end_time", "title",
@@ -138,7 +138,7 @@ DATE_FIELDS = {
     "tasks.csv": {"due_date", "scheduled_date", "last_updated"},
     "projects.csv": {"start_date", "target_date", "last_updated"},
     "time_blocks.csv": {"date"},
-    "time_logs.csv": {"date"},
+    "time_logs.csv": {"date", "last_updated"},
     "calendar_events.csv": {"date"},
     "daily_log.csv": {"date"}
 }

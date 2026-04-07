@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 # Import the module under test
+import shutil
 import sys
 import tempfile
-import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,18 +17,16 @@ sys.path.insert(
 import repo_health
 
 
-class TestRepoHealth(unittest.TestCase):
+class TestRepoHealth:
     """Test cases for repo_health module."""
 
-    def setUp(self):
+    def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
 
-    def tearDown(self):
+    def teardown_method(self):
         """Clean up test fixtures."""
-        import shutil
-
         shutil.rmtree(self.temp_dir)
 
     def test_run_command_success(self):
@@ -320,7 +318,3 @@ class TestRepoHealth(unittest.TestCase):
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         assert any("Life-OS Repository Health Check" in call for call in print_calls)
         assert any("Health check complete!" in call for call in print_calls)
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import tempfile
-import unittest
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -16,7 +15,7 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(validate_csv_integrity)
 
 
-class NumericValidationTests(unittest.TestCase):
+class TestNumericValidation:
     """Test numeric field validation functionality."""
 
     def test_validate_numeric_field_valid_integers(self) -> None:
@@ -61,7 +60,7 @@ class NumericValidationTests(unittest.TestCase):
         assert error == ""
 
 
-class TimeRangeValidationTests(unittest.TestCase):
+class TestTimeRangeValidation:
     """Test time range validation functionality."""
 
     def test_validate_time_range_valid(self) -> None:
@@ -95,7 +94,7 @@ class TimeRangeValidationTests(unittest.TestCase):
         assert error == ""
 
 
-class DurationConsistencyTests(unittest.TestCase):
+class TestDurationConsistency:
     """Test duration consistency validation."""
 
     def test_validate_duration_consistency_valid(self) -> None:
@@ -131,7 +130,7 @@ class DurationConsistencyTests(unittest.TestCase):
         assert "doesn't match" in error
 
 
-class DateRangeValidationTests(unittest.TestCase):
+class TestDateRangeValidation:
     """Test date range validation functionality."""
 
     def test_validate_date_range_valid(self) -> None:
@@ -168,10 +167,10 @@ class DateRangeValidationTests(unittest.TestCase):
         assert error == ""
 
 
-class EnhancedSchemaValidationTests(unittest.TestCase):
+class TestEnhancedSchemaValidation:
     """Test enhanced schema validation with new features."""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
         """Set up test environment."""
         self.temp_dir = tempfile.mkdtemp()
         self.test_root = Path(self.temp_dir)
@@ -208,8 +207,8 @@ class EnhancedSchemaValidationTests(unittest.TestCase):
         """Test schema validation catches duration inconsistencies."""
         time_logs_file = self.test_root / "time_logs.csv"
         content = (
-            "log_id,date,start_time,end_time,activity,domain,duration_mins,task_id,notes\n"
-            "log1,2026-04-05,09:00,10:00,Work,work,30,,Wrong duration\n"  # Should be 60 minutes
+            "log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated\n"
+            "log1,2026-04-05,Work,work,30,09:00,10:00,Wrong duration,\n"  # Should be 60 minutes
         )
         time_logs_file.write_text(content, encoding="utf-8")
 
@@ -273,7 +272,3 @@ class EnhancedSchemaValidationTests(unittest.TestCase):
 
         assert result.passed
         assert len(result.errors) == 0
-
-
-if __name__ == "__main__":
-    unittest.main()

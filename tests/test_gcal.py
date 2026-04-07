@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import datetime as dt
 
 # Mock Google API modules before importing gcal
 import sys
-import unittest
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
@@ -31,11 +32,13 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(gcal)
 
 
-class GcalCredentialsTests(unittest.TestCase):
-    def setUp(self):
-        self.token_path_patcher = mock.patch.object(gcal, "OAUTH_TOKEN_PATH")
-        self.mock_token_path = self.token_path_patcher.start()
-        self.addCleanup(self.token_path_patcher.stop)
+class TestGcalCredentials:
+    def setup_method(self):
+        self._token_path_patcher = mock.patch.object(gcal, "OAUTH_TOKEN_PATH")
+        self.mock_token_path = self._token_path_patcher.start()
+
+    def teardown_method(self):
+        self._token_path_patcher.stop()
 
     def test_get_credentials_raises_error_when_token_file_missing(self):
         self.mock_token_path.exists.return_value = False
@@ -139,8 +142,8 @@ class GcalCredentialsTests(unittest.TestCase):
         assert result == mock_creds
 
 
-class GcalServiceTests(unittest.TestCase):
-    def setUp(self):
+class TestGcalService:
+    def setup_method(self):
         # Clear service cache before each test
         gcal._service_cache = None
 
@@ -180,14 +183,16 @@ class GcalServiceTests(unittest.TestCase):
         assert result1 == mock_service
 
 
-class GcalCalendarOperationsTests(unittest.TestCase):
-    def setUp(self):
+class TestGcalCalendarOperations:
+    def setup_method(self):
         self.mock_service = mock.Mock()
-        self.service_patcher = mock.patch.object(
+        self._service_patcher = mock.patch.object(
             gcal, "get_service", return_value=self.mock_service,
         )
-        self.service_patcher.start()
-        self.addCleanup(self.service_patcher.stop)
+        self._service_patcher.start()
+
+    def teardown_method(self):
+        self._service_patcher.stop()
 
     def test_list_calendars_returns_calendar_list(self):
         expected_calendars = [
@@ -284,7 +289,7 @@ class GcalCalendarOperationsTests(unittest.TestCase):
         assert call_args.kwargs["q"] == "meeting"
 
 
-class GcalUtilityTests(unittest.TestCase):
+class TestGcalUtility:
     def test_format_event_line_formats_event_with_time(self):
         event = {
             "start": {"dateTime": "2026-01-15T09:00:00-08:00"},
@@ -317,7 +322,7 @@ class GcalUtilityTests(unittest.TestCase):
         assert "(no title)" in result
 
 
-class GcalTimezoneTests(unittest.TestCase):
+class TestGcalTimezone:
     def test_rfc3339_uses_zoneinfo_for_non_us_timezone(self) -> None:
         with mock.patch.object(gcal, "_load_timezone", return_value="Europe/Paris"):
             actual = gcal._rfc3339(dt.date(2026, 1, 15), "09:30:00")
@@ -340,7 +345,7 @@ class GcalTimezoneTests(unittest.TestCase):
             gcal._parse_block_time(dt.date(2026, 1, 15), "25:00", "start")
 
 
-class GcalPlannerTests(unittest.TestCase):
+class TestGcalPlanner:
     def test_clear_life_os_events_deletes_only_tagged_events(self) -> None:
         with (
             mock.patch.object(
@@ -393,7 +398,3 @@ class GcalPlannerTests(unittest.TestCase):
         assert second_call["summary"] == "[ops] Late wrap"
         assert second_call["start_dt"] == dt.datetime(2026, 1, 15, 23, 30)
         assert second_call["end_dt"] == dt.datetime(2026, 1, 16, 0, 15)
-
-
-if __name__ == "__main__":
-    unittest.main()
