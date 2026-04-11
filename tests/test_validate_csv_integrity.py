@@ -668,9 +668,7 @@ class TestForeignKeyExceptionPaths:
         # Write invalid UTF-8 so the single read fails
         tasks_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
-            errors = validate_csv_integrity.validate_foreign_keys(
-                self.canonical_dir
-            )
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
         assert any("Failed to load task IDs" in e for e in errors)
 
     def test_corrupted_time_blocks_foreign_key_check(self) -> None:

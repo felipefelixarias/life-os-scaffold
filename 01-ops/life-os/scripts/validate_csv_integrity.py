@@ -511,11 +511,7 @@ def _load_csv_rows(
 
 def _extract_ids(rows: list[dict[str, str]], id_field: str) -> set[str]:
     """Extract a set of non-empty IDs from pre-loaded rows."""
-    return {
-        row.get(id_field, "")
-        for row in rows
-        if row.get(id_field, "").strip()
-    }
+    return {row.get(id_field, "") for row in rows if row.get(id_field, "").strip()}
 
 
 def _check_foreign_key(
@@ -529,9 +525,7 @@ def _check_foreign_key(
     for row_num, row in enumerate(rows, start=2):
         value = row.get(fk_field, "").strip()
         if value and value not in valid_ids:
-            errors.append(
-                f"{source_name} row {row_num}: Invalid {fk_field} '{value}'"
-            )
+            errors.append(f"{source_name} row {row_num}: Invalid {fk_field} '{value}'")
 
 
 def validate_foreign_keys(canonical_dir: Path) -> list[str]:
@@ -539,9 +533,7 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
     errors: list[str] = []
 
     # Load each file once — rows are reused for both ID extraction and FK checks
-    project_rows = _load_csv_rows(
-        canonical_dir / "projects.csv", errors, "project IDs"
-    )
+    project_rows = _load_csv_rows(canonical_dir / "projects.csv", errors, "project IDs")
     task_rows = _load_csv_rows(canonical_dir / "tasks.csv", errors, "task IDs")
     habit_rows = _load_csv_rows(canonical_dir / "habits.csv", errors, "habit IDs")
 
