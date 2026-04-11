@@ -433,10 +433,10 @@ class TestRepoValidation:
             csv_path = data_dir / "suspicious.csv"
             csv_path.write_text("col1,col'2,col3\nval1,val2,val3\n", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_headers()
 
             assert any("suspicious characters" in e for e in errors)
@@ -451,10 +451,10 @@ class TestRepoValidation:
             csv_path = data_dir / "empty.csv"
             csv_path.write_text("", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_structure()
 
             assert errors == []
@@ -473,10 +473,10 @@ class TestRepoValidation:
                 lines.append(f"val{i},val{i}")
             csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_structure()
 
             assert errors == []
@@ -491,15 +491,15 @@ class TestRepoValidation:
             csv_path = data_dir / "unreadable.csv"
             csv_path.write_text("col1\nval1\n", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ), \
-                 mock.patch.object(
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+                mock.patch.object(
                     Path,
                     "open",
                     side_effect=PermissionError("Access denied"),
-                 ):
+                ),
+            ):
                 errors = validate_repo.validate_csv_structure()
 
             # Should silently pass (error handled in validate_csv_headers)
@@ -518,10 +518,10 @@ class TestRepoValidation:
             csv_path = data_dir / "habits.csv"
             csv_path.write_text("", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("no header" in e for e in errors)
@@ -543,10 +543,10 @@ class TestRepoValidation:
             csv_path = data_dir / "habits.csv"
             csv_path.write_text(csv_content, encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("Empty required field 'name'" in e for e in errors)
@@ -567,10 +567,10 @@ class TestRepoValidation:
             csv_path = data_dir / "habits.csv"
             csv_path.write_text(csv_content, encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("Invalid value 'biweekly'" in e for e in errors)
@@ -591,10 +591,10 @@ class TestRepoValidation:
             csv_path = data_dir / "goals.csv"
             csv_path.write_text(csv_content, encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("Invalid date format 'not-a-date'" in e for e in errors)
@@ -615,10 +615,10 @@ class TestRepoValidation:
             csv_path = data_dir / "time_blocks.csv"
             csv_path.write_text(csv_content, encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ):
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("Invalid time format '9am'" in e for e in errors)
@@ -635,15 +635,15 @@ class TestRepoValidation:
             csv_path = data_dir / "habits.csv"
             csv_path.write_text("habit_id\nval\n", encoding="utf-8")
 
-            with mock.patch.object(validate_repo, "REPO_ROOT", root), \
-                 mock.patch.object(
-                    validate_repo, "csv_files", return_value=[csv_path]
-                 ), \
-                 mock.patch.object(
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+                mock.patch.object(
                     Path,
                     "open",
                     side_effect=PermissionError("Access denied"),
-                 ):
+                ),
+            ):
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("Cannot read CSV file" in e for e in errors)
