@@ -382,3 +382,181 @@ def test_bool_not_treated_as_int() -> None:
         path = _write_json(data, Path(tmp))
         errors = validate_config(path, PROFILE_SCHEMA)
         assert any("expected integer" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Nullable field tests (covers lines 169-171)
+# ---------------------------------------------------------------------------
+
+
+def test_nullable_field_accepts_none() -> None:
+    """A nullable field should accept None without error."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("opt", required=True, nullable=True, dtype="str")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"opt": None}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert errors == []
+
+
+def test_required_non_nullable_rejects_none() -> None:
+    """A required, non-nullable field should reject None."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("val", required=True, nullable=False, dtype="str")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"val": None}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("required field is missing" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# String type wrong-type check (covers line 175)
+# ---------------------------------------------------------------------------
+
+
+def test_string_field_rejects_non_string() -> None:
+    """A str-typed field should reject a non-string value."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("name", required=True, dtype="str")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"name": 42}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected string" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Float validation (covers lines 186-191)
+# ---------------------------------------------------------------------------
+
+
+def test_float_field_rejects_non_number() -> None:
+    """A float-typed field should reject a string value."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("score", required=True, dtype="float")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"score": "abc"}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected number" in e for e in errors)
+
+
+def test_float_field_rejects_bool() -> None:
+    """A float-typed field should reject a boolean."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("score", required=True, dtype="float")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"score": True}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected number" in e for e in errors)
+
+
+def test_float_below_minimum() -> None:
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("val", required=True, dtype="float", min_value=1.0)],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"val": 0.5}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("below minimum" in e for e in errors)
+
+
+def test_float_above_maximum() -> None:
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("val", required=True, dtype="float", max_value=10.0)],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"val": 15.0}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("above maximum" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Non-string type for time/timezone/url (covers lines 205, 211, 217)
+# ---------------------------------------------------------------------------
+
+
+def test_time_field_rejects_non_string() -> None:
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("t", required=True, dtype="time")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"t": 900}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected time string" in e for e in errors)
+
+
+def test_timezone_field_rejects_non_string() -> None:
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("tz", required=True, dtype="timezone")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"tz": 123}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected timezone string" in e for e in errors)
+
+
+def test_url_field_rejects_non_string() -> None:
+    schema = ConfigSchema(
+        name="test",
+        fields=[FieldSchema("link", required=True, dtype="url")],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"link": 42}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("expected URL string" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Dict type recursive validation (covers line 224-225)
+# ---------------------------------------------------------------------------
+
+
+def test_dict_field_validates_children() -> None:
+    """A valid dict with children should pass recursive validation."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[
+            FieldSchema(
+                "settings",
+                required=True,
+                dtype="dict",
+                children=[FieldSchema("key", required=True, dtype="str")],
+            ),
+        ],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"settings": {"key": "value"}}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert errors == []
+
+
+def test_dict_field_reports_child_errors() -> None:
+    """A dict with missing required children should report errors."""
+    schema = ConfigSchema(
+        name="test",
+        fields=[
+            FieldSchema(
+                "settings",
+                required=True,
+                dtype="dict",
+                children=[FieldSchema("key", required=True, dtype="str")],
+            ),
+        ],
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json({"settings": {}}, Path(tmp))
+        errors = validate_config(path, schema)
+        assert any("key" in e and "required" in e for e in errors)
