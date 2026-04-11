@@ -48,19 +48,14 @@ SCHEMAS: dict[str, CSVSchema] = {
             ColumnSchema("task_id", required=True),
             ColumnSchema("project_id", nullable=True),
             ColumnSchema("title", required=True),
-            ColumnSchema("domain", nullable=True),
+            ColumnSchema("domain", required=True),
             ColumnSchema(
                 "status",
-                required=True,
                 dtype="enum",
-                enum_values=["queued", "in_progress", "blocked", "done", "dropped"],
-            ),
-            ColumnSchema(
-                "priority",
-                dtype="enum",
-                enum_values=["P1", "P2", "P3"],
+                enum_values=["queued", "in_progress", "blocked", "completed"],
                 nullable=True,
             ),
+            ColumnSchema("priority", dtype="int", nullable=True),
             ColumnSchema("effort_mins", dtype="int", nullable=True),
             ColumnSchema("due_date", dtype="date", nullable=True),
             ColumnSchema(
