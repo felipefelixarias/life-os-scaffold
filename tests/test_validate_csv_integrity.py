@@ -702,3 +702,51 @@ class TestForeignKeyExceptionPaths:
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
         assert any("Failed to validate daily_log foreign keys" in e for e in errors)
+
+
+class TestDefensiveExceptionHandlers:
+    """Cover defensive except blocks in time/date validation helpers.
+
+    The format validators (validate_time_format, validate_date_format) normally
+    prevent invalid strings from reaching strptime. These tests bypass the
+    validators to exercise the defensive except blocks.
+    """
+
+    def test_validate_time_range_strptime_raises(self) -> None:
+        """If strptime raises after format check is bypassed, skip gracefully."""
+        with mock.patch.object(
+            validate_csv_integrity,
+            "validate_time_format",
+            return_value=True,
+        ):
+            is_valid, msg = validate_csv_integrity.validate_time_range(
+                "not-a-time", "also-bad"
+            )
+        assert is_valid is True
+        assert msg == ""
+
+    def test_validate_duration_consistency_strptime_raises(self) -> None:
+        """If strptime raises during duration check, skip gracefully."""
+        with mock.patch.object(
+            validate_csv_integrity,
+            "validate_time_format",
+            return_value=True,
+        ):
+            is_valid, msg = validate_csv_integrity.validate_duration_consistency(
+                "not-a-time", "also-bad", "60"
+            )
+        assert is_valid is True
+        assert msg == ""
+
+    def test_validate_date_range_strptime_raises(self) -> None:
+        """If strptime raises during date range check, skip gracefully."""
+        with mock.patch.object(
+            validate_csv_integrity,
+            "validate_date_format",
+            return_value=True,
+        ):
+            is_valid, msg = validate_csv_integrity.validate_date_range(
+                "not-a-date", "also-bad", ("start_date", "end_date")
+            )
+        assert is_valid is True
+        assert msg == ""

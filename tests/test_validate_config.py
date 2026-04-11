@@ -7,6 +7,7 @@ import json
 import sys
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "validate_config.py"
@@ -394,3 +395,9 @@ class TestValidateAllConfigs:
 
     def test_empty_directory(self, tmp_path: Path) -> None:
         assert validate_all_configs(tmp_path) == {}
+
+    def test_default_config_dir(self, tmp_path: Path) -> None:
+        """Calling without args uses CONFIG_DIR default."""
+        with mock.patch.object(validate_config, "CONFIG_DIR", tmp_path):
+            results = validate_all_configs()
+        assert results == {}
