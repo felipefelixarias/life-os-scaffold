@@ -377,7 +377,7 @@ class TestMainFunction:
     """Test the main validation function."""
 
     @mock.patch("builtins.print")
-    @mock.patch("builtins.exit")
+    @mock.patch("sys.exit")
     @mock.patch.object(validate_csv_integrity, "validate_csv_schema")
     @mock.patch.object(validate_csv_integrity, "validate_foreign_keys")
     @mock.patch.object(validate_csv_integrity, "CANONICAL_DIR")
@@ -409,7 +409,7 @@ class TestMainFunction:
         assert any("All validation checks passed" in str(call) for call in mock_print.call_args_list)
 
     @mock.patch("builtins.print")
-    @mock.patch("builtins.exit")
+    @mock.patch("sys.exit")
     @mock.patch.object(validate_csv_integrity, "validate_csv_schema")
     @mock.patch.object(validate_csv_integrity, "validate_foreign_keys")
     @mock.patch.object(validate_csv_integrity, "CANONICAL_DIR")
@@ -439,7 +439,7 @@ class TestMainFunction:
         mock_exit.assert_called_once_with(1)
 
     @mock.patch("builtins.print")
-    @mock.patch("builtins.exit")
+    @mock.patch("sys.exit")
     @mock.patch.object(validate_csv_integrity, "validate_csv_schema")
     @mock.patch.object(validate_csv_integrity, "validate_foreign_keys")
     @mock.patch.object(validate_csv_integrity, "CANONICAL_DIR")

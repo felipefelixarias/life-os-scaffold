@@ -232,7 +232,7 @@ def check_security() -> None:
         print("✅ No obvious security issues found")
 
 
-def main() -> None:
+def main() -> int:
     """Run comprehensive repository health check.
 
     Performs the following checks:
@@ -257,7 +257,8 @@ def main() -> None:
 
     print("\n" + "=" * 50)
     print("Health check complete! Review any ⚠️  or ❌ items above.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
