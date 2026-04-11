@@ -437,3 +437,221 @@ class TestMainFunction:
 
         # Should call exit(1)
         mock_exit.assert_called_once_with(1)
+
+    @mock.patch("builtins.print")
+    @mock.patch("builtins.exit")
+    @mock.patch.object(validate_csv_integrity, "validate_csv_schema")
+    @mock.patch.object(validate_csv_integrity, "validate_foreign_keys")
+    @mock.patch.object(validate_csv_integrity, "CANONICAL_DIR")
+    @mock.patch.object(validate_csv_integrity, "LOGS_DIR")
+    def test_main_function_with_warnings(
+        self,
+        mock_logs_dir: mock.MagicMock,
+        mock_canonical_dir: mock.MagicMock,
+        mock_validate_foreign_keys: mock.MagicMock,
+        mock_validate_csv_schema: mock.MagicMock,
+        mock_exit: mock.MagicMock,
+        mock_print: mock.MagicMock,
+    ) -> None:
+        """Test main function with warnings but no errors (covers lines 592-594)."""
+        mock_result = mock.MagicMock()
+        mock_result.passed = True
+        mock_result.errors = []
+        mock_result.warnings = ["Some schema note"]
+        mock_result.relative_to.return_value = Path("test.csv")
+        mock_validate_csv_schema.return_value = mock_result
+        mock_validate_foreign_keys.return_value = []
+
+        validate_csv_integrity.main()
+
+        mock_exit.assert_not_called()
+        assert any("WARNING" in str(call) for call in mock_print.call_args_list)
+
+
+class TestDurationConsistency:
+    """Test duration consistency validation (covers lines 277, 280, 284-285, 302-303)."""
+
+    def test_empty_start_time(self) -> None:
+        """Empty start time should skip validation (covers line 277)."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("", "10:00", "60")
+        assert is_valid
+        assert msg == ""
+
+    def test_empty_duration(self) -> None:
+        """Empty duration should skip validation (covers line 277)."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "")
+        assert is_valid
+        assert msg == ""
+
+    def test_invalid_time_format_in_duration(self) -> None:
+        """Invalid time format should skip validation (covers line 280)."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("bad", "10:00", "60")
+        assert is_valid
+        assert msg == ""
+
+    def test_non_integer_duration(self) -> None:
+        """Non-integer duration should skip validation (covers lines 284-285)."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "abc")
+        assert is_valid
+        assert msg == ""
+
+    def test_matching_duration(self) -> None:
+        """Duration matching calculated time should pass."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "60")
+        assert is_valid
+        assert msg == ""
+
+    def test_mismatching_duration(self) -> None:
+        """Duration not matching calculated time should fail."""
+        is_valid, msg = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "120")
+        assert not is_valid
+        assert "doesn't match" in msg
+
+
+class TestDateRange:
+    """Test date range validation (covers lines 324, 333-334)."""
+
+    def test_invalid_date_format_skips(self) -> None:
+        """Invalid date format should skip range validation (covers line 324)."""
+        is_valid, msg = validate_csv_integrity.validate_date_range(
+            "not-a-date", "2026-04-10", ("start", "end"),
+        )
+        assert is_valid
+        assert msg == ""
+
+    def test_valid_date_range(self) -> None:
+        """Start before end should pass."""
+        is_valid, msg = validate_csv_integrity.validate_date_range(
+            "2026-04-01", "2026-04-10", ("start", "end"),
+        )
+        assert is_valid
+
+    def test_invalid_date_range(self) -> None:
+        """Start after end should fail."""
+        is_valid, msg = validate_csv_integrity.validate_date_range(
+            "2026-04-10", "2026-04-01", ("start_date", "target_date"),
+        )
+        assert not is_valid
+        assert "must be before" in msg
+
+    def test_empty_dates_skip(self) -> None:
+        """Empty dates should skip validation."""
+        is_valid, msg = validate_csv_integrity.validate_date_range(
+            "", "2026-04-10", ("start", "end"),
+        )
+        assert is_valid
+
+
+class TestNumericField:
+    """Test numeric field validation."""
+
+    def test_below_minimum(self) -> None:
+        is_valid, msg = validate_csv_integrity.validate_numeric_field("0", "target_per_week", min_val=1)
+        assert not is_valid
+        assert "below minimum" in msg
+
+    def test_above_maximum(self) -> None:
+        is_valid, msg = validate_csv_integrity.validate_numeric_field("500", "effort_mins", max_val=480)
+        assert not is_valid
+        assert "exceeds maximum" in msg
+
+    def test_invalid_integer(self) -> None:
+        is_valid, msg = validate_csv_integrity.validate_numeric_field("abc", "effort_mins", is_integer=True)
+        assert not is_valid
+        assert "not a valid integer" in msg
+
+    def test_invalid_float(self) -> None:
+        is_valid, msg = validate_csv_integrity.validate_numeric_field("abc", "metric_target", is_integer=False)
+        assert not is_valid
+        assert "not a valid number" in msg
+
+
+class TestGenericExceptionHandling:
+    """Test generic exception paths in validation (covers line 476-477)."""
+
+    def test_validate_csv_schema_unexpected_error(self) -> None:
+        """Test that unexpected errors during row validation are caught (covers lines 476-477)."""
+        import csv as _csv
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            habits_file = Path(tmp_dir) / "habits.csv"
+            habits_file.write_text(
+                "habit_id,area,name,frequency,target_per_week,min_value,unit,active,notes,last_updated\n"
+                "h1,health,Run,daily,7,1,session,true,Notes,2026-04-02\n",
+                encoding="utf-8",
+            )
+            # Patch csv.reader to raise an unexpected exception
+            with mock.patch.object(_csv, "reader", side_effect=RuntimeError("disk failure")):
+                result = validate_csv_integrity.validate_csv_schema(habits_file)
+                assert not result.passed
+                assert any("Unexpected error" in e for e in result.errors)
+
+
+class TestForeignKeyExceptionPaths:
+    """Test exception handling in foreign key validation (covers lines 498-557)."""
+
+    def setup_method(self) -> None:
+        self.temp_dir = tempfile.mkdtemp()
+        self.canonical_dir = Path(self.temp_dir) / "canonical"
+        self.logs_dir = Path(self.temp_dir) / "logs"
+        self.canonical_dir.mkdir(parents=True)
+        self.logs_dir.mkdir(parents=True)
+
+    def test_corrupted_projects_file(self) -> None:
+        """Exception loading project IDs should be caught (covers lines 498-499)."""
+        projects_file = self.canonical_dir / "projects.csv"
+        projects_file.write_bytes(b"\xff\xfe invalid utf8")
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed to load project IDs" in e for e in errors)
+
+    def test_corrupted_tasks_file_loading(self) -> None:
+        """Exception loading task IDs should be caught (covers lines 508-509)."""
+        tasks_file = self.canonical_dir / "tasks.csv"
+        tasks_file.write_bytes(b"\xff\xfe invalid utf8")
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed to load task IDs" in e for e in errors)
+
+    def test_corrupted_habits_file(self) -> None:
+        """Exception loading habit IDs should be caught (covers lines 518-519)."""
+        habits_file = self.canonical_dir / "habits.csv"
+        habits_file.write_bytes(b"\xff\xfe invalid utf8")
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed to load habit IDs" in e for e in errors)
+
+    def test_corrupted_tasks_foreign_key_check(self) -> None:
+        """Exception validating task foreign keys should be caught (covers lines 530-531)."""
+        tasks_file = self.canonical_dir / "tasks.csv"
+        # Write a valid header, then corrupt the file reading
+        tasks_file.write_text(
+            "task_id,project_id,title\ntask1,proj1,Test\n", encoding="utf-8",
+        )
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            # Patch open to succeed first (loading IDs), then fail (FK check)
+            original_open = tasks_file.open
+            call_count = [0]
+            def side_effect(*args, **kwargs):
+                call_count[0] += 1
+                if call_count[0] >= 2:
+                    raise OSError("read failure")
+                return original_open(*args, **kwargs)
+            with mock.patch.object(Path, "open", side_effect=side_effect):
+                errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed" in e for e in errors)
+
+    def test_corrupted_time_blocks_foreign_key_check(self) -> None:
+        """Exception validating time_blocks foreign keys should be caught (covers lines 543-544)."""
+        time_blocks_file = self.canonical_dir / "time_blocks.csv"
+        time_blocks_file.write_bytes(b"\xff\xfe invalid utf8")
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed to validate time_blocks foreign keys" in e for e in errors)
+
+    def test_corrupted_daily_log_foreign_key_check(self) -> None:
+        """Exception validating daily_log foreign keys should be caught (covers lines 556-557)."""
+        daily_log_file = self.logs_dir / "daily_log.csv"
+        daily_log_file.write_bytes(b"\xff\xfe invalid utf8")
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
+        assert any("Failed to validate daily_log foreign keys" in e for e in errors)
