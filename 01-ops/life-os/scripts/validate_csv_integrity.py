@@ -495,100 +495,74 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
     return result
 
 
+def _load_csv_rows(
+    file_path: Path, errors: list[str], label: str
+) -> list[dict[str, str]]:
+    """Load all rows from a CSV file, appending to *errors* on failure."""
+    if not file_path.exists():
+        return []
+    try:
+        with file_path.open(newline="", encoding="utf-8") as f:
+            return list(csv.DictReader(f))
+    except (OSError, UnicodeDecodeError, csv.Error) as e:
+        errors.append(f"Failed to load {label} from {file_path.name}: {e}")
+        return []
+
+
+def _extract_ids(rows: list[dict[str, str]], id_field: str) -> set[str]:
+    """Extract a set of non-empty IDs from pre-loaded rows."""
+    return {
+        row.get(id_field, "")
+        for row in rows
+        if row.get(id_field, "").strip()
+    }
+
+
+def _check_foreign_key(
+    rows: list[dict[str, str]],
+    fk_field: str,
+    valid_ids: set[str],
+    source_name: str,
+    errors: list[str],
+) -> None:
+    """Check that every non-empty *fk_field* value appears in *valid_ids*."""
+    for row_num, row in enumerate(rows, start=2):
+        value = row.get(fk_field, "").strip()
+        if value and value not in valid_ids:
+            errors.append(
+                f"{source_name} row {row_num}: Invalid {fk_field} '{value}'"
+            )
+
+
 def validate_foreign_keys(canonical_dir: Path) -> list[str]:
     """Validate foreign key references between CSV files."""
-    errors = []
+    errors: list[str] = []
 
-    # Load all IDs for reference checking
-    project_ids = set()
-    task_ids = set()
-    habit_ids = set()
+    # Load each file once — rows are reused for both ID extraction and FK checks
+    project_rows = _load_csv_rows(
+        canonical_dir / "projects.csv", errors, "project IDs"
+    )
+    task_rows = _load_csv_rows(canonical_dir / "tasks.csv", errors, "task IDs")
+    habit_rows = _load_csv_rows(canonical_dir / "habits.csv", errors, "habit IDs")
 
-    # Load project IDs
-    projects_file = canonical_dir / "projects.csv"
-    if projects_file.exists():
-        try:
-            with projects_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                project_ids = {
-                    row.get("project_id", "")
-                    for row in reader
-                    if row.get("project_id", "").strip()
-                }
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to load project IDs from {projects_file.name}: {e}")
+    project_ids = _extract_ids(project_rows, "project_id")
+    task_ids = _extract_ids(task_rows, "task_id")
+    habit_ids = _extract_ids(habit_rows, "habit_id")
 
-    # Load task IDs
-    tasks_file = canonical_dir / "tasks.csv"
-    if tasks_file.exists():
-        try:
-            with tasks_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                task_ids = {
-                    row.get("task_id", "")
-                    for row in reader
-                    if row.get("task_id", "").strip()
-                }
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to load task IDs from {tasks_file.name}: {e}")
+    # tasks → projects (uses already-loaded task_rows, no second read)
+    _check_foreign_key(task_rows, "project_id", project_ids, "tasks.csv", errors)
 
-    # Load habit IDs
-    habits_file = canonical_dir / "habits.csv"
-    if habits_file.exists():
-        try:
-            with habits_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                habit_ids = {
-                    row.get("habit_id", "")
-                    for row in reader
-                    if row.get("habit_id", "").strip()
-                }
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to load habit IDs from {habits_file.name}: {e}")
+    # time_blocks → tasks
+    tb_rows = _load_csv_rows(
+        canonical_dir / "time_blocks.csv", errors, "time_blocks foreign keys"
+    )
+    _check_foreign_key(tb_rows, "task_id", task_ids, "time_blocks.csv", errors)
 
-    # Check foreign keys in tasks.csv
-    if tasks_file.exists():
-        try:
-            with tasks_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row_num, row in enumerate(reader, start=2):
-                    project_id = row.get("project_id", "").strip()
-                    if project_id and project_id not in project_ids:
-                        errors.append(
-                            f"tasks.csv row {row_num}: Invalid project_id '{project_id}'"
-                        )
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to validate task foreign keys: {e}")
-
-    # Check foreign keys in time_blocks.csv
-    time_blocks_file = canonical_dir / "time_blocks.csv"
-    if time_blocks_file.exists():
-        try:
-            with time_blocks_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row_num, row in enumerate(reader, start=2):
-                    task_id = row.get("task_id", "").strip()
-                    if task_id and task_id not in task_ids:
-                        errors.append(
-                            f"time_blocks.csv row {row_num}: Invalid task_id '{task_id}'"
-                        )
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to validate time_blocks foreign keys: {e}")
-
-    # Check foreign keys in daily_log.csv (in logs directory)
-    daily_log_file = LOGS_DIR / "daily_log.csv"
-    if daily_log_file.exists():
-        try:
-            with daily_log_file.open(newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row_num, row in enumerate(reader, start=2):
-                    habit_id = row.get("habit_id", "").strip()
-                    if habit_id and habit_id not in habit_ids:
-                        errors.append(
-                            f"daily_log.csv row {row_num}: Invalid habit_id '{habit_id}'"
-                        )
-        except (OSError, UnicodeDecodeError, csv.Error) as e:
-            errors.append(f"Failed to validate daily_log foreign keys: {e}")
+    # daily_log → habits
+    dl_rows = _load_csv_rows(
+        LOGS_DIR / "daily_log.csv", errors, "daily_log foreign keys"
+    )
+    _check_foreign_key(dl_rows, "habit_id", habit_ids, "daily_log.csv", errors)
 
     return errors
 
