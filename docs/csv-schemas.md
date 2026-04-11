@@ -85,9 +85,9 @@ task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,cont
 | `task_id` | String | Yes | Unique identifier |
 | `project_id` | String | No | Link to projects.csv |
 | `title` | String | Yes | Task description |
-| `domain` | String | Yes | Life area this belongs to |
-| `status` | Enum | No | "queued", "in_progress", "blocked", "completed" |
-| `priority` | Integer | No | 1-5 (1=highest priority) |
+| `domain` | String | No | Life area this belongs to |
+| `status` | Enum | No | "queued", "in_progress", "blocked", "done", "dropped" |
+| `priority` | Enum | No | "P1", "P2", "P3" (P1=highest priority) |
 | `effort_mins` | Integer | No | Estimated minutes to complete |
 | `due_date` | Date | No | ISO format hard deadline |
 | `energy` | Enum | No | "low", "medium", "high" |
@@ -102,7 +102,7 @@ task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,cont
 
 ### Example
 ```csv
-setup_profile,life_os_setup,Set up life-os profile,operations,queued,1,30,,medium,computer,manual,Copy profile.example.json to profile.json,,,2026-04-01,First-time setup task
+setup_profile,life_os_setup,Set up life-os profile,operations,queued,P1,30,,medium,computer,manual,Copy profile.example.json to profile.json,,,2026-04-01,First-time setup task
 ```
 
 ---
@@ -181,8 +181,8 @@ log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated
 | `activity` | String | Yes | What was done |
 | `domain` | String | No | Life area |
 | `duration_mins` | Integer | No | Total minutes spent |
-| `start_time` | Time | Yes | HH:MM format when started |
-| `end_time` | Time | Yes | HH:MM format when finished |
+| `start_time` | Time | No | HH:MM format when started |
+| `end_time` | Time | No | HH:MM format when finished |
 | `notes` | String | No | Additional context |
 | `last_updated` | Date | No | ISO format (YYYY-MM-DD) when last modified |
 

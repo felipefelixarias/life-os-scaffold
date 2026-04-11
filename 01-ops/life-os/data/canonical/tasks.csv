@@ -1,2 +1,2 @@
 task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes
-example_task,,Review quarterly goals,planning,queued,3,30,,medium,desk,manual,Open goals document,,,,2026-04-02,Example task for testing
+example_task,,Review quarterly goals,planning,queued,P3,30,,medium,desk,manual,Open goals document,,,,2026-04-02,Example task for testing
