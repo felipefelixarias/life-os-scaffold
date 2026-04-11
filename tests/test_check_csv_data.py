@@ -9,6 +9,8 @@ SPEC = spec_from_file_location("life_os_check_csv_data", MODULE_PATH)
 check_csv_data = module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(check_csv_data)
+
+
 def test_analyze_csv_file_nonexistent() -> None:
     """Test analyzing a non-existent CSV file."""
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -43,6 +45,7 @@ def test_analyze_csv_file_with_data() -> None:
         assert stats["header"] == ["col1", "col2", "col3"]
         assert stats["size_bytes"] > 0
 
+
 def test_analyze_csv_file_header_only() -> None:
     """Test analyzing a CSV file with header but no data."""
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -75,6 +78,7 @@ def test_analyze_csv_file_handles_encoding_errors() -> None:
         assert stats["exists"]
         assert "error" in stats
         assert "Encoding error" in stats["error"]
+
 
 def test_process_large_csv_with_sampling() -> None:
     """Test processing large CSV files with row sampling."""
@@ -133,6 +137,7 @@ def test_process_small_csv_empty_data() -> None:
     assert not result["has_data"]
     assert result["sample_row"] is None
 
+
 def test_init_csv_stats() -> None:
     """Test initialization of CSV stats dictionary."""
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -156,8 +161,12 @@ def test_analyze_csv_file_handles_permission_error() -> None:
         csv_path = Path(temp_dir) / "permission_denied.csv"
         csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
-             mock.patch.object(Path, "open", side_effect=PermissionError("Access denied")):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)),
+            mock.patch.object(
+                Path, "open", side_effect=PermissionError("Access denied")
+            ),
+        ):
             # Mock Path.open specifically to raise PermissionError
             stats = check_csv_data.analyze_csv_file(csv_path)
 
@@ -174,8 +183,10 @@ def test_analyze_csv_file_handles_csv_error() -> None:
         csv_path = Path(temp_dir) / "malformed.csv"
         csv_path.write_text("col1,col2\nval1,val2\n", encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
-             mock.patch("csv.reader", side_effect=csv_module.Error("Malformed CSV")):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)),
+            mock.patch("csv.reader", side_effect=csv_module.Error("Malformed CSV")),
+        ):
             # Mock csv.reader to raise a CSV error
             stats = check_csv_data.analyze_csv_file(csv_path)
 
@@ -202,9 +213,11 @@ def test_main_prints_analysis_for_existing_files(capsys) -> None:
         habits_path = canonical / "habits.csv"
         habits_path.write_text("col1,col2\n", encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
-             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
-             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", root),
+            mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical),
+            mock.patch.object(check_csv_data, "LOGS_DIR", logs),
+        ):
             check_csv_data.main()
 
         output = capsys.readouterr().out
@@ -232,9 +245,11 @@ def test_main_prints_error_for_broken_files(capsys) -> None:
         with bad_path.open("wb") as f:
             f.write(b"\x80\x81\x82invalid\n")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
-             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
-             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", root),
+            mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical),
+            mock.patch.object(check_csv_data, "LOGS_DIR", logs),
+        ):
             check_csv_data.main()
 
         output = capsys.readouterr().out
@@ -254,13 +269,16 @@ def test_main_size_display_small_file(capsys) -> None:
         tasks_path = canonical / "tasks.csv"
         tasks_path.write_text("a,b\n1,2\n", encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
-             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
-             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", root),
+            mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical),
+            mock.patch.object(check_csv_data, "LOGS_DIR", logs),
+        ):
             check_csv_data.main()
 
         output = capsys.readouterr().out
         assert "bytes)" in output
+
 
 def test_analyze_csv_file_large_file_threshold() -> None:
     """Test that large files use sampling logic."""
@@ -270,8 +288,10 @@ def test_analyze_csv_file_large_file_threshold() -> None:
         csv_content = "col1,col2,col3\nval1,val2,val3\n"
         csv_path.write_text(csv_content, encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
-             mock.patch.object(Path, "stat") as mock_stat:
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)),
+            mock.patch.object(Path, "stat") as mock_stat,
+        ):
             # Mock the file size to exceed the large file threshold
             mock_stat_result = mock.Mock()
             mock_stat_result.st_size = check_csv_data.LARGE_FILE_THRESHOLD + 1
@@ -298,9 +318,15 @@ def test_analyze_csv_file_unicode_decode_error_in_reader() -> None:
         # Write some valid content first
         csv_path.write_text("col1,col2\n", encoding="utf-8")
 
-        with mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)), \
-             mock.patch("builtins.next", side_effect=UnicodeDecodeError(
-                 "utf-8", b"\x80\x81", 0, 1, "invalid start byte")):
+        with (
+            mock.patch.object(check_csv_data, "REPO_ROOT", Path(temp_dir)),
+            mock.patch(
+                "builtins.next",
+                side_effect=UnicodeDecodeError(
+                    "utf-8", b"\x80\x81", 0, 1, "invalid start byte"
+                ),
+            ),
+        ):
             # Mock the CSV reader's next() call to raise UnicodeDecodeError
             stats = check_csv_data.analyze_csv_file(csv_path)
 

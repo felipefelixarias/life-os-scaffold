@@ -52,11 +52,41 @@ PROFILE_SCHEMA = ConfigSchema(
                 FieldSchema("workday_start", required=False, dtype="time"),
                 FieldSchema("workday_end", required=False, dtype="time"),
                 FieldSchema("workday_commute_home_end", required=False, dtype="time"),
-                FieldSchema("default_task_block_mins", required=False, dtype="int", min_value=1, max_value=480),
-                FieldSchema("deep_work_block_mins", required=False, dtype="int", min_value=1, max_value=480),
-                FieldSchema("max_screen_block_mins", required=False, dtype="int", min_value=1, max_value=480),
-                FieldSchema("break_mins", required=False, dtype="int", min_value=1, max_value=120),
-                FieldSchema("max_major_tasks_per_day", required=False, dtype="int", min_value=1, max_value=20),
+                FieldSchema(
+                    "default_task_block_mins",
+                    required=False,
+                    dtype="int",
+                    min_value=1,
+                    max_value=480,
+                ),
+                FieldSchema(
+                    "deep_work_block_mins",
+                    required=False,
+                    dtype="int",
+                    min_value=1,
+                    max_value=480,
+                ),
+                FieldSchema(
+                    "max_screen_block_mins",
+                    required=False,
+                    dtype="int",
+                    min_value=1,
+                    max_value=480,
+                ),
+                FieldSchema(
+                    "break_mins",
+                    required=False,
+                    dtype="int",
+                    min_value=1,
+                    max_value=120,
+                ),
+                FieldSchema(
+                    "max_major_tasks_per_day",
+                    required=False,
+                    dtype="int",
+                    min_value=1,
+                    max_value=20,
+                ),
                 FieldSchema(
                     "weekly_review_day",
                     required=False,
@@ -80,7 +110,9 @@ PROFILE_SCHEMA = ConfigSchema(
             item_schema=[
                 FieldSchema("id", required=True, dtype="str"),
                 FieldSchema("name", required=True, dtype="str"),
-                FieldSchema("weight", required=True, dtype="int", min_value=1, max_value=10),
+                FieldSchema(
+                    "weight", required=True, dtype="int", min_value=1, max_value=10
+                ),
             ],
         ),
         FieldSchema(
@@ -159,9 +191,7 @@ def _validate_url(value: str) -> bool:
     return value.startswith(("http://", "https://"))
 
 
-def _validate_field(
-    value: Any, schema: FieldSchema, path: str
-) -> list[str]:
+def _validate_field(value: Any, schema: FieldSchema, path: str) -> list[str]:
     """Validate a single field value against its schema. Returns errors."""
     errors: list[str] = []
 
@@ -202,13 +232,17 @@ def _validate_field(
 
     elif schema.dtype == "time":
         if not isinstance(value, str):
-            errors.append(f"{path}: expected time string (HH:MM), got {type(value).__name__}")
+            errors.append(
+                f"{path}: expected time string (HH:MM), got {type(value).__name__}"
+            )
         elif not _validate_time(value):
             errors.append(f"{path}: invalid time format '{value}', expected HH:MM")
 
     elif schema.dtype == "timezone":
         if not isinstance(value, str):
-            errors.append(f"{path}: expected timezone string, got {type(value).__name__}")
+            errors.append(
+                f"{path}: expected timezone string, got {type(value).__name__}"
+            )
         elif not _validate_timezone(value):
             errors.append(f"{path}: invalid timezone '{value}'")
 
@@ -216,7 +250,9 @@ def _validate_field(
         if not isinstance(value, str):
             errors.append(f"{path}: expected URL string, got {type(value).__name__}")
         elif not _validate_url(value):
-            errors.append(f"{path}: invalid URL '{value}', must start with http:// or https://")
+            errors.append(
+                f"{path}: invalid URL '{value}', must start with http:// or https://"
+            )
 
     elif schema.dtype == "dict":
         if not isinstance(value, dict):
@@ -230,9 +266,13 @@ def _validate_field(
         elif schema.item_schema:
             for i, item in enumerate(value):
                 if not isinstance(item, dict):
-                    errors.append(f"{path}[{i}]: expected object, got {type(item).__name__}")
+                    errors.append(
+                        f"{path}[{i}]: expected object, got {type(item).__name__}"
+                    )
                 else:
-                    errors.extend(_validate_object(item, schema.item_schema, f"{path}[{i}]"))
+                    errors.extend(
+                        _validate_object(item, schema.item_schema, f"{path}[{i}]")
+                    )
 
     return errors
 

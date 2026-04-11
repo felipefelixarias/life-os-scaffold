@@ -29,6 +29,7 @@ validate_all_configs = config_schemas.validate_all_configs
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write_json(data: dict, tmp_dir: Path, name: str = "test.json") -> Path:
     filepath = tmp_dir / name
     filepath.write_text(json.dumps(data), encoding="utf-8")
@@ -124,7 +125,9 @@ def test_example_profile_validates() -> None:
 
 def test_example_calendar_feeds_validates() -> None:
     """The shipped calendar_feeds.example.json should pass validation."""
-    example = REPO_ROOT / "01-ops" / "life-os" / "config" / "calendar_feeds.example.json"
+    example = (
+        REPO_ROOT / "01-ops" / "life-os" / "config" / "calendar_feeds.example.json"
+    )
     errors = validate_config(example, CALENDAR_FEEDS_SCHEMA)
     assert errors == []
 

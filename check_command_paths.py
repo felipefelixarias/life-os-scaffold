@@ -9,12 +9,12 @@ def extract_file_paths(content):
     """Extract file paths from markdown content."""
     # Look for patterns like 01-ops/life-os/... and similar directory structures
     patterns = [
-        r'`([^`]*\.(?:csv|json|md|py|txt|yaml|yml))`',  # Backticked file paths
-        r'`([^`]*01-ops/[^`]*)`',  # Backticked paths starting with 01-ops
-        r'`([^`]*\.claude/[^`]*)`',  # Backticked paths in .claude
-        r'(?:^|\s)([a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_.-]+)*\.(?:csv|json|md|py|txt|yaml|yml))',  # Standalone file paths
-        r'(?:^|\s)(01-ops/[a-zA-Z0-9_/-]+)',  # Any 01-ops paths
-        r'(?:^|\s)(\.claude/[a-zA-Z0-9_/-]+)',  # Any .claude paths
+        r"`([^`]*\.(?:csv|json|md|py|txt|yaml|yml))`",  # Backticked file paths
+        r"`([^`]*01-ops/[^`]*)`",  # Backticked paths starting with 01-ops
+        r"`([^`]*\.claude/[^`]*)`",  # Backticked paths in .claude
+        r"(?:^|\s)([a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_.-]+)*\.(?:csv|json|md|py|txt|yaml|yml))",  # Standalone file paths
+        r"(?:^|\s)(01-ops/[a-zA-Z0-9_/-]+)",  # Any 01-ops paths
+        r"(?:^|\s)(\.claude/[a-zA-Z0-9_/-]+)",  # Any .claude paths
     ]
 
     paths = []
@@ -23,6 +23,7 @@ def extract_file_paths(content):
         paths.extend(matches)
 
     return list(set(paths))  # Remove duplicates
+
 
 def main():
     repo_root = Path.cwd()
@@ -37,7 +38,7 @@ def main():
         print(f"\n📄 {md_file.name}")
 
         try:
-            content = md_file.read_text(encoding='utf-8')
+            content = md_file.read_text(encoding="utf-8")
             paths = extract_file_paths(content)
 
             if not paths:
@@ -46,7 +47,7 @@ def main():
 
             for path in sorted(paths):
                 # Skip obvious non-file patterns
-                if path.startswith('/') or path == '01-ops' or path == '.claude':
+                if path.startswith("/") or path == "01-ops" or path == ".claude":
                     continue
 
                 full_path = repo_root / path
@@ -72,6 +73,7 @@ def main():
         print("✅ All file path references are valid!")
 
     return len(all_issues)
+
 
 if __name__ == "__main__":
     issues = main()

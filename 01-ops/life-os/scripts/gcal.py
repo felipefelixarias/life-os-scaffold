@@ -88,7 +88,8 @@ def get_credentials() -> Any:
         if file_stat.st_mode & 0o077:  # Check if group or other have any permissions
             perms = oct(file_stat.st_mode)
             logger.warning(
-                "OAuth token file has overly permissive permissions: %s", perms,
+                "OAuth token file has overly permissive permissions: %s",
+                perms,
             )
 
     except (OSError, RuntimeError) as e:
@@ -106,7 +107,7 @@ def get_credentials() -> Any:
 
         with OAUTH_TOKEN_PATH.open("rb") as f:
             # This follows Google's official OAuth credential storage pattern
-            creds = pickle.load(f)  # nosec B301
+            creds = pickle.load(f)  # noqa: S301  # nosec B301 - Google OAuth pattern
     except (OSError, pickle.PickleError, ValueError) as e:
         error_msg = f"Cannot load OAuth credentials: {e}"
         raise PermissionError(error_msg) from e
@@ -127,7 +128,10 @@ def get_service() -> Any:
 
         creds = get_credentials()
         _service_cache = build(
-            "calendar", "v3", credentials=creds, cache_discovery=False,
+            "calendar",
+            "v3",
+            credentials=creds,
+            cache_discovery=False,
         )
     return _service_cache
 
@@ -229,7 +233,8 @@ def get_agenda(
         return events
     except (FileNotFoundError, PermissionError):
         logger.exception(
-            "Authentication error while fetching events for %s", start_date,
+            "Authentication error while fetching events for %s",
+            start_date,
         )
         return []
     except Exception as e:
@@ -320,7 +325,8 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     except Exception as e:
         if _is_http_error_status(e, 404):
             logger.warning(
-                "Event %s not found (already deleted or never existed)", event_id,
+                "Event %s not found (already deleted or never existed)",
+                event_id,
             )
         else:
             _log_google_api_error(f"deleting event {event_id}", e)
@@ -432,7 +438,8 @@ def push_day_plan(
             if end_dt <= start_dt:
                 end_dt += dt.timedelta(days=1)
                 logger.info(
-                    "Block '%s' spans midnight, end time adjusted to next day", title,
+                    "Block '%s' spans midnight, end time adjusted to next day",
+                    title,
                 )
 
         except ValueError as e:
@@ -470,11 +477,14 @@ def push_day_plan(
         )
     if failed_blocks > 0:
         logger.error(
-            "Day plan push summary: %s blocks failed to create events", failed_blocks,
+            "Day plan push summary: %s blocks failed to create events",
+            failed_blocks,
         )
     if successful_blocks > 0:
         logger.info(
-            "Successfully created %s calendar events for %s", successful_blocks, date,
+            "Successfully created %s calendar events for %s",
+            successful_blocks,
+            date,
         )
 
     return created_ids

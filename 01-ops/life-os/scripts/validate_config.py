@@ -101,12 +101,14 @@ def validate_profile(data: dict[str, Any]) -> list[str]:
                     f"got '{planning[field]}'"
                 )
 
-        if "weekly_review_day" in planning:
-            if planning["weekly_review_day"] not in VALID_WEEKDAYS:
-                errors.append(
-                    f"profile.planning: 'weekly_review_day' must be a weekday name, "
-                    f"got '{planning['weekly_review_day']}'"
-                )
+        if (
+            "weekly_review_day" in planning
+            and planning["weekly_review_day"] not in VALID_WEEKDAYS
+        ):
+            errors.append(
+                f"profile.planning: 'weekly_review_day' must be a weekday name, "
+                f"got '{planning['weekly_review_day']}'"
+            )
 
     # Domains
     errors.extend(_check_type(data, "domains", list, "profile"))
@@ -118,11 +120,10 @@ def validate_profile(data: dict[str, Any]) -> list[str]:
                 continue
             for field in ("id", "name"):
                 errors.extend(_check_type(domain, field, str, ctx))
-            if "weight" in domain:
-                if not isinstance(domain["weight"], (int, float)) or domain[
-                    "weight"
-                ] < 0:
-                    errors.append(f"{ctx}: 'weight' must be a non-negative number")
+            if "weight" in domain and (
+                not isinstance(domain["weight"], (int, float)) or domain["weight"] < 0
+            ):
+                errors.append(f"{ctx}: 'weight' must be a non-negative number")
 
     # Energy curve
     errors.extend(_check_type(data, "energy_curve", list, "profile"))
@@ -157,9 +158,7 @@ def validate_profile(data: dict[str, Any]) -> list[str]:
             for i, tier in enumerate(data["priority_tiers"]):
                 ctx = f"profile.priority_tiers[{i}]"
                 if not isinstance(tier, dict):
-                    errors.append(
-                        f"{ctx}: expected object, got {type(tier).__name__}"
-                    )
+                    errors.append(f"{ctx}: expected object, got {type(tier).__name__}")
                     continue
                 if "tier" in tier and (
                     not isinstance(tier["tier"], int) or tier["tier"] < 1

@@ -429,7 +429,8 @@ def lint_whitespace() -> list[str]:
     paths = markdown_docs() + sorted((REPO_ROOT / ".claude" / "commands").glob("*.md"))
     for path in paths:
         for line_no, line in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), 1,
+            path.read_text(encoding="utf-8").splitlines(),
+            1,
         ):
             if line.endswith((" ", "\t")):
                 errors.append(
@@ -442,7 +443,9 @@ def main() -> int:
     """Main entry point for the validation script with optional lint checks."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--lint", action="store_true", help="Run lint-style checks too.",
+        "--lint",
+        action="store_true",
+        help="Run lint-style checks too.",
     )
     args = parser.parse_args()
 

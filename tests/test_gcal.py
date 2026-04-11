@@ -150,7 +150,9 @@ class TestGcalService:
     @mock.patch.object(gcal, "get_credentials")
     @mock.patch("googleapiclient.discovery.build")
     def test_get_service_creates_calendar_service(
-        self, mock_build, mock_get_credentials,
+        self,
+        mock_build,
+        mock_get_credentials,
     ):
         mock_creds = mock.Mock()
         mock_get_credentials.return_value = mock_creds
@@ -160,7 +162,10 @@ class TestGcalService:
         result = gcal.get_service()
 
         mock_build.assert_called_once_with(
-            "calendar", "v3", credentials=mock_creds, cache_discovery=False,
+            "calendar",
+            "v3",
+            credentials=mock_creds,
+            cache_discovery=False,
         )
         assert result == mock_service
 
@@ -187,7 +192,9 @@ class TestGcalCalendarOperations:
     def setup_method(self):
         self.mock_service = mock.Mock()
         self._service_patcher = mock.patch.object(
-            gcal, "get_service", return_value=self.mock_service,
+            gcal,
+            "get_service",
+            return_value=self.mock_service,
         )
         self._service_patcher.start()
 
@@ -266,7 +273,8 @@ class TestGcalCalendarOperations:
         gcal.delete_event("event_123", "calendar_456")
 
         mock_events.delete.assert_called_once_with(
-            calendarId="calendar_456", eventId="event_123",
+            calendarId="calendar_456",
+            eventId="event_123",
         )
 
     def test_search_events_filters_by_query(self):
@@ -279,7 +287,9 @@ class TestGcalCalendarOperations:
         self.mock_service.events.return_value = mock_events
 
         result = gcal.search_events(
-            "meeting", dt.date(2026, 1, 15), dt.date(2026, 1, 16),
+            "meeting",
+            dt.date(2026, 1, 15),
+            dt.date(2026, 1, 16),
         )
 
         assert result == expected_events
@@ -327,7 +337,13 @@ class TestGcalTimezone:
         with mock.patch.object(gcal, "_load_timezone", return_value="Europe/Paris"):
             actual = gcal._rfc3339(dt.date(2026, 1, 15), "09:30:00")
         expected = dt.datetime(
-            2026, 1, 15, 9, 30, 0, tzinfo=ZoneInfo("Europe/Paris"),
+            2026,
+            1,
+            15,
+            9,
+            30,
+            0,
+            tzinfo=ZoneInfo("Europe/Paris"),
         ).isoformat()
         assert actual == expected
 
@@ -351,7 +367,9 @@ class TestGcalErrorHandling:
     def setup_method(self):
         self.mock_service = mock.Mock()
         self._service_patcher = mock.patch.object(
-            gcal, "get_service", return_value=self.mock_service,
+            gcal,
+            "get_service",
+            return_value=self.mock_service,
         )
         self._service_patcher.start()
 
@@ -364,8 +382,12 @@ class TestGcalErrorHandling:
         assert result == []
 
     def test_list_calendars_returns_empty_on_generic_error(self):
-        with mock.patch.object(gcal, "get_service", side_effect=RuntimeError("API down")), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(
+                gcal, "get_service", side_effect=RuntimeError("API down")
+            ),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             result = gcal.list_calendars()
         assert result == []
 
@@ -375,8 +397,10 @@ class TestGcalErrorHandling:
         assert result == []
 
     def test_get_agenda_returns_empty_on_generic_error(self):
-        with mock.patch.object(gcal, "get_service", side_effect=RuntimeError("boom")), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(gcal, "get_service", side_effect=RuntimeError("boom")),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             result = gcal.get_agenda(dt.date(2026, 1, 15), dt.date(2026, 1, 16))
         assert result == []
 
@@ -404,6 +428,7 @@ class TestGcalErrorHandling:
         )
         # Need to handle multiple calls
         call_count = [0]
+
         def mock_list(**kwargs):
             m = mock.Mock()
             if call_count[0] == 0:
@@ -415,6 +440,7 @@ class TestGcalErrorHandling:
                 m.execute.return_value = {"items": [{"id": "e2"}]}
             call_count[0] += 1
             return m
+
         mock_events.list.side_effect = mock_list
         self.mock_service.events.return_value = mock_events
 
@@ -426,22 +452,30 @@ class TestGcalErrorHandling:
     def test_create_event_returns_empty_on_auth_error(self):
         with mock.patch.object(gcal, "get_service", side_effect=FileNotFoundError):
             result = gcal.create_event(
-                "Test", dt.datetime(2026, 1, 15, 9), dt.datetime(2026, 1, 15, 10),
+                "Test",
+                dt.datetime(2026, 1, 15, 9),
+                dt.datetime(2026, 1, 15, 10),
             )
         assert result == ""
 
     def test_create_event_returns_empty_on_value_error(self):
         with mock.patch.object(gcal, "get_service", side_effect=ValueError("bad")):
             result = gcal.create_event(
-                "Test", dt.datetime(2026, 1, 15, 9), dt.datetime(2026, 1, 15, 10),
+                "Test",
+                dt.datetime(2026, 1, 15, 9),
+                dt.datetime(2026, 1, 15, 10),
             )
         assert result == ""
 
     def test_create_event_returns_empty_on_generic_error(self):
-        with mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             result = gcal.create_event(
-                "Test", dt.datetime(2026, 1, 15, 9), dt.datetime(2026, 1, 15, 10),
+                "Test",
+                dt.datetime(2026, 1, 15, 9),
+                dt.datetime(2026, 1, 15, 10),
             )
         assert result == ""
 
@@ -506,8 +540,10 @@ class TestGcalErrorHandling:
         assert result == {}
 
     def test_update_event_returns_empty_on_generic_error(self):
-        with mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             result = gcal.update_event("e1", summary="X")
         assert result == {}
 
@@ -519,22 +555,30 @@ class TestGcalErrorHandling:
         mock_events = mock.Mock()
         mock_events.delete.return_value.execute.side_effect = RuntimeError("fail")
         self.mock_service.events.return_value = mock_events
-        with mock.patch.object(gcal, "_is_http_error_status", return_value=False), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(gcal, "_is_http_error_status", return_value=False),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             gcal.delete_event("e1")  # Should not raise
 
     def test_search_events_returns_empty_on_auth_error(self):
         with mock.patch.object(gcal, "get_service", side_effect=FileNotFoundError):
             result = gcal.search_events(
-                "test", dt.date(2026, 1, 15), dt.date(2026, 1, 16),
+                "test",
+                dt.date(2026, 1, 15),
+                dt.date(2026, 1, 16),
             )
         assert result == []
 
     def test_search_events_returns_empty_on_generic_error(self):
-        with mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")), \
-             mock.patch.object(gcal, "_log_google_api_error"):
+        with (
+            mock.patch.object(gcal, "get_service", side_effect=RuntimeError("fail")),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
             result = gcal.search_events(
-                "test", dt.date(2026, 1, 15), dt.date(2026, 1, 16),
+                "test",
+                dt.date(2026, 1, 15),
+                dt.date(2026, 1, 16),
             )
         assert result == []
 
@@ -545,8 +589,10 @@ class TestGcalErrorHandling:
         assert "2026-01-15T00:00:00" in result
 
     def test_log_google_api_error_handles_import_error(self):
-        with mock.patch.dict("sys.modules", {"googleapiclient.errors": None}), \
-             mock.patch.object(gcal, "logger") as mock_logger:
+        with (
+            mock.patch.dict("sys.modules", {"googleapiclient.errors": None}),
+            mock.patch.object(gcal, "logger") as mock_logger,
+        ):
             gcal._log_google_api_error("testing", RuntimeError("boom"))
         mock_logger.error.assert_called_once()
         assert "Unexpected error" in mock_logger.error.call_args[0][0]
@@ -620,7 +666,9 @@ class TestGcalPushDayPlanEdgeCases:
         ]
         with (
             mock.patch.object(gcal, "clear_life_os_events", return_value=0),
-            mock.patch.object(gcal, "create_event", return_value="evt-1") as mock_create,
+            mock.patch.object(
+                gcal, "create_event", return_value="evt-1"
+            ) as mock_create,
         ):
             gcal.push_day_plan(blocks, dt.date(2026, 1, 15))
         # Summary should be just the title, no domain prefix
@@ -671,7 +719,9 @@ class TestGcalPlanner:
         with (
             mock.patch.object(gcal, "clear_life_os_events", return_value=0),
             mock.patch.object(
-                gcal, "create_event", side_effect=["evt-1", "evt-2"],
+                gcal,
+                "create_event",
+                side_effect=["evt-1", "evt-2"],
             ) as create_event,
         ):
             created = gcal.push_day_plan(blocks, dt.date(2026, 1, 15))

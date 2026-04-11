@@ -268,11 +268,17 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
                 f"Row {row_num}: '{stripped}' is not a valid date (YYYY-MM-DD) for '{col.name}'"
             )
 
-    elif col.dtype == "bool":
-        if stripped.lower() not in ("true", "false", "1", "0", "yes", "no"):
-            errors.append(
-                f"Row {row_num}: '{stripped}' is not a valid boolean for '{col.name}'"
-            )
+    elif col.dtype == "bool" and stripped.lower() not in (
+        "true",
+        "false",
+        "1",
+        "0",
+        "yes",
+        "no",
+    ):
+        errors.append(
+            f"Row {row_num}: '{stripped}' is not a valid boolean for '{col.name}'"
+        )
 
     return errors
 
@@ -305,7 +311,9 @@ def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
                 if extra:
                     parts.append(f"unexpected columns: {sorted(extra)}")
                 if not missing and not extra:
-                    parts.append(f"column order differs: got {header}, expected {expected}")
+                    parts.append(
+                        f"column order differs: got {header}, expected {expected}"
+                    )
                 errors.append("; ".join(parts))
                 # If columns don't match at all, we can't reliably validate rows
                 if missing:
@@ -327,7 +335,7 @@ def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
                     )
                     continue
 
-                row_data = dict(zip(header, row))
+                row_data = dict(zip(header, row, strict=False))
 
                 # Per-field validation
                 for h, val in row_data.items():

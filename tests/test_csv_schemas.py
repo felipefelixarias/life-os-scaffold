@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import tempfile
-from pathlib import Path
-
-from importlib.util import module_from_spec, spec_from_file_location
-
 import sys
+import tempfile
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "csv_schemas.py"
@@ -31,7 +29,15 @@ validate_all = csv_schemas.validate_all
 
 def test_all_canonical_schemas_defined() -> None:
     """All expected canonical CSV types have a schema."""
-    expected = {"tasks", "habits", "goals", "projects", "calendar_events", "time_blocks", "time_logs"}
+    expected = {
+        "tasks",
+        "habits",
+        "goals",
+        "projects",
+        "calendar_events",
+        "time_blocks",
+        "time_logs",
+    }
     assert set(SCHEMAS.keys()) == expected
 
 
@@ -56,6 +62,7 @@ def test_schema_get_column() -> None:
 # ---------------------------------------------------------------------------
 # Valid CSV passes
 # ---------------------------------------------------------------------------
+
 
 def _write_csv(directory: Path, name: str, lines: list[str]) -> Path:
     """Helper to write a CSV file from a list of lines."""
