@@ -179,8 +179,8 @@ class TestEnhancedSchemaValidation:
         """Test schema validation catches numeric field violations."""
         tasks_file = self.test_root / "tasks.csv"
         content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Test task,work,,queued,10,60,,medium,desk,manual,Do it,,,,2026-04-02,Test\n"  # priority=10 > max=5
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,,Test task,work,queued,P1,500,,medium,desk,manual,Do it,,,,2026-04-02,Test\n"  # effort_mins=500 > max=480
         )
         tasks_file.write_text(content, encoding="utf-8")
 
@@ -263,8 +263,8 @@ class TestEnhancedSchemaValidation:
         """Test schema validation passes with valid enhanced data."""
         tasks_file = self.test_root / "tasks.csv"
         content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Test task,work,,queued,3,60,2026-04-10,medium,desk,manual,Do it,2026-04-05,09:00,10:00,2026-04-02,Test\n"
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,,Test task,work,queued,P3,60,2026-04-10,medium,desk,manual,Do it,2026-04-05,09:00,10:00,2026-04-02,Test\n"
         )
         tasks_file.write_text(content, encoding="utf-8")
 

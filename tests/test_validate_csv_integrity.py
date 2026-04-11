@@ -280,8 +280,8 @@ class TestForeignKeyValidation:
 
         # Create task referencing valid project
         tasks_content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Review goals,planning,proj1,queued,3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,proj1,Review goals,planning,queued,P3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
         )
         (self.canonical_dir / "tasks.csv").write_text(tasks_content, encoding="utf-8")
 
@@ -306,8 +306,8 @@ class TestForeignKeyValidation:
         """Test foreign key validation catches invalid project references."""
         # Create task referencing non-existent project
         tasks_content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Review goals,planning,missing_proj,queued,3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,missing_proj,Review goals,planning,queued,P3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
         )
         (self.canonical_dir / "tasks.csv").write_text(tasks_content, encoding="utf-8")
 
@@ -348,8 +348,8 @@ class TestForeignKeyValidation:
         """Test foreign key validation handles missing reference files."""
         # Create task without projects file
         tasks_content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Review goals,planning,proj1,queued,3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,proj1,Review goals,planning,queued,P3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
         )
         (self.canonical_dir / "tasks.csv").write_text(tasks_content, encoding="utf-8")
 
@@ -363,8 +363,8 @@ class TestForeignKeyValidation:
         """Test foreign key validation ignores empty reference fields."""
         # Create task with empty project_id
         tasks_content = (
-            "task_id,title,domain,project_id,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
-            "task1,Review goals,planning,,queued,3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "task1,,Review goals,planning,queued,P3,30,,medium,desk,manual,Start,,,,2026-04-02,Test\n"
         )
         (self.canonical_dir / "tasks.csv").write_text(tasks_content, encoding="utf-8")
 

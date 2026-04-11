@@ -25,7 +25,7 @@ EXPECTED_SCHEMAS = {
         "metric_target", "metric_current", "status", "last_updated", "notes"
     ],
     "tasks.csv": [
-        "task_id", "title", "domain", "project_id", "status", "priority",
+        "task_id", "project_id", "title", "domain", "status", "priority",
         "effort_mins", "due_date", "energy", "context", "source", "next_step",
         "scheduled_date", "scheduled_start", "scheduled_end", "last_updated", "notes"
     ],
@@ -49,7 +49,7 @@ EXPECTED_SCHEMAS = {
         "date", "habit_id", "value", "notes"
     ],
     "activity_log.csv": [
-        "timestamp", "activity", "notes"
+        "timestamp", "event", "details"
     ]
 }
 
@@ -57,13 +57,13 @@ EXPECTED_SCHEMAS = {
 REQUIRED_FIELDS = {
     "habits.csv": {"habit_id", "area", "name", "frequency", "target_per_week", "min_value", "unit", "active"},
     "goals.csv": {"goal_id", "area", "title"},
-    "tasks.csv": {"task_id", "title", "domain"},
+    "tasks.csv": {"task_id", "title"},
     "projects.csv": {"project_id", "area", "name"},
     "time_blocks.csv": {"block_id", "date", "start", "end", "title"},
-    "time_logs.csv": {"log_id", "date", "activity", "start_time", "end_time"},
+    "time_logs.csv": {"log_id", "date", "activity"},
     "calendar_events.csv": {"event_id", "date", "start_time", "end_time", "title"},
     "daily_log.csv": {"date", "habit_id", "value"},
-    "activity_log.csv": {"timestamp", "activity"}
+    "activity_log.csv": {"timestamp", "event"}
 }
 
 # Enum validation
@@ -71,8 +71,8 @@ ENUM_FIELDS = {
     "habits.csv": {"frequency": ["daily", "weekly"], "active": ["true", "false"]},
     "goals.csv": {"horizon": ["quarter", "year", "month"], "status": ["active", "completed", "paused", "dropped"]},
     "tasks.csv": {
-        "status": ["queued", "in_progress", "blocked", "completed"],
-        "priority": ["1", "2", "3", "4", "5"],  # Should be integers as strings
+        "status": ["queued", "in_progress", "blocked", "done", "dropped"],
+        "priority": ["P1", "P2", "P3"],
         "energy": ["low", "medium", "high"],
         "source": ["manual", "auto", "imported"]
     },
@@ -96,7 +96,6 @@ NUMERIC_FIELDS = {
         "min_value": {"min": 0, "type": "float"}
     },
     "tasks.csv": {
-        "priority": {"min": 1, "max": 5, "type": "int"},
         "effort_mins": {"min": 1, "max": 480, "type": "int"}  # Max 8 hours
     },
     "goals.csv": {
