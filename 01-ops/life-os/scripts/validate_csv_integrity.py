@@ -4,161 +4,42 @@
 from __future__ import annotations
 
 import csv
+import importlib.util
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import cast
 
+# Import csv_schemas from the same directory using importlib to support
+# both package imports and spec_from_file_location loading in tests.
+_csv_schemas_path = Path(__file__).resolve().parent / "csv_schemas.py"
+_spec = importlib.util.spec_from_file_location("csv_schemas", _csv_schemas_path)
+assert _spec is not None
+assert _spec.loader is not None
+_csv_schemas = importlib.util.module_from_spec(_spec)
+sys.modules.setdefault("csv_schemas", _csv_schemas)
+_spec.loader.exec_module(_csv_schemas)
+
+get_date_fields = _csv_schemas.get_date_fields
+get_enum_fields = _csv_schemas.get_enum_fields
+get_expected_headers = _csv_schemas.get_expected_headers
+get_id_fields = _csv_schemas.get_id_fields
+get_required_fields = _csv_schemas.get_required_fields
+
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CANONICAL_DIR = REPO_ROOT / "01-ops" / "life-os" / "data" / "canonical"
 LOGS_DIR = REPO_ROOT / "01-ops" / "life-os" / "logs"
 
-# Expected schemas based on docs/csv-schemas.md
-EXPECTED_SCHEMAS = {
-    "habits.csv": [
-        "habit_id",
-        "area",
-        "name",
-        "frequency",
-        "target_per_week",
-        "min_value",
-        "unit",
-        "active",
-        "notes",
-        "last_updated",
-    ],
-    "goals.csv": [
-        "goal_id",
-        "area",
-        "title",
-        "horizon",
-        "target_date",
-        "metric_name",
-        "metric_target",
-        "metric_current",
-        "status",
-        "last_updated",
-        "notes",
-    ],
-    "tasks.csv": [
-        "task_id",
-        "project_id",
-        "title",
-        "domain",
-        "status",
-        "priority",
-        "effort_mins",
-        "due_date",
-        "energy",
-        "context",
-        "source",
-        "next_step",
-        "scheduled_date",
-        "scheduled_start",
-        "scheduled_end",
-        "last_updated",
-        "notes",
-    ],
-    "projects.csv": [
-        "project_id",
-        "area",
-        "name",
-        "status",
-        "start_date",
-        "target_date",
-        "description",
-        "last_updated",
-        "notes",
-        "active",
-    ],
-    "time_blocks.csv": [
-        "block_id",
-        "date",
-        "start",
-        "end",
-        "title",
-        "domain",
-        "task_id",
-        "source",
-        "status",
-        "notes",
-    ],
-    "time_logs.csv": [
-        "log_id",
-        "date",
-        "activity",
-        "domain",
-        "duration_mins",
-        "start_time",
-        "end_time",
-        "notes",
-        "last_updated",
-    ],
-    "calendar_events.csv": [
-        "event_id",
-        "date",
-        "start_time",
-        "end_time",
-        "title",
-        "location",
-        "attendees",
-        "source",
-        "calendar",
-        "notes",
-    ],
-    "daily_log.csv": ["date", "habit_id", "value", "notes"],
-    "activity_log.csv": ["timestamp", "event", "details"],
-}
+# Derived from csv_schemas — single source of truth
+EXPECTED_SCHEMAS = get_expected_headers()
+REQUIRED_FIELDS = get_required_fields()
+ENUM_FIELDS = get_enum_fields()
+ID_FIELDS = get_id_fields()
+DATE_FIELDS = get_date_fields()
 
-# Required fields that cannot be empty
-REQUIRED_FIELDS = {
-    "habits.csv": {
-        "habit_id",
-        "area",
-        "name",
-        "frequency",
-        "target_per_week",
-        "min_value",
-        "unit",
-        "active",
-    },
-    "goals.csv": {"goal_id", "area", "title"},
-    "tasks.csv": {"task_id", "title"},
-    "projects.csv": {"project_id", "area", "name"},
-    "time_blocks.csv": {"block_id", "date", "start", "end", "title"},
-    "time_logs.csv": {"log_id", "date", "activity"},
-    "calendar_events.csv": {"event_id", "date", "start_time", "end_time", "title"},
-    "daily_log.csv": {"date", "habit_id", "value"},
-    "activity_log.csv": {"timestamp", "event"},
-}
-
-# Enum validation
-ENUM_FIELDS = {
-    "habits.csv": {"frequency": ["daily", "weekly"], "active": ["true", "false"]},
-    "goals.csv": {
-        "horizon": ["quarter", "year", "month"],
-        "status": ["active", "completed", "paused", "dropped"],
-    },
-    "tasks.csv": {
-        "status": ["queued", "in_progress", "blocked", "done", "dropped"],
-        "priority": ["P1", "P2", "P3"],
-        "energy": ["low", "medium", "high"],
-        "source": ["manual", "auto", "imported"],
-    },
-    "projects.csv": {
-        "status": ["planning", "active", "paused", "completed"],
-        "active": ["true", "false"],
-    },
-    "time_blocks.csv": {
-        "source": ["manual", "auto_planner", "imported"],
-        "status": ["planned", "in_progress", "completed", "skipped"],
-    },
-    "calendar_events.csv": {"source": ["google_calendar", "manual", "outlook"]},
-}
-
-# Numeric field validation
+# Numeric field validation (extended constraints not modeled in csv_schemas)
 NUMERIC_FIELDS = {
     "habits.csv": {
         "target_per_week": {"min": 1, "max": 7, "type": "int"},
@@ -199,33 +80,11 @@ DATE_RANGE_FIELDS = {
     "tasks.csv": {"start": "scheduled_date", "end": "due_date"},
 }
 
-# Date and time fields
-DATE_FIELDS = {
-    "habits.csv": {"last_updated"},
-    "goals.csv": {"target_date", "last_updated"},
-    "tasks.csv": {"due_date", "scheduled_date", "last_updated"},
-    "projects.csv": {"start_date", "target_date", "last_updated"},
-    "time_blocks.csv": {"date"},
-    "time_logs.csv": {"date", "last_updated"},
-    "calendar_events.csv": {"date"},
-    "daily_log.csv": {"date"},
-}
-
+# Time fields (not modeled in csv_schemas dtype)
 TIME_FIELDS = {
     "time_blocks.csv": {"start", "end"},
     "time_logs.csv": {"start_time", "end_time"},
     "calendar_events.csv": {"start_time", "end_time"},
-}
-
-# ID fields for duplicate checking
-ID_FIELDS = {
-    "habits.csv": "habit_id",
-    "goals.csv": "goal_id",
-    "tasks.csv": "task_id",
-    "projects.csv": "project_id",
-    "time_blocks.csv": "block_id",
-    "time_logs.csv": "log_id",
-    "calendar_events.csv": "event_id",
 }
 
 

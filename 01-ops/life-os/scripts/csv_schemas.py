@@ -40,6 +40,26 @@ class CSVSchema:
         return None
 
 
+LOG_SCHEMAS: dict[str, CSVSchema] = {
+    "daily_log": CSVSchema(
+        name="daily_log",
+        columns=[
+            ColumnSchema("date", required=True, dtype="date"),
+            ColumnSchema("habit_id", required=True),
+            ColumnSchema("value", required=True),
+            ColumnSchema("notes", nullable=True),
+        ],
+    ),
+    "activity_log": CSVSchema(
+        name="activity_log",
+        columns=[
+            ColumnSchema("timestamp", required=True),
+            ColumnSchema("event", required=True),
+            ColumnSchema("details", nullable=True),
+        ],
+    ),
+}
+
 SCHEMAS: dict[str, CSVSchema] = {
     "tasks": CSVSchema(
         name="tasks",
@@ -359,6 +379,62 @@ def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
         errors.append(f"CSV parsing error: {e}")
 
     return errors
+
+
+ALL_SCHEMAS: dict[str, CSVSchema] = {**SCHEMAS, **LOG_SCHEMAS}
+
+
+def get_expected_headers() -> dict[str, list[str]]:
+    """Return {filename: [column_names]} for all schemas (keyed by 'name.csv')."""
+    return {f"{name}.csv": schema.column_names for name, schema in ALL_SCHEMAS.items()}
+
+
+def get_required_fields() -> dict[str, set[str]]:
+    """Return {filename: {required_column_names}} for all schemas."""
+    return {
+        f"{name}.csv": {
+            col.name for col in schema.columns if col.required and not col.nullable
+        }
+        for name, schema in ALL_SCHEMAS.items()
+    }
+
+
+def get_enum_fields() -> dict[str, dict[str, list[str]]]:
+    """Return {filename: {column: [allowed_values]}} for enum and bool columns.
+
+    Bool columns are included as ["true", "false"] so that integrity validators
+    can reject values like "maybe" without special-casing.
+    """
+    result: dict[str, dict[str, list[str]]] = {}
+    for name, schema in ALL_SCHEMAS.items():
+        enums: dict[str, list[str]] = {}
+        for col in schema.columns:
+            if col.dtype == "enum" and col.enum_values:
+                enums[col.name] = col.enum_values
+            elif col.dtype == "bool":
+                enums[col.name] = ["true", "false"]
+        if enums:
+            result[f"{name}.csv"] = enums
+    return result
+
+
+def get_id_fields() -> dict[str, str]:
+    """Return {filename: id_column_name} for schemas with an id_column."""
+    return {
+        f"{name}.csv": schema.id_column
+        for name, schema in ALL_SCHEMAS.items()
+        if schema.id_column
+    }
+
+
+def get_date_fields() -> dict[str, set[str]]:
+    """Return {filename: {date_column_names}} for columns with dtype='date'."""
+    result: dict[str, set[str]] = {}
+    for name, schema in ALL_SCHEMAS.items():
+        dates = {col.name for col in schema.columns if col.dtype == "date"}
+        if dates:
+            result[f"{name}.csv"] = dates
+    return result
 
 
 def validate_all(canonical_dir: Path) -> dict[str, list[str]]:
