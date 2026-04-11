@@ -740,3 +740,70 @@ class TestGcalPlanner:
         assert second_call["summary"] == "[ops] Late wrap"
         assert second_call["start_dt"] == dt.datetime(2026, 1, 15, 23, 30)
         assert second_call["end_dt"] == dt.datetime(2026, 1, 16, 0, 15)
+
+
+class TestHttpErrorPaths:
+    """Test Google API HttpError handling paths in _log_google_api_error,
+    _is_http_error_status, and delete_event 404 handling."""
+
+    def setup_method(self):
+        # Create a real HttpError class so isinstance() works
+        self._original_http_error = sys.modules["googleapiclient.errors"].HttpError
+
+        class MockHttpError(Exception):
+            def __init__(self, resp, content=b""):
+                self.resp = resp
+                self.content = content
+                super().__init__(str(content))
+
+        sys.modules["googleapiclient.errors"].HttpError = MockHttpError
+        self._MockHttpError = MockHttpError
+
+    def teardown_method(self):
+        sys.modules["googleapiclient.errors"].HttpError = self._original_http_error
+
+    def test_log_google_api_error_with_http_error(self):
+        """_log_google_api_error logs HTTP status for HttpError instances."""
+        resp = mock.Mock()
+        resp.status = 403
+        exc = self._MockHttpError(resp, b"Forbidden")
+
+        with mock.patch.object(gcal, "logger") as mock_logger:
+            gcal._log_google_api_error("listing events", exc)
+
+        mock_logger.error.assert_called_once()
+        call_args = mock_logger.error.call_args[0]
+        assert "Google Calendar API error" in call_args[0]
+        assert call_args[2] == 403
+
+    def test_is_http_error_status_matching(self):
+        """_is_http_error_status returns True for matching HttpError status."""
+        resp = mock.Mock()
+        resp.status = 404
+        exc = self._MockHttpError(resp)
+        assert gcal._is_http_error_status(exc, 404) is True
+
+    def test_is_http_error_status_non_matching(self):
+        """_is_http_error_status returns False for non-matching status."""
+        resp = mock.Mock()
+        resp.status = 500
+        exc = self._MockHttpError(resp)
+        assert gcal._is_http_error_status(exc, 404) is False
+
+    def test_delete_event_handles_404_http_error(self):
+        """delete_event logs warning for 404 errors."""
+        resp = mock.Mock()
+        resp.status = 404
+        exc = self._MockHttpError(resp, b"Not Found")
+
+        mock_service = mock.Mock()
+        mock_service.events.return_value.delete.return_value.execute.side_effect = exc
+
+        with (
+            mock.patch.object(gcal, "get_service", return_value=mock_service),
+            mock.patch.object(gcal, "logger") as mock_logger,
+        ):
+            gcal.delete_event("missing-event")
+
+        mock_logger.warning.assert_called_once()
+        assert "not found" in mock_logger.warning.call_args[0][0].lower()

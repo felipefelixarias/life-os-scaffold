@@ -248,3 +248,24 @@ def test_main_function(mock_print, mock_check_packages, mock_check_python):
     print_calls = [call[0][0] for call in mock_print.call_args_list if call[0]]
     recommendations_found = any("pip list --outdated" in call for call in print_calls)
     assert recommendations_found
+
+
+class TestSecurityVulnerabilities:
+    """Tests for _check_security_vulnerabilities edge cases."""
+
+    def test_non_matching_package_returns_none(self) -> None:
+        """Non-requests/urllib3 packages should return None immediately."""
+        result = check_dependencies._check_security_vulnerabilities("flask", "2.0.0")
+        assert result is None
+
+    def test_non_v2_version_returns_none(self) -> None:
+        """Version not starting with '2.' should return None."""
+        result = check_dependencies._check_security_vulnerabilities("requests", "3.0.0")
+        assert result is None
+
+    def test_unparseable_version_returns_none(self) -> None:
+        """Version that starts with '2.' but can't be split into ints should return None."""
+        result = check_dependencies._check_security_vulnerabilities(
+            "requests", "2.abc.0"
+        )
+        assert result is None
