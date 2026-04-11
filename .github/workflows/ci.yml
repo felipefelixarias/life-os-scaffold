@@ -12,5 +12,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest 2>/dev/null; pip install -e ".[dev]" 2>/dev/null || true
-      - run: pytest --tb=short -q 2>/dev/null || true
+      - run: pip install pytest pytest-cov
+      - run: python 01-ops/life-os/scripts/validate_repo.py
+      - run: pytest --tb=short -q
