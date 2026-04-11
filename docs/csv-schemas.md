@@ -27,10 +27,10 @@ habit_id,area,name,frequency,target_per_week,min_value,unit,active,notes,last_up
 | `area` | String | Yes | Life domain (health, work, relationships, etc.) |
 | `name` | String | Yes | Human-readable habit name |
 | `frequency` | Enum | Yes | "daily" or "weekly" |
-| `target_per_week` | Integer | Yes | How many times per week to do this |
-| `min_value` | Integer | Yes | Minimum acceptable value for completion |
-| `unit` | String | Yes | Units of measurement (hours, minutes, pages, etc.) |
-| `active` | Boolean | Yes | "true" if tracking, "false" if paused |
+| `target_per_week` | Integer | No | How many times per week to do this |
+| `min_value` | Number | No | Minimum acceptable value for completion |
+| `unit` | String | No | Units of measurement (hours, minutes, pages, etc.) |
+| `active` | Boolean | No | "true" if tracking, "false" if paused |
 | `notes` | String | No | Additional context or motivation |
 | `last_updated` | Date | No | ISO format (YYYY-MM-DD) when last modified |
 
