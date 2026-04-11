@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -100,8 +101,8 @@ def analyze_csv_file(csv_path: Path) -> dict:
     return stats
 
 
-def main() -> None:
-    """Analyze all CSV files and print summary."""
+def main() -> int:
+    """Analyze all CSV files and print summary. Returns 1 if errors found."""
     print("CSV Data Analysis")
     print("=" * 50)
 
@@ -117,6 +118,7 @@ def main() -> None:
         LOGS_DIR / "activity_log.csv",
     ]
 
+    has_errors = False
     for csv_file in all_files:
         stats = analyze_csv_file(csv_file)
 
@@ -127,6 +129,7 @@ def main() -> None:
 
         if "error" in stats:
             print(f"   ⚠️  Error: {stats['error']}")
+            has_errors = True
             continue
 
         # Format file size for display
@@ -148,7 +151,8 @@ def main() -> None:
 
     print("\n" + "=" * 50)
     print("Analysis complete. Use this during development to check CSV state.")
+    return 1 if has_errors else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

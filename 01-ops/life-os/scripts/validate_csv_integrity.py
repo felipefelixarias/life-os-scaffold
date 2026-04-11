@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import cast
@@ -495,8 +496,8 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
             with projects_file.open(newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 project_ids = {row.get("project_id", "") for row in reader if row.get("project_id", "").strip()}
-        except Exception as e:
-            errors.append(f"Failed to load project IDs: {e}")
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
+            errors.append(f"Failed to load project IDs from {projects_file.name}: {e}")
 
     # Load task IDs
     tasks_file = canonical_dir / "tasks.csv"
@@ -505,8 +506,8 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
             with tasks_file.open(newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 task_ids = {row.get("task_id", "") for row in reader if row.get("task_id", "").strip()}
-        except Exception as e:
-            errors.append(f"Failed to load task IDs: {e}")
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
+            errors.append(f"Failed to load task IDs from {tasks_file.name}: {e}")
 
     # Load habit IDs
     habits_file = canonical_dir / "habits.csv"
@@ -515,8 +516,8 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
             with habits_file.open(newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 habit_ids = {row.get("habit_id", "") for row in reader if row.get("habit_id", "").strip()}
-        except Exception as e:
-            errors.append(f"Failed to load habit IDs: {e}")
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
+            errors.append(f"Failed to load habit IDs from {habits_file.name}: {e}")
 
     # Check foreign keys in tasks.csv
     if tasks_file.exists():
@@ -527,7 +528,7 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
                     project_id = row.get("project_id", "").strip()
                     if project_id and project_id not in project_ids:
                         errors.append(f"tasks.csv row {row_num}: Invalid project_id '{project_id}'")
-        except Exception as e:
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
             errors.append(f"Failed to validate task foreign keys: {e}")
 
     # Check foreign keys in time_blocks.csv
@@ -540,7 +541,7 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
                     task_id = row.get("task_id", "").strip()
                     if task_id and task_id not in task_ids:
                         errors.append(f"time_blocks.csv row {row_num}: Invalid task_id '{task_id}'")
-        except Exception as e:
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
             errors.append(f"Failed to validate time_blocks foreign keys: {e}")
 
     # Check foreign keys in daily_log.csv (in logs directory)
@@ -553,7 +554,7 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
                     habit_id = row.get("habit_id", "").strip()
                     if habit_id and habit_id not in habit_ids:
                         errors.append(f"daily_log.csv row {row_num}: Invalid habit_id '{habit_id}'")
-        except Exception as e:
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
             errors.append(f"Failed to validate daily_log foreign keys: {e}")
 
     return errors
@@ -617,7 +618,7 @@ def main() -> None:
         print("   🎉 All validation checks passed!")
     else:
         print("   ⚠️  Issues found that need attention")
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

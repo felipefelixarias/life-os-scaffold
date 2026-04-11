@@ -30,7 +30,8 @@ def get_installed_packages() -> dict[str, str]:
             pkg["name"].lower().replace("-", "_"): pkg["version"] for pkg in packages
         }
     except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-        print(f"Failed to get installed packages: {e}")
+        print(f"⚠️  Failed to get installed packages: {e}")
+        print("   Ensure pip is installed and working: python -m pip --version")
         return {}
 
 
@@ -75,13 +76,13 @@ def _check_security_vulnerabilities(pkg_name: str, version: str) -> str | None:
         if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
             return f"{pkg_name} {version} may have security vulnerabilities"
     except ValueError:
-        pass
+        return None
 
     return None
 
 
-def _print_dependency_results(missing: list[str], outdated_warnings: list[str]) -> None:
-    """Print the results of dependency checking."""
+def _print_dependency_results(missing: list[str], outdated_warnings: list[str]) -> bool:
+    """Print the results of dependency checking. Returns True if missing packages."""
     if missing:
         print("\n❌ Missing packages:")
         for pkg in missing:
@@ -96,9 +97,11 @@ def _print_dependency_results(missing: list[str], outdated_warnings: list[str]) 
     if not missing and not outdated_warnings:
         print("\n✅ All dependencies look good!")
 
+    return bool(missing)
 
-def check_package_availability() -> None:
-    """Check if all packages in requirements.txt are available/installed."""
+
+def check_package_availability() -> bool:
+    """Check if all packages in requirements.txt are available/installed. Returns True if missing."""
     requirements = parse_requirements()
     installed = get_installed_packages()
 
@@ -107,7 +110,7 @@ def check_package_availability() -> None:
 
     if not requirements:
         print("No requirements found.")
-        return
+        return False
 
     missing = []
     outdated_warnings = []
@@ -126,7 +129,7 @@ def check_package_availability() -> None:
             if warning:
                 outdated_warnings.append(warning)
 
-    _print_dependency_results(missing, outdated_warnings)
+    return _print_dependency_results(missing, outdated_warnings)
 
 
 def check_python_version() -> None:
@@ -137,19 +140,21 @@ def check_python_version() -> None:
     print("✅ Python version is compatible")
 
 
-def main() -> None:
-    """Run dependency checks."""
+def main() -> int:
+    """Run dependency checks. Returns 1 if missing packages found."""
     print("Development Environment Check")
     print("=" * 60)
 
     check_python_version()
     print()
-    check_package_availability()
+    has_missing = check_package_availability()
 
     print("\nFor security updates, consider running:")
     print("  pip list --outdated")
     print("  pip-audit (if installed)")
 
+    return 1 if has_missing else 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
