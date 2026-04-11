@@ -12,7 +12,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
+    0,
+    str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
 )
 
 import repo_health
@@ -170,7 +171,9 @@ class TestRepoHealth:
             repo_health.check_python_health()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Python files compile successfully" in call for call in print_calls)
+            assert any(
+                "Python files compile successfully" in call for call in print_calls
+            )
             assert any("No ruff linting issues" in call for call in print_calls)
 
     @patch("repo_health.run_command")
@@ -270,7 +273,9 @@ class TestRepoHealth:
             repo_health.check_security()
 
             print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No obvious security issues found" in call for call in print_calls)
+            assert any(
+                "No obvious security issues found" in call for call in print_calls
+            )
 
     @patch("builtins.print")
     def test_check_security_with_issues(self, mock_print):
@@ -322,13 +327,17 @@ class TestRepoHealth:
 
     def test_run_command_timeout(self):
         """Test command timeout handling (covers line 29)."""
-        result_code, stdout, stderr = repo_health.run_command(
-            ["sleep", "60"], cwd=self.temp_path,
+        result_code, _stdout, stderr = repo_health.run_command(
+            ["sleep", "60"],
+            cwd=self.temp_path,
         )
         # run_command uses timeout=30 by default; we pass a 60s sleep
         # but we need to actually trigger timeout — use a shorter approach
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["sleep"], timeout=30)):
-            result_code, stdout, stderr = repo_health.run_command(["sleep", "60"])
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(cmd=["sleep"], timeout=30),
+        ):
+            result_code, _stdout, stderr = repo_health.run_command(["sleep", "60"])
             assert result_code == 1
             assert "timed out" in stderr
 
@@ -419,7 +428,9 @@ class TestRepoHealth:
             csv_dir = self.temp_path / "01-ops" / "life-os" / "data" / "canonical"
             csv_dir.mkdir(parents=True)
             (csv_dir / "test.csv").touch()
-            validation_script = self.temp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+            validation_script = (
+                self.temp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+            )
             validation_script.parent.mkdir(parents=True, exist_ok=True)
             validation_script.touch()
             mock_run.return_value = (1, "", "Validation failed")
@@ -441,6 +452,7 @@ class TestRepoHealth:
     def test_check_security_world_writable(self, mock_print):
         """Test security check detects world-writable files (covers lines 224-226)."""
         import os
+
         with patch.object(repo_health, "REPO_ROOT", self.temp_path):
             scripts_dir = self.temp_path / "01-ops" / "life-os" / "scripts"
             scripts_dir.mkdir(parents=True)

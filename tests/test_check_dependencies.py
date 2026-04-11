@@ -14,7 +14,8 @@ from unittest.mock import Mock, patch
 import pytest
 
 sys.path.insert(
-    0, str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
+    0,
+    str(Path(__file__).resolve().parents[1] / "01-ops" / "life-os" / "scripts"),
 )
 
 import check_dependencies
@@ -31,6 +32,7 @@ def temp_requirements():
 
     # Cleanup
     shutil.rmtree(temp_dir)
+
 
 def test_get_installed_packages_success():
     """Test successful package list retrieval."""
@@ -58,7 +60,8 @@ def test_get_installed_packages_success():
 def test_get_installed_packages_failure():
     """Test package list retrieval failure handling."""
     with patch(
-        "subprocess.run", side_effect=subprocess.CalledProcessError(1, "pip"),
+        "subprocess.run",
+        side_effect=subprocess.CalledProcessError(1, "pip"),
     ):
         packages = check_dependencies.get_installed_packages()
 
@@ -76,6 +79,7 @@ def test_get_installed_packages_json_error():
 
     assert packages == {}
 
+
 def test_parse_requirements_success(temp_requirements):
     """Test successful requirements parsing."""
     _temp_path, test_requirements = temp_requirements
@@ -91,7 +95,9 @@ pytest
     test_requirements.write_text(requirements_content)
 
     with patch.object(
-        check_dependencies, "REQUIREMENTS_FILE", test_requirements,
+        check_dependencies,
+        "REQUIREMENTS_FILE",
+        test_requirements,
     ):
         requirements = check_dependencies.parse_requirements()
 
@@ -116,17 +122,22 @@ def test_parse_requirements_empty_file(temp_requirements):
     test_requirements.write_text("")
 
     with patch.object(
-        check_dependencies, "REQUIREMENTS_FILE", test_requirements,
+        check_dependencies,
+        "REQUIREMENTS_FILE",
+        test_requirements,
     ):
         requirements = check_dependencies.parse_requirements()
 
     assert requirements == []
 
+
 @patch("check_dependencies.get_installed_packages")
 @patch("check_dependencies.parse_requirements")
 @patch("builtins.print")
 def test_check_package_availability_all_installed(
-    mock_print, mock_parse, mock_get,
+    mock_print,
+    mock_parse,
+    mock_get,
 ):
     """Test check when all packages are installed."""
     mock_parse.return_value = ["requests>=2.31.0", "urllib3==2.0.4"]
@@ -145,7 +156,9 @@ def test_check_package_availability_all_installed(
 @patch("check_dependencies.parse_requirements")
 @patch("builtins.print")
 def test_check_package_availability_missing_packages(
-    mock_print, mock_parse, mock_get,
+    mock_print,
+    mock_parse,
+    mock_get,
 ):
     """Test check with missing packages."""
     mock_parse.return_value = ["requests>=2.31.0", "missing-package==1.0.0"]
@@ -164,11 +177,14 @@ def test_check_package_availability_missing_packages(
     else:
         pytest.fail("Missing package warning not found")
 
+
 @patch("check_dependencies.get_installed_packages")
 @patch("check_dependencies.parse_requirements")
 @patch("builtins.print")
 def test_check_package_availability_security_warning(
-    mock_print, mock_parse, mock_get,
+    mock_print,
+    mock_parse,
+    mock_get,
 ):
     """Test security warning for old versions."""
     mock_parse.return_value = ["requests>=2.31.0"]
@@ -178,9 +194,7 @@ def test_check_package_availability_security_warning(
 
     # Verify security warning
     print_calls = [call[0][0] for call in mock_print.call_args_list]
-    security_warning_found = any(
-        "Security warnings:" in call for call in print_calls
-    )
+    security_warning_found = any("Security warnings:" in call for call in print_calls)
     assert security_warning_found
 
 
@@ -188,7 +202,9 @@ def test_check_package_availability_security_warning(
 @patch("check_dependencies.parse_requirements")
 @patch("builtins.print")
 def test_check_package_availability_no_requirements(
-    mock_print, mock_parse, mock_get,
+    mock_print,
+    mock_parse,
+    mock_get,
 ):
     """Test behavior with no requirements."""
     mock_parse.return_value = []
@@ -229,10 +245,6 @@ def test_main_function(mock_print, mock_check_packages, mock_check_python):
     mock_check_packages.assert_called_once()
 
     # Check that recommendations are printed
-    print_calls = [
-        call[0][0] for call in mock_print.call_args_list if call[0]
-    ]
-    recommendations_found = any(
-        "pip list --outdated" in call for call in print_calls
-    )
+    print_calls = [call[0][0] for call in mock_print.call_args_list if call[0]]
+    recommendations_found = any("pip list --outdated" in call for call in print_calls)
     assert recommendations_found

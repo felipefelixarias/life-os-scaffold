@@ -18,7 +18,9 @@ def ensure_directory(path: Path) -> None:
 
 
 def write_csv_with_example(
-    file_path: Path, headers: list[str], example_rows: list[list[str]],
+    file_path: Path,
+    headers: list[str],
+    example_rows: list[list[str]],
 ) -> None:
     """Write a CSV file with headers and example data."""
     with file_path.open("w", newline="", encoding="utf-8") as f:

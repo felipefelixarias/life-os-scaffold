@@ -70,8 +70,7 @@ def _check_security_vulnerabilities(pkg_name: str, version: str) -> str | None:
         major, minor = map(int, version.split(".")[:2])
         is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
         is_old_minor = (
-            major == REQUESTS_MIN_MAJOR_VERSION
-            and minor < REQUESTS_MIN_MINOR_VERSION
+            major == REQUESTS_MIN_MAJOR_VERSION and minor < REQUESTS_MIN_MINOR_VERSION
         )
         if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
             return f"{pkg_name} {version} may have security vulnerabilities"

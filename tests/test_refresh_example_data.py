@@ -10,6 +10,8 @@ SPEC = spec_from_file_location("life_os_refresh_example_data", MODULE_PATH)
 refresh_example_data = module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(refresh_example_data)
+
+
 def test_ensure_directory_creates_directory() -> None:
     """Test that ensure_directory creates directories."""
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -35,7 +37,9 @@ def test_write_csv_with_example() -> None:
             mock.patch("builtins.print"),  # Suppress print output
         ):
             refresh_example_data.write_csv_with_example(
-                csv_path, headers, example_rows,
+                csv_path,
+                headers,
+                example_rows,
             )
 
         # Verify file was created
@@ -48,6 +52,7 @@ def test_write_csv_with_example() -> None:
 
         expected = [headers, *example_rows]
         assert actual_rows == expected
+
 
 def test_refresh_canonical_csvs_creates_all_files() -> None:
     """Test that refresh_canonical_csvs creates all expected CSV files."""

@@ -20,36 +20,48 @@ class TestNumericValidation:
 
     def test_validate_numeric_field_valid_integers(self) -> None:
         """Test numeric validation accepts valid integers."""
-        valid, error = validate_csv_integrity.validate_numeric_field("5", "priority", min_val=1, max_val=5, is_integer=True)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "5", "priority", min_val=1, max_val=5, is_integer=True
+        )
         assert valid
         assert error == ""
 
     def test_validate_numeric_field_invalid_integers(self) -> None:
         """Test numeric validation rejects invalid integers."""
         # Non-integer
-        valid, error = validate_csv_integrity.validate_numeric_field("abc", "priority", is_integer=True)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "abc", "priority", is_integer=True
+        )
         assert not valid
         assert "not a valid integer" in error
 
         # Below minimum
-        valid, error = validate_csv_integrity.validate_numeric_field("0", "priority", min_val=1, is_integer=True)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "0", "priority", min_val=1, is_integer=True
+        )
         assert not valid
         assert "below minimum" in error
 
         # Above maximum
-        valid, error = validate_csv_integrity.validate_numeric_field("10", "priority", max_val=5, is_integer=True)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "10", "priority", max_val=5, is_integer=True
+        )
         assert not valid
         assert "exceeds maximum" in error
 
     def test_validate_numeric_field_valid_floats(self) -> None:
         """Test numeric validation accepts valid floats."""
-        valid, error = validate_csv_integrity.validate_numeric_field("3.14", "metric", min_val=0, is_integer=False)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "3.14", "metric", min_val=0, is_integer=False
+        )
         assert valid
         assert error == ""
 
     def test_validate_numeric_field_invalid_floats(self) -> None:
         """Test numeric validation rejects invalid floats."""
-        valid, error = validate_csv_integrity.validate_numeric_field("not_a_number", "metric", is_integer=False)
+        valid, error = validate_csv_integrity.validate_numeric_field(
+            "not_a_number", "metric", is_integer=False
+        )
         assert not valid
         assert "not a valid number" in error
 
@@ -99,33 +111,45 @@ class TestDurationConsistency:
 
     def test_validate_duration_consistency_valid(self) -> None:
         """Test duration validation accepts consistent durations."""
-        valid, error = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "60")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "09:00", "10:00", "60"
+        )
         assert valid
         assert error == ""
 
-        valid, error = validate_csv_integrity.validate_duration_consistency("14:30", "15:45", "75")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "14:30", "15:45", "75"
+        )
         assert valid
         assert error == ""
 
     def test_validate_duration_consistency_invalid(self) -> None:
         """Test duration validation rejects inconsistent durations."""
-        valid, error = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "30")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "09:00", "10:00", "30"
+        )
         assert not valid
         assert "doesn't match calculated duration" in error
 
     def test_validate_duration_consistency_midnight_rollover(self) -> None:
         """Test duration validation handles midnight rollover."""
-        valid, error = validate_csv_integrity.validate_duration_consistency("23:30", "00:30", "60")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "23:30", "00:30", "60"
+        )
         assert valid
         assert error == ""
 
     def test_validate_duration_consistency_tolerance(self) -> None:
         """Test duration validation allows 1-minute tolerance."""
-        valid, error = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "59")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "09:00", "10:00", "59"
+        )
         assert valid  # Should pass with 1-minute tolerance
         assert error == ""
 
-        valid, error = validate_csv_integrity.validate_duration_consistency("09:00", "10:00", "58")
+        valid, error = validate_csv_integrity.validate_duration_consistency(
+            "09:00", "10:00", "58"
+        )
         assert not valid  # Should fail with 2-minute difference
         assert "doesn't match" in error
 
@@ -215,7 +239,9 @@ class TestEnhancedSchemaValidation:
         result = validate_csv_integrity.validate_csv_schema(time_logs_file)
 
         assert not result.passed
-        assert any("doesn't match calculated duration" in error for error in result.errors)
+        assert any(
+            "doesn't match calculated duration" in error for error in result.errors
+        )
 
     def test_validate_csv_schema_date_range_validation(self) -> None:
         """Test schema validation catches date range violations."""
