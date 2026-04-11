@@ -7,7 +7,7 @@ import csv
 import importlib.util
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -194,8 +194,6 @@ def validate_time_range(start_time: str, end_time: str) -> tuple[bool, str]:
         )  # Skip if either time format is invalid (will be caught by format validation)
 
     try:
-        from datetime import datetime
-
         start_dt = datetime.strptime(start_time, "%H:%M")
         end_dt = datetime.strptime(end_time, "%H:%M")
 
@@ -234,15 +232,11 @@ def validate_duration_consistency(
         return True, ""  # Skip if duration is not a valid integer
 
     try:
-        from datetime import datetime
-
         start_dt = datetime.strptime(start_time, "%H:%M")
         end_dt = datetime.strptime(end_time, "%H:%M")
 
         # Handle midnight rollover
         if end_dt <= start_dt:
-            from datetime import timedelta
-
             end_dt += timedelta(days=1)
 
         calculated_mins = int((end_dt - start_dt).total_seconds() / 60)
