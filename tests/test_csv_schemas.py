@@ -353,6 +353,48 @@ def test_row_column_count_mismatch() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_header_order_mismatch() -> None:
+    """Correct columns in wrong order produce order-differs error."""
+    with tempfile.TemporaryDirectory() as d:
+        # Swap 'area' and 'name' in habits header
+        p = _write_csv(
+            Path(d),
+            "habits.csv",
+            [
+                "habit_id,name,area,frequency,target_per_week,min_value,unit,active,notes,last_updated",
+                "H001,Exercise,health,daily,5,30,minutes,true,,2026-04-06",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["habits"])
+        assert any("order" in e.lower() for e in errors)
+
+
+def test_unicode_decode_error() -> None:
+    """Binary file triggers encoding error."""
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "bad.csv"
+        p.write_bytes(b"\xff\xfe" + b"\x80" * 200)
+        errors = validate_csv(p, SCHEMAS["tasks"])
+        assert any("encoding" in e.lower() for e in errors)
+
+
+def test_csv_parse_error() -> None:
+    """CSV parsing error is caught and reported."""
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "bad.csv"
+        header = ",".join(SCHEMAS["tasks"].column_names)
+        p.write_text(header + "\n" + "x" * 200 + ",y\n", encoding="utf-8")
+        import csv as _csv
+
+        old_limit = _csv.field_size_limit()
+        _csv.field_size_limit(10)
+        try:
+            errors = validate_csv(p, SCHEMAS["tasks"])
+            assert any("csv parsing error" in e.lower() for e in errors)
+        finally:
+            _csv.field_size_limit(old_limit)
+
+
 def test_validate_all_runs_on_canonical_dir() -> None:
     """validate_all returns a dict with keys for each schema."""
     with tempfile.TemporaryDirectory() as d:
