@@ -72,7 +72,7 @@ def test_valid_tasks_csv() -> None:
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,Write tests,work,queued,1,30,2026-04-10,high,,,,,,,2026-04-06,",
+                "T001,,Write tests,work,queued,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])
@@ -122,7 +122,7 @@ def test_missing_required_field_fails() -> None:
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,,,queued,1,30,2026-04-10,high,,,,,,,2026-04-06,",
+                "T001,,,,queued,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])
@@ -142,26 +142,26 @@ def test_invalid_enum_value_fails() -> None:
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,Write tests,work,invalid_status,1,30,2026-04-10,high,,,,,,,2026-04-06,",
+                "T001,,Write tests,work,invalid_status,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])
         assert any("invalid_status" in e for e in errors)
 
 
-def test_invalid_priority_int_fails() -> None:
-    """Priority must be a valid integer."""
+def test_invalid_priority_enum_fails() -> None:
+    """Priority must be a valid enum value (P1, P2, P3)."""
     with tempfile.TemporaryDirectory() as d:
         p = _write_csv(
             Path(d),
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,Write tests,work,queued,abc,30,2026-04-10,high,,,,,,,2026-04-06,",
+                "T001,,Write tests,work,queued,abc,30,2026-04-10,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])
-        assert any("integer" in e.lower() and "abc" in e for e in errors)
+        assert any("abc" in e for e in errors)
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ def test_invalid_date_format_fails() -> None:
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,Write tests,work,queued,1,30,04/10/2026,high,,,,,,,2026-04-06,",
+                "T001,,Write tests,work,queued,P1,30,04/10/2026,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])
@@ -239,7 +239,7 @@ def test_invalid_int_field_fails() -> None:
             "tasks.csv",
             [
                 "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
-                "T001,,Write tests,work,queued,1,abc,2026-04-10,high,,,,,,,2026-04-06,",
+                "T001,,Write tests,work,queued,P1,abc,2026-04-10,high,,manual,,,,,2026-04-06,",
             ],
         )
         errors = validate_csv(p, SCHEMAS["tasks"])

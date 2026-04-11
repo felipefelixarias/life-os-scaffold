@@ -86,7 +86,7 @@ task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,cont
 | `project_id` | String | No | Link to projects.csv |
 | `title` | String | Yes | Task description |
 | `domain` | String | No | Life area this belongs to |
-| `status` | Enum | No | "queued", "in_progress", "blocked", "done", "dropped" |
+| `status` | Enum | No | "queued", "in_progress", "blocked", "completed", "done", "dropped" |
 | `priority` | Enum | No | "P1", "P2", "P3" (P1=highest priority) |
 | `effort_mins` | Integer | No | Estimated minutes to complete |
 | `due_date` | Date | No | ISO format hard deadline |
