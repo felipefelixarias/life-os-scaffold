@@ -20,15 +20,26 @@ SIZE_THRESHOLD_BYTES = 1024  # 1KB
 
 
 def _init_csv_stats(csv_path: Path) -> dict:
-    """Initialize stats dictionary for CSV analysis."""
+    """Initialize stats dictionary for CSV analysis.
+
+    Uses a single stat() call to determine both existence and size,
+    avoiding redundant filesystem syscalls.
+    """
+    try:
+        size = csv_path.stat().st_size
+        exists = True
+    except OSError:
+        size = 0
+        exists = False
+
     return {
         "file": csv_path.relative_to(REPO_ROOT),
-        "exists": csv_path.exists(),
+        "exists": exists,
         "rows": 0,
         "columns": 0,
         "has_data": False,
         "sample_row": None,
-        "size_bytes": 0,
+        "size_bytes": size,
     }
 
 
@@ -67,13 +78,10 @@ def analyze_csv_file(csv_path: Path) -> dict:
     """Analyze a single CSV file and return stats."""
     stats = _init_csv_stats(csv_path)
 
-    if not csv_path.exists():
+    if not stats["exists"]:
         return stats
 
     try:
-        # Get file size for performance context
-        stats["size_bytes"] = csv_path.stat().st_size
-
         with csv_path.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
             try:

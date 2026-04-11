@@ -32,12 +32,21 @@ class CSVSchema:
         """Return list of column names in order."""
         return [col.name for col in self.columns]
 
+    @property
+    def column_map(self) -> dict[str, ColumnSchema]:
+        """Return a cached name→ColumnSchema mapping for O(1) lookups."""
+        try:
+            return self._column_map  # type: ignore[has-type]
+        except AttributeError:
+            # Build once, cache on instance (dataclass __dict__ is mutable)
+            object.__setattr__(
+                self, "_column_map", {col.name: col for col in self.columns}
+            )
+            return self._column_map  # type: ignore[has-type]
+
     def get_column(self, name: str) -> ColumnSchema | None:
         """Look up a column schema by name."""
-        for col in self.columns:
-            if col.name == name:
-                return col
-        return None
+        return self.column_map.get(name)
 
 
 LOG_SCHEMAS: dict[str, CSVSchema] = {
