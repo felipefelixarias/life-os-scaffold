@@ -96,7 +96,7 @@ The top-level structure uses numbered prefixes for sort order. Customize these t
 Add rows for anything you want to track regularly. Fields:
 - `habit_id`: unique slug (e.g., `workout`, `read_30m`)
 - `area`: domain it belongs to
-- `frequency`: daily, weekday, weekend, or specific days
+- `frequency`: `daily` or `weekly`
 - `target_per_week`: how many times per week
 - `min_value`: minimum session length/count
 - `unit`: minutes, reps, checks, etc.
