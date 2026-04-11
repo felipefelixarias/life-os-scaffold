@@ -422,3 +422,228 @@ class TestRepoValidation:
         ):
             result = validate_repo.main()
         assert result == 0
+
+    def test_validate_csv_headers_detects_suspicious_characters(self) -> None:
+        """Test that suspicious characters in headers are detected."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            data_dir.mkdir(parents=True)
+
+            csv_path = data_dir / "suspicious.csv"
+            csv_path.write_text("col1,col'2,col3\nval1,val2,val3\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_headers()
+
+            assert any("suspicious characters" in e for e in errors)
+
+    def test_validate_csv_structure_skips_headerless_csv(self) -> None:
+        """Test that CSVs without headers are skipped in structure validation."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            data_dir.mkdir(parents=True)
+
+            csv_path = data_dir / "empty.csv"
+            csv_path.write_text("", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_structure()
+
+            assert errors == []
+
+    def test_validate_csv_structure_handles_large_files(self) -> None:
+        """Test that structure validation stops after max_lines_to_check rows."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            data_dir.mkdir(parents=True)
+
+            # Create CSV with >1000 valid rows to trigger the limit
+            csv_path = data_dir / "large.csv"
+            lines = ["col1,col2"]
+            for i in range(1002):
+                lines.append(f"val{i},val{i}")
+            csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_structure()
+
+            assert errors == []
+
+    def test_validate_csv_structure_handles_file_errors(self) -> None:
+        """Test that structure validation handles file read errors gracefully."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            data_dir.mkdir(parents=True)
+
+            csv_path = data_dir / "unreadable.csv"
+            csv_path.write_text("col1\nval1\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+                mock.patch.object(
+                    Path,
+                    "open",
+                    side_effect=PermissionError("Access denied"),
+                ),
+            ):
+                errors = validate_repo.validate_csv_structure()
+
+            # Should silently pass (error handled in validate_csv_headers)
+            assert errors == []
+
+    def test_validate_csv_schemas_no_header(self) -> None:
+        """Test that schema validation reports CSVs with no header."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # Create a habits.csv that is empty (no header)
+            csv_path = data_dir / "habits.csv"
+            csv_path.write_text("", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("no header" in e for e in errors)
+
+    def test_validate_csv_schemas_empty_required_field(self) -> None:
+        """Test that schema validation detects empty required fields."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            # habits.csv with empty required 'name' field
+            csv_content = (
+                "habit_id,area,name,frequency,target_per_week,min_value,unit,active\n"
+                "habit-1,health,,daily,7,1,session,true\n"
+            )
+            csv_path = data_dir / "habits.csv"
+            csv_path.write_text(csv_content, encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("Empty required field 'name'" in e for e in errors)
+
+    def test_validate_csv_schemas_invalid_enum(self) -> None:
+        """Test that schema validation detects invalid enum values."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            csv_content = (
+                "habit_id,area,name,frequency,target_per_week,min_value,unit,active\n"
+                "habit-1,health,Walk,biweekly,7,1,session,true\n"
+            )
+            csv_path = data_dir / "habits.csv"
+            csv_path.write_text(csv_content, encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("Invalid value 'biweekly'" in e for e in errors)
+
+    def test_validate_csv_schemas_invalid_date(self) -> None:
+        """Test that schema validation detects invalid date formats."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            csv_content = (
+                "goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes\n"
+                "g1,health,Run,quarter,not-a-date,miles,100,0,active,2026-01-01,\n"
+            )
+            csv_path = data_dir / "goals.csv"
+            csv_path.write_text(csv_content, encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("Invalid date format 'not-a-date'" in e for e in errors)
+
+    def test_validate_csv_schemas_invalid_time(self) -> None:
+        """Test that schema validation detects invalid time formats."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            csv_content = (
+                "block_id,date,start,end,title,domain,task_id,source,status,notes\n"
+                "b1,2026-01-01,9am,10am,Work,work,,manual,planned,\n"
+            )
+            csv_path = data_dir / "time_blocks.csv"
+            csv_path.write_text(csv_content, encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("Invalid time format '9am'" in e for e in errors)
+
+    def test_validate_csv_schemas_handles_file_errors(self) -> None:
+        """Test that schema validation handles file read errors gracefully."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+            log_dir = root / "01-ops" / "life-os" / "logs"
+            data_dir.mkdir(parents=True)
+            log_dir.mkdir(parents=True)
+
+            csv_path = data_dir / "habits.csv"
+            csv_path.write_text("habit_id\nval\n", encoding="utf-8")
+
+            with (
+                mock.patch.object(validate_repo, "REPO_ROOT", root),
+                mock.patch.object(validate_repo, "csv_files", return_value=[csv_path]),
+                mock.patch.object(
+                    Path,
+                    "open",
+                    side_effect=PermissionError("Access denied"),
+                ),
+            ):
+                errors = validate_repo.validate_csv_schemas()
+
+            assert any("Cannot read CSV file" in e for e in errors)
