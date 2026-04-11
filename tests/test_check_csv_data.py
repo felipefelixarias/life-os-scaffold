@@ -183,6 +183,85 @@ def test_analyze_csv_file_handles_csv_error() -> None:
         assert "error" in stats
         assert "Error: Malformed CSV" in stats["error"]
 
+
+def test_main_prints_analysis_for_existing_files(capsys) -> None:
+    """Test main() output for files that exist with data."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        canonical = root / "01-ops" / "life-os" / "data" / "canonical"
+        logs = root / "01-ops" / "life-os" / "logs"
+        canonical.mkdir(parents=True)
+        logs.mkdir(parents=True)
+
+        # Create a file with data (> 1KB to test KB display)
+        tasks_path = canonical / "tasks.csv"
+        rows = "col1,col2\n" + "".join(f"val{i},val{i}\n" for i in range(100))
+        tasks_path.write_text(rows, encoding="utf-8")
+
+        # Create a header-only file
+        habits_path = canonical / "habits.csv"
+        habits_path.write_text("col1,col2\n", encoding="utf-8")
+
+        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
+             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
+             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+            check_csv_data.main()
+
+        output = capsys.readouterr().out
+        assert "CSV Data Analysis" in output
+        assert "Analysis complete" in output
+        # tasks.csv has data
+        assert "Has data" in output
+        # habits.csv is header-only
+        assert "Header only" in output
+        # Missing files should show "not found"
+        assert "not found" in output
+
+
+def test_main_prints_error_for_broken_files(capsys) -> None:
+    """Test main() output for files with errors."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        canonical = root / "01-ops" / "life-os" / "data" / "canonical"
+        logs = root / "01-ops" / "life-os" / "logs"
+        canonical.mkdir(parents=True)
+        logs.mkdir(parents=True)
+
+        # Create a file with encoding error
+        bad_path = canonical / "tasks.csv"
+        with bad_path.open("wb") as f:
+            f.write(b"\x80\x81\x82invalid\n")
+
+        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
+             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
+             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+            check_csv_data.main()
+
+        output = capsys.readouterr().out
+        assert "Error" in output
+
+
+def test_main_size_display_small_file(capsys) -> None:
+    """Test main() displays bytes for small files."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        canonical = root / "01-ops" / "life-os" / "data" / "canonical"
+        logs = root / "01-ops" / "life-os" / "logs"
+        canonical.mkdir(parents=True)
+        logs.mkdir(parents=True)
+
+        # Create a tiny file (< 1KB)
+        tasks_path = canonical / "tasks.csv"
+        tasks_path.write_text("a,b\n1,2\n", encoding="utf-8")
+
+        with mock.patch.object(check_csv_data, "REPO_ROOT", root), \
+             mock.patch.object(check_csv_data, "CANONICAL_DIR", canonical), \
+             mock.patch.object(check_csv_data, "LOGS_DIR", logs):
+            check_csv_data.main()
+
+        output = capsys.readouterr().out
+        assert "bytes)" in output
+
 def test_analyze_csv_file_large_file_threshold() -> None:
     """Test that large files use sampling logic."""
     with tempfile.TemporaryDirectory() as temp_dir:
