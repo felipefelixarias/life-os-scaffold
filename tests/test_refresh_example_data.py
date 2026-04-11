@@ -85,7 +85,7 @@ def test_refresh_canonical_csvs_creates_all_files() -> None:
             # Verify the file has content (header + at least one row)
             with csv_path.open("r", newline="", encoding="utf-8") as f:
                 lines = f.readlines()
-            assert len(lines) >= 2, f"{filename} should have header + data"
+            assert len(lines) >= 2, f"{filename} should have header + data rows"
 
 
 def test_refresh_log_csvs_creates_log_files() -> None:
@@ -112,3 +112,26 @@ def test_refresh_log_csvs_creates_log_files() -> None:
             with csv_path.open("r", newline="", encoding="utf-8") as f:
                 lines = f.readlines()
             assert len(lines) >= 2, f"{filename} should have header + data"
+
+
+def test_main_runs_all_refresh_functions() -> None:
+    """Test that main() calls both refresh functions and prints summary."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+        logs_dir = root / "01-ops" / "life-os" / "logs"
+
+        with (
+            mock.patch.object(refresh_example_data, "REPO_ROOT", root),
+            mock.patch.object(refresh_example_data, "DATA_DIR", data_dir),
+            mock.patch.object(refresh_example_data, "LOGS_DIR", logs_dir),
+            mock.patch("builtins.print"),
+        ):
+            refresh_example_data.main()
+
+        # Verify canonical files were created
+        assert (data_dir / "tasks.csv").exists()
+        assert (data_dir / "habits.csv").exists()
+        # Verify log files were created
+        assert (logs_dir / "daily_log.csv").exists()
+        assert (logs_dir / "activity_log.csv").exists()
