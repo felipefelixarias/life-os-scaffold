@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
 
+# Pre-compiled patterns — avoids re-compilation on every call
+_TIME_RE = re.compile(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+_DATE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
+
 # Ensure the scripts directory is on sys.path so csv_schemas can be imported
 # directly, whether this file is run as a script or loaded by tests.
 _scripts_dir = str(Path(__file__).resolve().parent)
@@ -105,23 +109,26 @@ class ValidationResult:
 
 
 def validate_date_format(date_str: str) -> bool:
-    """Validate date is in YYYY-MM-DD format."""
+    """Validate date is in YYYY-MM-DD format.
+
+    Uses a pre-compiled regex for fast matching instead of datetime.strptime,
+    which incurs significant overhead from format-string parsing on each call.
+    """
     if not date_str.strip():
         return True  # Empty dates are often optional
 
-    try:
-        datetime.strptime(date_str, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
+    return bool(_DATE_RE.match(date_str))
 
 
 def validate_time_format(time_str: str) -> bool:
-    """Validate time is in HH:MM format."""
+    """Validate time is in HH:MM format.
+
+    Uses a pre-compiled regex (_TIME_RE) for fast matching.
+    """
     if not time_str.strip():
         return True  # Empty times are often optional
 
-    return bool(re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", time_str))
+    return bool(_TIME_RE.match(time_str))
 
 
 def validate_numeric_field(
@@ -519,14 +526,31 @@ def _check_foreign_key(
             errors.append(f"{source_name} row {row_num}: Invalid {fk_field} '{value}'")
 
 
-def validate_foreign_keys(canonical_dir: Path) -> list[str]:
-    """Validate foreign key references between CSV files."""
+def validate_foreign_keys(
+    canonical_dir: Path,
+    *,
+    row_cache: dict[str, list[dict[str, str]]] | None = None,
+) -> list[str]:
+    """Validate foreign key references between CSV files.
+
+    Args:
+        canonical_dir: Directory containing canonical CSV files.
+        row_cache: Optional pre-loaded rows keyed by filename (e.g. "tasks.csv").
+            When provided, files present in the cache are not re-read from disk.
+    """
     errors: list[str] = []
+    cache = row_cache or {}
+
+    def _get_rows(path: Path, label: str) -> list[dict[str, str]]:
+        """Return rows from cache if available, otherwise read from disk."""
+        if path.name in cache:
+            return cache[path.name]
+        return _load_csv_rows(path, errors, label)
 
     # Load each file once — rows are reused for both ID extraction and FK checks
-    project_rows = _load_csv_rows(canonical_dir / "projects.csv", errors, "project IDs")
-    task_rows = _load_csv_rows(canonical_dir / "tasks.csv", errors, "task IDs")
-    habit_rows = _load_csv_rows(canonical_dir / "habits.csv", errors, "habit IDs")
+    project_rows = _get_rows(canonical_dir / "projects.csv", "project IDs")
+    task_rows = _get_rows(canonical_dir / "tasks.csv", "task IDs")
+    habit_rows = _get_rows(canonical_dir / "habits.csv", "habit IDs")
 
     project_ids = _extract_ids(project_rows, "project_id")
     task_ids = _extract_ids(task_rows, "task_id")
@@ -536,18 +560,64 @@ def validate_foreign_keys(canonical_dir: Path) -> list[str]:
     _check_foreign_key(task_rows, "project_id", project_ids, "tasks.csv", errors)
 
     # time_blocks → tasks
-    tb_rows = _load_csv_rows(
-        canonical_dir / "time_blocks.csv", errors, "time_blocks foreign keys"
+    tb_rows = _get_rows(
+        canonical_dir / "time_blocks.csv", "time_blocks foreign keys"
     )
     _check_foreign_key(tb_rows, "task_id", task_ids, "time_blocks.csv", errors)
 
     # daily_log → habits
-    dl_rows = _load_csv_rows(
-        LOGS_DIR / "daily_log.csv", errors, "daily_log foreign keys"
+    dl_rows = _get_rows(
+        LOGS_DIR / "daily_log.csv", "daily_log foreign keys"
     )
     _check_foreign_key(dl_rows, "habit_id", habit_ids, "daily_log.csv", errors)
 
     return errors
+
+
+def run_full_validation(
+    canonical_dir: Path, logs_dir: Path
+) -> tuple[dict[str, ValidationResult], list[str]]:
+    """Run schema validation and FK checks, reading each CSV file at most once.
+
+    This is the preferred entry-point for programmatic use.  It reads every
+    canonical/log CSV once into memory and then feeds the cached rows into
+    both ``validate_csv_schema`` (per-file schema checks) and
+    ``validate_foreign_keys`` (cross-file reference checks), eliminating the
+    duplicate reads that occur when those two functions are called separately.
+
+    Returns:
+        A tuple of (schema_results, fk_errors) where *schema_results* maps
+        filenames to their ``ValidationResult`` and *fk_errors* is a flat
+        list of foreign-key error strings.
+    """
+    schema_results: dict[str, ValidationResult] = {}
+    row_cache: dict[str, list[dict[str, str]]] = {}
+
+    # Determine which files to validate
+    all_files: list[Path] = []
+    for filename in EXPECTED_SCHEMAS:
+        if filename in ("daily_log.csv", "activity_log.csv"):
+            all_files.append(logs_dir / filename)
+        else:
+            all_files.append(canonical_dir / filename)
+
+    # Build the row cache first (single read per file).  Files involved in
+    # FK checks are: projects, tasks, habits, time_blocks, daily_log.
+    fk_files = {"projects.csv", "tasks.csv", "habits.csv", "time_blocks.csv", "daily_log.csv"}
+    for file_path in all_files:
+        if file_path.name in fk_files and file_path.exists():
+            rows = _load_csv_rows(file_path, [], file_path.name)
+            row_cache[file_path.name] = rows
+
+    # Phase 1: per-file schema validation
+    for file_path in all_files:
+        result = validate_csv_schema(file_path)
+        schema_results[file_path.name] = result
+
+    # Phase 2: FK validation using cached rows (no redundant disk reads)
+    fk_errors = validate_foreign_keys(canonical_dir, row_cache=row_cache)
+
+    return schema_results, fk_errors
 
 
 def main() -> None:
