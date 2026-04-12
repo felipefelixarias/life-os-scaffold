@@ -14,7 +14,7 @@ class ColumnSchema:
 
     name: str
     required: bool = True
-    dtype: str = "str"  # str, int, float, date, bool, enum
+    dtype: str = "str"  # str, int, float, date, time, bool, enum
     enum_values: list[str] = field(default_factory=list)
     nullable: bool = False
 
@@ -114,8 +114,8 @@ SCHEMAS: dict[str, CSVSchema] = {
             ),
             ColumnSchema("next_step", nullable=True),
             ColumnSchema("scheduled_date", dtype="date", nullable=True),
-            ColumnSchema("scheduled_start", nullable=True),
-            ColumnSchema("scheduled_end", nullable=True),
+            ColumnSchema("scheduled_start", dtype="time", nullable=True),
+            ColumnSchema("scheduled_end", dtype="time", nullable=True),
             ColumnSchema("last_updated", dtype="date", nullable=True),
             ColumnSchema("notes", nullable=True),
         ],
@@ -195,8 +195,8 @@ SCHEMAS: dict[str, CSVSchema] = {
         columns=[
             ColumnSchema("event_id", required=True),
             ColumnSchema("date", required=True, dtype="date"),
-            ColumnSchema("start_time", required=True),
-            ColumnSchema("end_time", required=True),
+            ColumnSchema("start_time", required=True, dtype="time"),
+            ColumnSchema("end_time", required=True, dtype="time"),
             ColumnSchema("title", required=True),
             ColumnSchema("location", nullable=True),
             ColumnSchema("attendees", nullable=True),
@@ -216,8 +216,8 @@ SCHEMAS: dict[str, CSVSchema] = {
         columns=[
             ColumnSchema("block_id", required=True),
             ColumnSchema("date", required=True, dtype="date"),
-            ColumnSchema("start", required=True),
-            ColumnSchema("end", required=True),
+            ColumnSchema("start", required=True, dtype="time"),
+            ColumnSchema("end", required=True, dtype="time"),
             ColumnSchema("title", required=True),
             ColumnSchema("domain", nullable=True),
             ColumnSchema("task_id", nullable=True),
@@ -245,8 +245,8 @@ SCHEMAS: dict[str, CSVSchema] = {
             ColumnSchema("activity", required=True),
             ColumnSchema("domain", nullable=True),
             ColumnSchema("duration_mins", dtype="int", nullable=True),
-            ColumnSchema("start_time", nullable=True),
-            ColumnSchema("end_time", nullable=True),
+            ColumnSchema("start_time", dtype="time", nullable=True),
+            ColumnSchema("end_time", dtype="time", nullable=True),
             ColumnSchema("notes", nullable=True),
             ColumnSchema("last_updated", dtype="date", nullable=True),
         ],
@@ -295,6 +295,14 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
         except ValueError:
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid date (YYYY-MM-DD) for '{col.name}'"
+            )
+
+    elif col.dtype == "time":
+        try:
+            datetime.strptime(stripped, "%H:%M")
+        except ValueError:
+            errors.append(
+                f"Row {row_num}: '{stripped}' is not a valid time (HH:MM) for '{col.name}'"
             )
 
     elif col.dtype == "bool" and stripped.lower() not in (
@@ -443,6 +451,16 @@ def get_date_fields() -> dict[str, set[str]]:
         dates = {col.name for col in schema.columns if col.dtype == "date"}
         if dates:
             result[f"{name}.csv"] = dates
+    return result
+
+
+def get_time_fields() -> dict[str, set[str]]:
+    """Return {filename: {time_column_names}} for columns with dtype='time'."""
+    result: dict[str, set[str]] = {}
+    for name, schema in ALL_SCHEMAS.items():
+        times = {col.name for col in schema.columns if col.dtype == "time"}
+        if times:
+            result[f"{name}.csv"] = times
     return result
 
 

@@ -20,6 +20,7 @@ CSVSchema = csv_schemas.CSVSchema
 SCHEMAS = csv_schemas.SCHEMAS
 validate_csv = csv_schemas.validate_csv
 validate_all = csv_schemas.validate_all
+get_time_fields = csv_schemas.get_time_fields
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +394,66 @@ def test_csv_parse_error() -> None:
             assert any("csv parsing error" in e.lower() for e in errors)
         finally:
             _csv.field_size_limit(old_limit)
+
+
+# ---------------------------------------------------------------------------
+# Time validation
+# ---------------------------------------------------------------------------
+
+
+def test_valid_time_field() -> None:
+    """Valid HH:MM times produce no errors."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "time_blocks.csv",
+            [
+                "block_id,date,start,end,title,domain,task_id,source,status,notes",
+                "B001,2026-04-10,09:00,10:30,Focus,work,,manual,planned,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["time_blocks"])
+        assert errors == []
+
+
+def test_invalid_time_field_fails() -> None:
+    """Non-HH:MM time is flagged."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "time_blocks.csv",
+            [
+                "block_id,date,start,end,title,domain,task_id,source,status,notes",
+                "B001,2026-04-10,9am,10am,Focus,work,,manual,planned,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["time_blocks"])
+        assert any("time" in e.lower() and "9am" in e for e in errors)
+
+
+def test_nullable_time_field_accepts_empty() -> None:
+    """Nullable time fields accept empty values without error."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "time_logs.csv",
+            [
+                "log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated",
+                "L001,2026-04-10,Coding,work,60,,,,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["time_logs"])
+        assert errors == []
+
+
+def test_get_time_fields_returns_time_columns() -> None:
+    """get_time_fields returns time-typed columns for schemas that have them."""
+    result = get_time_fields()
+    assert "time_blocks.csv" in result
+    assert "start" in result["time_blocks.csv"]
+    assert "end" in result["time_blocks.csv"]
+    assert "calendar_events.csv" in result
+    assert "start_time" in result["calendar_events.csv"]
 
 
 def test_validate_all_runs_on_canonical_dir() -> None:
