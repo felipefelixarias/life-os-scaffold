@@ -23,6 +23,7 @@ FOREIGN_KEYS = csv_schemas.FOREIGN_KEYS
 validate_csv = csv_schemas.validate_csv
 validate_all = csv_schemas.validate_all
 get_time_fields = csv_schemas.get_time_fields
+get_numeric_constraints = csv_schemas.get_numeric_constraints
 get_foreign_keys = csv_schemas.get_foreign_keys
 
 
@@ -473,6 +474,134 @@ def test_validate_all_runs_on_canonical_dir() -> None:
         # Header-only files should pass (no data rows to fail)
         for name, errs in results.items():
             assert errs == [], f"{name} had errors: {errs}"
+
+
+# ---------------------------------------------------------------------------
+# Numeric range validation
+# ---------------------------------------------------------------------------
+
+
+def test_int_below_minimum_fails() -> None:
+    """Integer value below min_value is flagged."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "tasks.csv",
+            [
+                "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
+                "T001,,Write tests,work,queued,P1,0,2026-04-10,high,,manual,,,,,2026-04-06,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["tasks"])
+        assert any("below minimum" in e for e in errors)
+
+
+def test_int_above_maximum_fails() -> None:
+    """Integer value above max_value is flagged."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "tasks.csv",
+            [
+                "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
+                "T001,,Write tests,work,queued,P1,999,2026-04-10,high,,manual,,,,,2026-04-06,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["tasks"])
+        assert any("exceeds maximum" in e for e in errors)
+
+
+def test_float_below_minimum_fails() -> None:
+    """Float value below min_value is flagged."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "goals.csv",
+            [
+                "goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes",
+                "G001,career,Get promoted,quarter,2026-06-30,level,-5,3,active,2026-04-06,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["goals"])
+        assert any("below minimum" in e for e in errors)
+
+
+def test_float_above_maximum_fails() -> None:
+    """Float value above max_value is flagged (using habits min_value col with max constraint)."""
+    # Create a custom schema to test float max
+    schema = CSVSchema(
+        name="test",
+        columns=[
+            ColumnSchema("id", required=True),
+            ColumnSchema(
+                "score", dtype="float", nullable=True, min_value=0, max_value=100
+            ),
+        ],
+    )
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(Path(d), "test.csv", ["id,score", "1,200.5"])
+        errors = validate_csv(p, schema)
+        assert any("exceeds maximum" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Time format validation
+# ---------------------------------------------------------------------------
+
+
+def test_valid_time_format_passes() -> None:
+    """Valid HH:MM time values pass validation."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "time_blocks.csv",
+            [
+                "block_id,date,start,end,title,domain,task_id,source,status,notes",
+                "B001,2026-04-10,09:00,10:30,Focus work,,,,planned,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["time_blocks"])
+        assert errors == []
+
+
+def test_invalid_time_format_fails() -> None:
+    """Invalid time format is flagged."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "time_blocks.csv",
+            [
+                "block_id,date,start,end,title,domain,task_id,source,status,notes",
+                "B001,2026-04-10,25:00,10:30,Focus work,,,,planned,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["time_blocks"])
+        assert any("time" in e.lower() and "25:00" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# Accessor functions for new schema properties
+# ---------------------------------------------------------------------------
+
+
+def test_get_time_fields() -> None:
+    """get_time_fields returns time columns grouped by file."""
+    result = get_time_fields()
+    assert "time_blocks.csv" in result
+    assert "start" in result["time_blocks.csv"]
+    assert "end" in result["time_blocks.csv"]
+    assert "calendar_events.csv" in result
+    assert "start_time" in result["calendar_events.csv"]
+
+
+def test_get_numeric_constraints() -> None:
+    """get_numeric_constraints returns range constraints from schema."""
+    result = get_numeric_constraints()
+    assert "tasks.csv" in result
+    assert "effort_mins" in result["tasks.csv"]
+    assert result["tasks.csv"]["effort_mins"]["min"] == 1
+    assert result["tasks.csv"]["effort_mins"]["max"] == 480
+    assert result["tasks.csv"]["effort_mins"]["type"] == "int"
 
 
 # ---------------------------------------------------------------------------

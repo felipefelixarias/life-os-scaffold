@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cached_property
@@ -19,6 +20,8 @@ class ColumnSchema:
     dtype: str = "str"  # str, int, float, date, time, bool, enum
     enum_values: list[str] = field(default_factory=list)
     nullable: bool = False
+    min_value: int | float | None = None
+    max_value: int | float | None = None
 
 
 @dataclass
@@ -92,7 +95,9 @@ SCHEMAS: dict[str, CSVSchema] = {
                 enum_values=["P1", "P2", "P3"],
                 nullable=True,
             ),
-            ColumnSchema("effort_mins", dtype="int", nullable=True),
+            ColumnSchema(
+                "effort_mins", dtype="int", nullable=True, min_value=1, max_value=480
+            ),
             ColumnSchema("due_date", dtype="date", nullable=True),
             ColumnSchema(
                 "energy",
@@ -128,8 +133,10 @@ SCHEMAS: dict[str, CSVSchema] = {
                 dtype="enum",
                 enum_values=["daily", "weekly"],
             ),
-            ColumnSchema("target_per_week", dtype="int", nullable=True),
-            ColumnSchema("min_value", dtype="float", nullable=True),
+            ColumnSchema(
+                "target_per_week", dtype="int", nullable=True, min_value=1, max_value=7
+            ),
+            ColumnSchema("min_value", dtype="float", nullable=True, min_value=0),
             ColumnSchema("unit", nullable=True),
             ColumnSchema("active", dtype="bool", nullable=True),
             ColumnSchema("notes", nullable=True),
@@ -151,8 +158,8 @@ SCHEMAS: dict[str, CSVSchema] = {
             ),
             ColumnSchema("target_date", dtype="date", nullable=True),
             ColumnSchema("metric_name", nullable=True),
-            ColumnSchema("metric_target", dtype="float", nullable=True),
-            ColumnSchema("metric_current", dtype="float", nullable=True),
+            ColumnSchema("metric_target", dtype="float", nullable=True, min_value=0),
+            ColumnSchema("metric_current", dtype="float", nullable=True, min_value=0),
             ColumnSchema(
                 "status",
                 dtype="enum",
@@ -239,7 +246,9 @@ SCHEMAS: dict[str, CSVSchema] = {
             ColumnSchema("date", required=True, dtype="date"),
             ColumnSchema("activity", required=True),
             ColumnSchema("domain", nullable=True),
-            ColumnSchema("duration_mins", dtype="int", nullable=True),
+            ColumnSchema(
+                "duration_mins", dtype="int", nullable=True, min_value=1, max_value=1440
+            ),
             ColumnSchema("start_time", dtype="time", nullable=True),
             ColumnSchema("end_time", dtype="time", nullable=True),
             ColumnSchema("notes", nullable=True),
@@ -309,19 +318,37 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
 
     elif col.dtype == "int":
         try:
-            int(stripped)
+            num = int(stripped)
         except ValueError:
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid integer for '{col.name}'"
             )
+        else:
+            if col.min_value is not None and num < col.min_value:
+                errors.append(
+                    f"Row {row_num}: {col.name} value {num} is below minimum {col.min_value}"
+                )
+            if col.max_value is not None and num > col.max_value:
+                errors.append(
+                    f"Row {row_num}: {col.name} value {num} exceeds maximum {col.max_value}"
+                )
 
     elif col.dtype == "float":
         try:
-            float(stripped)
+            num_f = float(stripped)
         except ValueError:
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid float for '{col.name}'"
             )
+        else:
+            if col.min_value is not None and num_f < col.min_value:
+                errors.append(
+                    f"Row {row_num}: {col.name} value {num_f} is below minimum {col.min_value}"
+                )
+            if col.max_value is not None and num_f > col.max_value:
+                errors.append(
+                    f"Row {row_num}: {col.name} value {num_f} exceeds maximum {col.max_value}"
+                )
 
     elif col.dtype == "date":
         try:
@@ -332,9 +359,7 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
             )
 
     elif col.dtype == "time":
-        try:
-            datetime.strptime(stripped, "%H:%M")
-        except ValueError:
+        if not re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", stripped):
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid time (HH:MM) for '{col.name}'"
             )
@@ -495,6 +520,27 @@ def get_time_fields() -> dict[str, set[str]]:
         times = {col.name for col in schema.columns if col.dtype == "time"}
         if times:
             result[f"{name}.csv"] = times
+    return result
+
+
+def get_numeric_constraints() -> dict[
+    str, dict[str, dict[str, int | float | str | None]]
+]:
+    """Return {filename: {column: {min, max, type}}} for numeric columns with range constraints."""
+    result: dict[str, dict[str, dict[str, int | float | str | None]]] = {}
+    for name, schema in ALL_SCHEMAS.items():
+        constraints: dict[str, dict[str, int | float | str | None]] = {}
+        for col in schema.columns:
+            if col.dtype in ("int", "float") and (
+                col.min_value is not None or col.max_value is not None
+            ):
+                constraints[col.name] = {
+                    "min": col.min_value,
+                    "max": col.max_value,
+                    "type": col.dtype,
+                }
+        if constraints:
+            result[f"{name}.csv"] = constraints
     return result
 
 

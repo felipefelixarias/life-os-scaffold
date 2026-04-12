@@ -26,7 +26,9 @@ from csv_schemas import (  # noqa: E402
     get_expected_headers,
     get_foreign_keys,
     get_id_fields,
+    get_numeric_constraints,
     get_required_fields,
+    get_time_fields,
 )
 
 # Paths relative to repo root
@@ -40,24 +42,7 @@ REQUIRED_FIELDS = get_required_fields()
 ENUM_FIELDS = get_enum_fields()
 ID_FIELDS = get_id_fields()
 DATE_FIELDS = get_date_fields()
-
-# Numeric field validation (extended constraints not modeled in csv_schemas)
-NUMERIC_FIELDS = {
-    "habits.csv": {
-        "target_per_week": {"min": 1, "max": 7, "type": "int"},
-        "min_value": {"min": 0, "type": "float"},
-    },
-    "tasks.csv": {
-        "effort_mins": {"min": 1, "max": 480, "type": "int"}  # Max 8 hours
-    },
-    "goals.csv": {
-        "metric_target": {"min": 0, "type": "float"},
-        "metric_current": {"min": 0, "type": "float"},
-    },
-    "time_logs.csv": {
-        "duration_mins": {"min": 1, "max": 1440, "type": "int"}  # Max 24 hours
-    },
-}
+NUMERIC_FIELDS = get_numeric_constraints()
 
 # Time range validation (start must be before end)
 TIME_RANGE_FIELDS = {
@@ -82,12 +67,8 @@ DATE_RANGE_FIELDS = {
     "tasks.csv": {"start": "scheduled_date", "end": "due_date"},
 }
 
-# Time fields (not modeled in csv_schemas dtype)
-TIME_FIELDS = {
-    "time_blocks.csv": {"start", "end"},
-    "time_logs.csv": {"start_time", "end_time"},
-    "calendar_events.csv": {"start_time", "end_time"},
-}
+# Derived from csv_schemas — columns with dtype='time'
+TIME_FIELDS = get_time_fields()
 
 
 class ValidationResult:
