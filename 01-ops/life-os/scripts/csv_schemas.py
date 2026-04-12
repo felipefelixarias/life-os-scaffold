@@ -100,7 +100,9 @@ SCHEMAS: dict[str, CSVSchema] = {
                 enum_values=["P1", "P2", "P3"],
                 nullable=True,
             ),
-            ColumnSchema("effort_mins", dtype="int", nullable=True, min_value=1, max_value=480),
+            ColumnSchema(
+                "effort_mins", dtype="int", nullable=True, min_value=1, max_value=480
+            ),
             ColumnSchema("due_date", dtype="date", nullable=True),
             ColumnSchema(
                 "energy",
@@ -136,7 +138,9 @@ SCHEMAS: dict[str, CSVSchema] = {
                 dtype="enum",
                 enum_values=["daily", "weekly"],
             ),
-            ColumnSchema("target_per_week", dtype="int", nullable=True, min_value=1, max_value=7),
+            ColumnSchema(
+                "target_per_week", dtype="int", nullable=True, min_value=1, max_value=7
+            ),
             ColumnSchema("min_value", dtype="float", nullable=True, min_value=0),
             ColumnSchema("unit", nullable=True),
             ColumnSchema("active", dtype="bool", nullable=True),
@@ -247,7 +251,9 @@ SCHEMAS: dict[str, CSVSchema] = {
             ColumnSchema("date", required=True, dtype="date"),
             ColumnSchema("activity", required=True),
             ColumnSchema("domain", nullable=True),
-            ColumnSchema("duration_mins", dtype="int", nullable=True, min_value=1, max_value=1440),
+            ColumnSchema(
+                "duration_mins", dtype="int", nullable=True, min_value=1, max_value=1440
+            ),
             ColumnSchema("start_time", dtype="time", nullable=True),
             ColumnSchema("end_time", dtype="time", nullable=True),
             ColumnSchema("notes", nullable=True),
@@ -483,13 +489,17 @@ def get_time_fields() -> dict[str, set[str]]:
     return result
 
 
-def get_numeric_constraints() -> dict[str, dict[str, dict[str, int | float | str | None]]]:
+def get_numeric_constraints() -> dict[
+    str, dict[str, dict[str, int | float | str | None]]
+]:
     """Return {filename: {column: {min, max, type}}} for numeric columns with range constraints."""
     result: dict[str, dict[str, dict[str, int | float | str | None]]] = {}
     for name, schema in ALL_SCHEMAS.items():
         constraints: dict[str, dict[str, int | float | str | None]] = {}
         for col in schema.columns:
-            if col.dtype in ("int", "float") and (col.min_value is not None or col.max_value is not None):
+            if col.dtype in ("int", "float") and (
+                col.min_value is not None or col.max_value is not None
+            ):
                 constraints[col.name] = {
                     "min": col.min_value,
                     "max": col.max_value,

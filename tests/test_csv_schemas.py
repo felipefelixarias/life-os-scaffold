@@ -470,7 +470,9 @@ def test_float_above_maximum_fails() -> None:
         name="test",
         columns=[
             ColumnSchema("id", required=True),
-            ColumnSchema("score", dtype="float", nullable=True, min_value=0, max_value=100),
+            ColumnSchema(
+                "score", dtype="float", nullable=True, min_value=0, max_value=100
+            ),
         ],
     )
     with tempfile.TemporaryDirectory() as d:
