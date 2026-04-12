@@ -493,7 +493,9 @@ def test_foreign_keys_defined() -> None:
 def test_foreign_key_targets_reference_valid_schemas() -> None:
     """Every FK target_file and target_column must exist in SCHEMAS."""
     for fk in FOREIGN_KEYS:
-        assert fk.target_file in SCHEMAS, f"target_file '{fk.target_file}' not in SCHEMAS"
+        assert fk.target_file in SCHEMAS, (
+            f"target_file '{fk.target_file}' not in SCHEMAS"
+        )
         schema = SCHEMAS[fk.target_file]
         assert fk.target_column in schema.column_names, (
             f"target_column '{fk.target_column}' not in {fk.target_file} schema"
