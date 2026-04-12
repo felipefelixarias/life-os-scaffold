@@ -183,9 +183,7 @@ def test_check_python_health_all_good(mock_print, mock_run, tmp_path: Path):
         repo_health.check_python_health()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "Python files compile successfully" in call for call in print_calls
-        )
+        assert any("Python files compile successfully" in call for call in print_calls)
         assert any("No ruff linting issues" in call for call in print_calls)
 
 
@@ -291,9 +289,7 @@ def test_check_security_clean(mock_print, tmp_path: Path):
         repo_health.check_security()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any(
-            "No obvious security issues found" in call for call in print_calls
-        )
+        assert any("No obvious security issues found" in call for call in print_calls)
 
 
 @patch("builtins.print")

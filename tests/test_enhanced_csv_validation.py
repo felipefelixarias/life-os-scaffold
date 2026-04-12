@@ -221,7 +221,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("must be before" in error for error in result.errors)
 
-    def test_validate_csv_schema_duration_consistency_validation(self, tmp_path: Path) -> None:
+    def test_validate_csv_schema_duration_consistency_validation(
+        self, tmp_path: Path
+    ) -> None:
         """Test schema validation catches duration inconsistencies."""
         time_logs_file = tmp_path / "time_logs.csv"
         content = (
@@ -251,7 +253,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("must be before or equal to" in error for error in result.errors)
 
-    def test_validate_csv_schema_habits_numeric_validation(self, tmp_path: Path) -> None:
+    def test_validate_csv_schema_habits_numeric_validation(
+        self, tmp_path: Path
+    ) -> None:
         """Test schema validation for habits CSV numeric fields."""
         habits_file = tmp_path / "habits.csv"
         content = (
