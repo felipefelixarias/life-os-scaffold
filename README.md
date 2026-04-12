@@ -144,7 +144,7 @@ git push                    # sync for tomorrow
 
 ## Requirements
 
-- **Python 3.9+** (for Google Calendar integration)
+- **Python 3.12+** (for Google Calendar integration)
 - **Claude Code** (get it at [claude.ai/code](https://claude.ai/code))
 - **gcalcli** (optional, for Google Calendar sync): `pip install gcalcli`
 

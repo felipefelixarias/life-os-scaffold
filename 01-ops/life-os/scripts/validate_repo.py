@@ -5,26 +5,18 @@ from __future__ import annotations
 
 import argparse
 import csv
-import importlib.util
 import logging
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 
-# Import csv_schemas from the same directory using importlib to support
-# both package imports and spec_from_file_location loading in tests.
-_csv_schemas_path = Path(__file__).resolve().parent / "csv_schemas.py"
-_spec = importlib.util.spec_from_file_location("csv_schemas", _csv_schemas_path)
-assert _spec is not None
-assert _spec.loader is not None
-_csv_schemas = importlib.util.module_from_spec(_spec)
-sys.modules.setdefault("csv_schemas", _csv_schemas)
-_spec.loader.exec_module(_csv_schemas)
+# Ensure the scripts directory is on sys.path so csv_schemas can be imported
+# directly, whether this file is run as a script or loaded by tests.
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
-SCHEMAS = _csv_schemas.SCHEMAS
-get_enum_fields = _csv_schemas.get_enum_fields
+from csv_schemas import SCHEMAS, validate_csv  # noqa: E402
 
 # Configure basic logging
 logger = logging.getLogger(__name__)
@@ -39,22 +31,6 @@ if not logger.handlers:
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 COMMAND_RE = re.compile(r"`(/[\w-]+)`")
-DATE_COLUMNS = (
-    "date",
-    "target_date",
-    "due_date",
-    "start_date",
-    "scheduled_date",
-    "last_updated",
-)
-TIME_COLUMNS = (
-    "start",
-    "end",
-    "start_time",
-    "end_time",
-    "scheduled_start",
-    "scheduled_end",
-)
 
 
 def markdown_docs() -> list[Path]:
@@ -185,119 +161,24 @@ def validate_csv_structure() -> list[str]:
     return errors
 
 
-def _build_repo_schemas() -> dict[str, dict[str, Any]]:
-    """Build repo validation schemas from csv_schemas — single source of truth."""
-    enum_fields = get_enum_fields()
-    result: dict[str, dict[str, Any]] = {}
-    for name, schema in SCHEMAS.items():
-        filename = f"{name}.csv"
-        required_cols = [
-            col.name for col in schema.columns if col.required and not col.nullable
-        ]
-        optional_cols = [
-            col.name for col in schema.columns if col.name not in required_cols
-        ]
-        entry: dict[str, Any] = {
-            "required_columns": required_cols,
-            "optional_columns": optional_cols,
-        }
-        if filename in enum_fields:
-            entry["enums"] = enum_fields[filename]
-        result[filename] = entry
-    return result
-
-
 def validate_csv_schemas() -> list[str]:
-    """Validate CSV files against expected schemas and data quality."""
+    """Validate CSV files against expected schemas and data quality.
+
+    Delegates to csv_schemas.validate_csv() — the single source of truth for
+    schema definitions, type checking (enum, date, time, int, float, bool),
+    required-field enforcement, and unique-ID validation.
+    """
     errors: list[str] = []
 
-    # Derive schemas from csv_schemas module — single source of truth
-    schemas = _build_repo_schemas()
-
     for csv_path in csv_files():
-        filename = csv_path.name
-        if filename not in schemas:
+        stem = csv_path.stem
+        if stem not in SCHEMAS:
             continue
 
-        schema = schemas[filename]
-
-        try:
-            with csv_path.open(newline="", encoding="utf-8") as handle:
-                reader = csv.DictReader(handle)
-                header = reader.fieldnames
-
-                if not header:
-                    errors.append(
-                        f"CSV has no header: {csv_path.relative_to(REPO_ROOT)}",
-                    )
-                    continue
-
-                # Check required columns
-                errors.extend(
-                    f"Missing required column '{required_col}' in {csv_path.relative_to(REPO_ROOT)}"
-                    for required_col in schema["required_columns"]
-                    if required_col not in header
-                )
-
-                allowed_columns = set(schema["required_columns"]) | set(
-                    schema.get("optional_columns", []),
-                )
-                unexpected_columns = [
-                    column for column in header if column not in allowed_columns
-                ]
-                if unexpected_columns:
-                    errors.append(
-                        f"Unexpected column(s) {unexpected_columns} in {csv_path.relative_to(REPO_ROOT)}",
-                    )
-
-                # Validate data rows
-                line_num = 2  # Start after header
-                for row in reader:
-                    # Check required fields are not empty
-                    for required_col in schema["required_columns"]:
-                        if required_col in row and not row[required_col].strip():
-                            errors.append(
-                                f"Empty required field '{required_col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}",
-                            )
-
-                    # Validate enums
-                    if "enums" in schema:
-                        for col, valid_values in schema["enums"].items():
-                            if (
-                                col in row
-                                and row[col].strip()
-                                and row[col] not in valid_values
-                            ):
-                                errors.append(
-                                    f"Invalid value '{row[col]}' for '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Valid: {valid_values}",
-                                )
-
-                    # Validate date formats
-                    for col in DATE_COLUMNS:
-                        if col in row and row[col].strip():
-                            try:
-                                datetime.strptime(row[col], "%Y-%m-%d")
-                            except ValueError:
-                                errors.append(
-                                    f"Invalid date format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use YYYY-MM-DD",
-                                )
-
-                    # Validate time formats
-                    for col in TIME_COLUMNS:
-                        if col in row and row[col].strip():
-                            try:
-                                datetime.strptime(row[col], "%H:%M")
-                            except ValueError:
-                                errors.append(
-                                    f"Invalid time format '{row[col]}' in '{col}' at line {line_num} in {csv_path.relative_to(REPO_ROOT)}. Use HH:MM",
-                                )
-
-                    line_num += 1
-
-        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
-            errors.append(
-                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}",
-            )
+        schema = SCHEMAS[stem]
+        csv_errors = validate_csv(csv_path, schema)
+        for err in csv_errors:
+            errors.append(f"{err} in {csv_path.relative_to(REPO_ROOT)}")
 
     return errors
 

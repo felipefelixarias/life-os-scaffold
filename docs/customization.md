@@ -34,6 +34,8 @@ Define when your day starts, when work happens, and when you sleep. Also configu
 ```
 
 **Additional Planning Fields:**
+- `workday_start`: When your work day begins (for scheduling work blocks)
+- `workday_end`: When your work day ends
 - `workday_commute_start`: When to leave for work (for commuters)
 - `workday_commute_home_end`: When you arrive home from work
 - `default_task_block_mins`: Default time allocation for standard tasks

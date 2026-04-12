@@ -4,7 +4,7 @@
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - Git
-- Python 3.9+ (for Google Calendar integration)
+- Python 3.12+ (for Google Calendar integration)
 
 ## Setup
 
