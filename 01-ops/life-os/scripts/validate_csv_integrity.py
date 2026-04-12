@@ -4,28 +4,25 @@
 from __future__ import annotations
 
 import csv
-import importlib.util
 import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-# Import csv_schemas from the same directory using importlib to support
-# both package imports and spec_from_file_location loading in tests.
-_csv_schemas_path = Path(__file__).resolve().parent / "csv_schemas.py"
-_spec = importlib.util.spec_from_file_location("csv_schemas", _csv_schemas_path)
-assert _spec is not None
-assert _spec.loader is not None
-_csv_schemas = importlib.util.module_from_spec(_spec)
-sys.modules.setdefault("csv_schemas", _csv_schemas)
-_spec.loader.exec_module(_csv_schemas)
+# Ensure the scripts directory is on sys.path so csv_schemas can be imported
+# directly, whether this file is run as a script or loaded by tests.
+_scripts_dir = str(Path(__file__).resolve().parent)
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
 
-get_date_fields = _csv_schemas.get_date_fields
-get_enum_fields = _csv_schemas.get_enum_fields
-get_expected_headers = _csv_schemas.get_expected_headers
-get_id_fields = _csv_schemas.get_id_fields
-get_required_fields = _csv_schemas.get_required_fields
+from csv_schemas import (  # noqa: E402
+    get_date_fields,
+    get_enum_fields,
+    get_expected_headers,
+    get_id_fields,
+    get_required_fields,
+)
 
 # Paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parents[3]
