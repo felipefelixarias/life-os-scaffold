@@ -24,6 +24,7 @@ from csv_schemas import (  # noqa: E402
     get_date_fields,
     get_enum_fields,
     get_expected_headers,
+    get_foreign_keys,
     get_id_fields,
     get_required_fields,
 )
@@ -533,6 +534,9 @@ def validate_foreign_keys(
 ) -> list[str]:
     """Validate foreign key references between CSV files.
 
+    FK relationships are defined declaratively in ``csv_schemas.FOREIGN_KEYS``
+    rather than being hardcoded here.
+
     Args:
         canonical_dir: Directory containing canonical CSV files.
         row_cache: Optional pre-loaded rows keyed by filename (e.g. "tasks.csv").
@@ -541,31 +545,36 @@ def validate_foreign_keys(
     errors: list[str] = []
     cache = row_cache or {}
 
-    def _get_rows(path: Path, label: str) -> list[dict[str, str]]:
-        """Return rows from cache if available, otherwise read from disk."""
-        if path.name in cache:
-            return cache[path.name]
-        return _load_csv_rows(path, errors, label)
+    # Lazily loaded row caches keyed by "<name>.csv"
+    loaded_rows: dict[str, list[dict[str, str]]] = {}
 
-    # Load each file once — rows are reused for both ID extraction and FK checks
-    project_rows = _get_rows(canonical_dir / "projects.csv", "project IDs")
-    task_rows = _get_rows(canonical_dir / "tasks.csv", "task IDs")
-    habit_rows = _get_rows(canonical_dir / "habits.csv", "habit IDs")
+    def _get_rows(name: str, location: str) -> list[dict[str, str]]:
+        """Return rows from cache or load from disk once per file."""
+        fname = f"{name}.csv"
+        if fname in loaded_rows:
+            return loaded_rows[fname]
+        if fname in cache:
+            loaded_rows[fname] = cache[fname]
+            return loaded_rows[fname]
+        base_dir = LOGS_DIR if location == "logs" else canonical_dir
+        rows = _load_csv_rows(base_dir / fname, errors, f"{name} foreign keys")
+        loaded_rows[fname] = rows
+        return rows
 
-    project_ids = _extract_ids(project_rows, "project_id")
-    task_ids = _extract_ids(task_rows, "task_id")
-    habit_ids = _extract_ids(habit_rows, "habit_id")
+    for fk in get_foreign_keys():
+        # Load target rows and extract valid IDs
+        target_rows = _get_rows(fk.target_file, "canonical")
+        valid_ids = _extract_ids(target_rows, fk.target_column)
 
-    # tasks → projects (uses already-loaded task_rows, no second read)
-    _check_foreign_key(task_rows, "project_id", project_ids, "tasks.csv", errors)
-
-    # time_blocks → tasks
-    tb_rows = _get_rows(canonical_dir / "time_blocks.csv", "time_blocks foreign keys")
-    _check_foreign_key(tb_rows, "task_id", task_ids, "time_blocks.csv", errors)
-
-    # daily_log → habits
-    dl_rows = _get_rows(LOGS_DIR / "daily_log.csv", "daily_log foreign keys")
-    _check_foreign_key(dl_rows, "habit_id", habit_ids, "daily_log.csv", errors)
+        # Load source rows and check FK references
+        source_rows = _get_rows(fk.source_file, fk.location)
+        _check_foreign_key(
+            source_rows,
+            fk.source_column,
+            valid_ids,
+            f"{fk.source_file}.csv",
+            errors,
+        )
 
     return errors
 
@@ -597,15 +606,12 @@ def run_full_validation(
         else:
             all_files.append(canonical_dir / filename)
 
-    # Build the row cache first (single read per file).  Files involved in
-    # FK checks are: projects, tasks, habits, time_blocks, daily_log.
-    fk_files = {
-        "projects.csv",
-        "tasks.csv",
-        "habits.csv",
-        "time_blocks.csv",
-        "daily_log.csv",
-    }
+    # Build the row cache first (single read per file).  Derive the set of
+    # FK-involved files from the schema rather than hardcoding them.
+    fk_files: set[str] = set()
+    for fk in get_foreign_keys():
+        fk_files.add(f"{fk.source_file}.csv")
+        fk_files.add(f"{fk.target_file}.csv")
     for file_path in all_files:
         if file_path.name in fk_files and file_path.exists():
             rows = _load_csv_rows(file_path, [], file_path.name)
