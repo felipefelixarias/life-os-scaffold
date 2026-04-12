@@ -560,15 +560,11 @@ def validate_foreign_keys(
     _check_foreign_key(task_rows, "project_id", project_ids, "tasks.csv", errors)
 
     # time_blocks → tasks
-    tb_rows = _get_rows(
-        canonical_dir / "time_blocks.csv", "time_blocks foreign keys"
-    )
+    tb_rows = _get_rows(canonical_dir / "time_blocks.csv", "time_blocks foreign keys")
     _check_foreign_key(tb_rows, "task_id", task_ids, "time_blocks.csv", errors)
 
     # daily_log → habits
-    dl_rows = _get_rows(
-        LOGS_DIR / "daily_log.csv", "daily_log foreign keys"
-    )
+    dl_rows = _get_rows(LOGS_DIR / "daily_log.csv", "daily_log foreign keys")
     _check_foreign_key(dl_rows, "habit_id", habit_ids, "daily_log.csv", errors)
 
     return errors
@@ -603,7 +599,13 @@ def run_full_validation(
 
     # Build the row cache first (single read per file).  Files involved in
     # FK checks are: projects, tasks, habits, time_blocks, daily_log.
-    fk_files = {"projects.csv", "tasks.csv", "habits.csv", "time_blocks.csv", "daily_log.csv"}
+    fk_files = {
+        "projects.csv",
+        "tasks.csv",
+        "habits.csv",
+        "time_blocks.csv",
+        "daily_log.csv",
+    }
     for file_path in all_files:
         if file_path.name in fk_files and file_path.exists():
             rows = _load_csv_rows(file_path, [], file_path.name)

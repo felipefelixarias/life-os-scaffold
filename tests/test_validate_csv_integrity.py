@@ -795,8 +795,12 @@ class TestRunFullValidation:
     def test_full_validation_passes_on_valid_data(self) -> None:
         """run_full_validation returns no errors for valid data."""
         self._write_valid_files()
-        with mock.patch.object(validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir), \
-             mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
             schema_results, fk_errors = validate_csv_integrity.run_full_validation(
                 self.canonical_dir, self.logs_dir
             )
@@ -813,8 +817,12 @@ class TestRunFullValidation:
             "T001,NOPE,Do stuff,work,queued,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,\n",
             encoding="utf-8",
         )
-        with mock.patch.object(validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir), \
-             mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
             _schema_results, fk_errors = validate_csv_integrity.run_full_validation(
                 self.canonical_dir, self.logs_dir
             )
@@ -828,8 +836,12 @@ class TestRunFullValidation:
             "wrong,headers\nval1,val2\n",
             encoding="utf-8",
         )
-        with mock.patch.object(validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir), \
-             mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
             schema_results, _fk_errors = validate_csv_integrity.run_full_validation(
                 self.canonical_dir, self.logs_dir
             )
