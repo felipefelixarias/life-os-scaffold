@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import tempfile
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
@@ -194,14 +193,9 @@ class TestDateRangeValidation:
 class TestEnhancedSchemaValidation:
     """Test enhanced schema validation with new features."""
 
-    def setup_method(self) -> None:
-        """Set up test environment."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.test_root = Path(self.temp_dir)
-
-    def test_validate_csv_schema_numeric_validation(self) -> None:
+    def test_validate_csv_schema_numeric_validation(self, tmp_path: Path) -> None:
         """Test schema validation catches numeric field violations."""
-        tasks_file = self.test_root / "tasks.csv"
+        tasks_file = tmp_path / "tasks.csv"
         content = (
             "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
             "task1,,Test task,work,queued,P1,500,,medium,desk,manual,Do it,,,,2026-04-02,Test\n"  # effort_mins=500 > max=480
@@ -213,9 +207,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_validate_csv_schema_time_range_validation(self) -> None:
+    def test_validate_csv_schema_time_range_validation(self, tmp_path: Path) -> None:
         """Test schema validation catches time range violations."""
-        time_blocks_file = self.test_root / "time_blocks.csv"
+        time_blocks_file = tmp_path / "time_blocks.csv"
         content = (
             "block_id,date,start,end,title,domain,task_id,source,status,notes\n"
             "block1,2026-04-05,10:00,09:00,Work,work,,manual,planned,Invalid time range\n"
@@ -227,9 +221,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("must be before" in error for error in result.errors)
 
-    def test_validate_csv_schema_duration_consistency_validation(self) -> None:
+    def test_validate_csv_schema_duration_consistency_validation(self, tmp_path: Path) -> None:
         """Test schema validation catches duration inconsistencies."""
-        time_logs_file = self.test_root / "time_logs.csv"
+        time_logs_file = tmp_path / "time_logs.csv"
         content = (
             "log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated\n"
             "log1,2026-04-05,Work,work,30,09:00,10:00,Wrong duration,\n"  # Should be 60 minutes
@@ -243,9 +237,9 @@ class TestEnhancedSchemaValidation:
             "doesn't match calculated duration" in error for error in result.errors
         )
 
-    def test_validate_csv_schema_date_range_validation(self) -> None:
+    def test_validate_csv_schema_date_range_validation(self, tmp_path: Path) -> None:
         """Test schema validation catches date range violations."""
-        projects_file = self.test_root / "projects.csv"
+        projects_file = tmp_path / "projects.csv"
         content = (
             "project_id,area,name,status,start_date,target_date,description,last_updated,notes,active\n"
             "proj1,work,Test project,active,2026-04-30,2026-04-01,Test,2026-04-02,Invalid dates,true\n"
@@ -257,9 +251,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("must be before or equal to" in error for error in result.errors)
 
-    def test_validate_csv_schema_habits_numeric_validation(self) -> None:
+    def test_validate_csv_schema_habits_numeric_validation(self, tmp_path: Path) -> None:
         """Test schema validation for habits CSV numeric fields."""
-        habits_file = self.test_root / "habits.csv"
+        habits_file = tmp_path / "habits.csv"
         content = (
             "habit_id,area,name,frequency,target_per_week,min_value,unit,active,notes,last_updated\n"
             "habit1,health,Test habit,daily,10,1,session,true,Test,2026-04-02\n"  # target_per_week=10 > max=7
@@ -271,9 +265,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_validate_csv_schema_goals_numeric_validation(self) -> None:
+    def test_validate_csv_schema_goals_numeric_validation(self, tmp_path: Path) -> None:
         """Test schema validation for goals CSV numeric fields."""
-        goals_file = self.test_root / "goals.csv"
+        goals_file = tmp_path / "goals.csv"
         content = (
             "goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes\n"
             "goal1,health,Test goal,quarter,2026-06-01,sessions,-5,0,active,2026-04-02,Test\n"  # metric_target=-5 < min=0
@@ -285,9 +279,9 @@ class TestEnhancedSchemaValidation:
         assert not result.passed
         assert any("below minimum" in error for error in result.errors)
 
-    def test_validate_csv_schema_passes_valid_data(self) -> None:
+    def test_validate_csv_schema_passes_valid_data(self, tmp_path: Path) -> None:
         """Test schema validation passes with valid enhanced data."""
-        tasks_file = self.test_root / "tasks.csv"
+        tasks_file = tmp_path / "tasks.csv"
         content = (
             "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
             "task1,,Test task,work,queued,P3,60,2026-04-10,medium,desk,manual,Do it,2026-04-05,09:00,10:00,2026-04-02,Test\n"
