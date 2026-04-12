@@ -52,6 +52,8 @@ jobs:
         run: ruff format --check .
       - name: Lint with ruff
         run: ruff check .
+      - name: Type check with mypy
+        run: mypy 01-ops/life-os/scripts/
 
   security:
     runs-on: ubuntu-latest
