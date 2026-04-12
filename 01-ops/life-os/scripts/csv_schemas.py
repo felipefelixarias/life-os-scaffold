@@ -504,7 +504,6 @@ def get_numeric_constraints() -> dict[
     return result
 
 
-
 def validate_all(canonical_dir: Path) -> dict[str, list[str]]:
     """Validate all canonical CSV files. Returns dict of schema_name -> errors."""
     results: dict[str, list[str]] = {}
