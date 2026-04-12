@@ -17,10 +17,13 @@ SPEC.loader.exec_module(csv_schemas)
 
 ColumnSchema = csv_schemas.ColumnSchema
 CSVSchema = csv_schemas.CSVSchema
+ForeignKey = csv_schemas.ForeignKey
 SCHEMAS = csv_schemas.SCHEMAS
+FOREIGN_KEYS = csv_schemas.FOREIGN_KEYS
 validate_csv = csv_schemas.validate_csv
 validate_all = csv_schemas.validate_all
 get_time_fields = csv_schemas.get_time_fields
+get_foreign_keys = csv_schemas.get_foreign_keys
 
 
 # ---------------------------------------------------------------------------
@@ -470,3 +473,71 @@ def test_validate_all_runs_on_canonical_dir() -> None:
         # Header-only files should pass (no data rows to fail)
         for name, errs in results.items():
             assert errs == [], f"{name} had errors: {errs}"
+
+
+# ---------------------------------------------------------------------------
+# Foreign key schema definitions
+# ---------------------------------------------------------------------------
+
+
+def test_foreign_keys_defined() -> None:
+    """All expected FK relationships are defined."""
+    fks = get_foreign_keys()
+    assert len(fks) >= 3
+    sources = {(fk.source_file, fk.source_column) for fk in fks}
+    assert ("tasks", "project_id") in sources
+    assert ("time_blocks", "task_id") in sources
+    assert ("daily_log", "habit_id") in sources
+
+
+def test_foreign_key_targets_reference_valid_schemas() -> None:
+    """Every FK target_file and target_column must exist in SCHEMAS."""
+    for fk in FOREIGN_KEYS:
+        assert fk.target_file in SCHEMAS, (
+            f"target_file '{fk.target_file}' not in SCHEMAS"
+        )
+        schema = SCHEMAS[fk.target_file]
+        assert fk.target_column in schema.column_names, (
+            f"target_column '{fk.target_column}' not in {fk.target_file} schema"
+        )
+
+
+def test_foreign_key_sources_reference_valid_columns() -> None:
+    """Every FK source_column must exist in the source schema (SCHEMAS or LOG_SCHEMAS)."""
+    all_schemas = csv_schemas.ALL_SCHEMAS
+    for fk in FOREIGN_KEYS:
+        assert fk.source_file in all_schemas, (
+            f"source_file '{fk.source_file}' not in any schema"
+        )
+        schema = all_schemas[fk.source_file]
+        assert fk.source_column in schema.column_names, (
+            f"source_column '{fk.source_column}' not in {fk.source_file} schema"
+        )
+
+
+def test_foreign_key_dataclass_fields() -> None:
+    """ForeignKey dataclass has the expected fields and defaults."""
+    fk = ForeignKey(
+        source_file="tasks",
+        source_column="project_id",
+        target_file="projects",
+        target_column="project_id",
+    )
+    assert fk.location == "canonical"  # default
+
+    fk_log = ForeignKey(
+        source_file="daily_log",
+        source_column="habit_id",
+        target_file="habits",
+        target_column="habit_id",
+        location="logs",
+    )
+    assert fk_log.location == "logs"
+
+
+def test_get_foreign_keys_returns_copy() -> None:
+    """get_foreign_keys returns a new list, not the internal reference."""
+    fks1 = get_foreign_keys()
+    fks2 = get_foreign_keys()
+    assert fks1 is not fks2
+    assert fks1 == fks2

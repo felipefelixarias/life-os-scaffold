@@ -639,53 +639,52 @@ class TestForeignKeyExceptionPaths:
         self.logs_dir.mkdir(parents=True)
 
     def test_corrupted_projects_file(self) -> None:
-        """Exception loading project IDs should be caught (covers lines 498-499)."""
+        """Exception loading projects should be caught."""
         projects_file = self.canonical_dir / "projects.csv"
         projects_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load project IDs" in e for e in errors)
+        assert any("Failed to load" in e and "projects" in e for e in errors)
 
     def test_corrupted_tasks_file_loading(self) -> None:
-        """Exception loading task IDs should be caught (covers lines 508-509)."""
+        """Exception loading tasks should be caught."""
         tasks_file = self.canonical_dir / "tasks.csv"
         tasks_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load task IDs" in e for e in errors)
+        assert any("Failed to load" in e and "tasks" in e for e in errors)
 
     def test_corrupted_habits_file(self) -> None:
-        """Exception loading habit IDs should be caught (covers lines 518-519)."""
+        """Exception loading habits should be caught."""
         habits_file = self.canonical_dir / "habits.csv"
         habits_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load habit IDs" in e for e in errors)
+        assert any("Failed to load" in e and "habits" in e for e in errors)
 
     def test_corrupted_tasks_foreign_key_check(self) -> None:
         """Exception loading tasks.csv should be caught and reported."""
         tasks_file = self.canonical_dir / "tasks.csv"
-        # Write invalid UTF-8 so the single read fails
         tasks_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load task IDs" in e for e in errors)
+        assert any("Failed to load" in e and "tasks" in e for e in errors)
 
     def test_corrupted_time_blocks_foreign_key_check(self) -> None:
-        """Exception validating time_blocks foreign keys should be caught (covers lines 543-544)."""
+        """Exception validating time_blocks foreign keys should be caught."""
         time_blocks_file = self.canonical_dir / "time_blocks.csv"
         time_blocks_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load time_blocks foreign keys" in e for e in errors)
+        assert any("Failed to load" in e and "time_blocks" in e for e in errors)
 
     def test_corrupted_daily_log_foreign_key_check(self) -> None:
-        """Exception validating daily_log foreign keys should be caught (covers lines 556-557)."""
+        """Exception validating daily_log foreign keys should be caught."""
         daily_log_file = self.logs_dir / "daily_log.csv"
         daily_log_file.write_bytes(b"\xff\xfe invalid utf8")
         with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
             errors = validate_csv_integrity.validate_foreign_keys(self.canonical_dir)
-        assert any("Failed to load daily_log foreign keys" in e for e in errors)
+        assert any("Failed to load" in e and "daily_log" in e for e in errors)
 
 
 class TestDefensiveExceptionHandlers:

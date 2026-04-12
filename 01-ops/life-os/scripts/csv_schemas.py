@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass
@@ -246,6 +247,45 @@ SCHEMAS: dict[str, CSVSchema] = {
         ],
     ),
 }
+
+
+@dataclass
+class ForeignKey:
+    """Defines a foreign key relationship between two CSV files."""
+
+    source_file: str  # e.g. "tasks"
+    source_column: str  # e.g. "project_id"
+    target_file: str  # e.g. "projects"
+    target_column: str  # e.g. "project_id"
+    location: Literal["canonical", "logs"] = "canonical"  # where to find source_file
+
+
+FOREIGN_KEYS: list[ForeignKey] = [
+    ForeignKey(
+        source_file="tasks",
+        source_column="project_id",
+        target_file="projects",
+        target_column="project_id",
+    ),
+    ForeignKey(
+        source_file="time_blocks",
+        source_column="task_id",
+        target_file="tasks",
+        target_column="task_id",
+    ),
+    ForeignKey(
+        source_file="daily_log",
+        source_column="habit_id",
+        target_file="habits",
+        target_column="habit_id",
+        location="logs",
+    ),
+]
+
+
+def get_foreign_keys() -> list[ForeignKey]:
+    """Return all foreign key relationship definitions."""
+    return list(FOREIGN_KEYS)
 
 
 def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
