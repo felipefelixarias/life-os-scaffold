@@ -4,10 +4,9 @@
 from __future__ import annotations
 
 # Import the module under test
-import shutil
+import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,447 +18,454 @@ sys.path.insert(
 import repo_health
 
 
-class TestRepoHealth:
-    """Test cases for repo_health module."""
+def test_run_command_success():
+    """Test successful command execution."""
+    result_code, stdout, stderr = repo_health.run_command(["echo", "test"])
+    assert result_code == 0
+    assert stdout.strip() == "test"
+    assert stderr == ""
 
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.temp_dir = tempfile.mkdtemp()
-        self.temp_path = Path(self.temp_dir)
 
-    def teardown_method(self):
-        """Clean up test fixtures."""
-        shutil.rmtree(self.temp_dir)
+def test_run_command_failure():
+    """Test command execution failure."""
+    result_code, _stdout, _stderr = repo_health.run_command(["false"])
+    assert result_code == 1
 
-    def test_run_command_success(self):
-        """Test successful command execution."""
-        result_code, stdout, stderr = repo_health.run_command(["echo", "test"])
-        assert result_code == 0
-        assert stdout.strip() == "test"
-        assert stderr == ""
 
-    def test_run_command_failure(self):
-        """Test command execution failure."""
-        result_code, _stdout, _stderr = repo_health.run_command(["false"])
-        assert result_code == 1
+def test_run_command_not_found():
+    """Test command not found."""
+    result_code, _stdout, stderr = repo_health.run_command(
+        ["nonexistent_command_12345"],
+    )
+    assert result_code == 1
+    assert "" in stderr  # Should have error message
 
-    def test_run_command_not_found(self):
-        """Test command not found."""
-        result_code, _stdout, stderr = repo_health.run_command(
-            ["nonexistent_command_12345"],
-        )
-        assert result_code == 1
-        assert "" in stderr  # Should have error message
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_git_status_clean_repo(self, mock_print, mock_run):
-        """Test git status check for clean repository."""
-        # Mock git directory exists
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            (self.temp_path / ".git").mkdir()
-
-            # Mock git status with clean working tree
-            mock_run.side_effect = [
-                (0, "", ""),  # git status --porcelain (clean)
-                (
-                    0,
-                    "origin\thttps://github.com/test/repo.git (fetch)\n",
-                    "",
-                ),  # git remote -v
-            ]
-
-            repo_health.check_git_status()
-
-            # Verify print calls
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No uncommitted changes" in call for call in print_calls)
-            assert any("Remote origin configured" in call for call in print_calls)
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_git_status_dirty_repo(self, mock_print, mock_run):
-        """Test git status check for repository with changes."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            (self.temp_path / ".git").mkdir()
-
-            # Mock git status with uncommitted changes
-            mock_run.side_effect = [
-                (0, "M file1.txt\n?? file2.txt\n", ""),  # git status --porcelain
-                (
-                    0,
-                    "origin\thttps://github.com/test/repo.git (fetch)\n",
-                    "",
-                ),  # git remote -v
-            ]
-
-            repo_health.check_git_status()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Uncommitted changes: 2 files" in call for call in print_calls)
-
-    @patch("builtins.print")
-    def test_check_git_status_not_git_repo(self, mock_print):
-        """Test git status check when not in a git repository."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            repo_health.check_git_status()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Not a git repository" in call for call in print_calls)
-
-    @patch("builtins.print")
-    def test_check_file_integrity_all_present(self, mock_print):
-        """Test file integrity check when all required files are present."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create required files
-            (self.temp_path / "README.md").touch()
-            (self.temp_path / "CLAUDE.md").touch()
-            (self.temp_path / "Makefile").touch()
-            (self.temp_path / "requirements.txt").touch()
-            (self.temp_path / ".gitignore").touch()
-
-            # Create config directory and files
-            config_dir = self.temp_path / "01-ops" / "life-os" / "config"
-            config_dir.mkdir(parents=True)
-            (config_dir / "profile.example.json").touch()
-            (config_dir / "calendar_feeds.example.json").touch()
-
-            # Create commands directory
-            cmd_dir = self.temp_path / ".claude" / "commands"
-            cmd_dir.mkdir(parents=True)
-            (cmd_dir / "test1.md").touch()
-            (cmd_dir / "test2.md").touch()
-
-            repo_health.check_file_integrity()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            # Should have checkmarks for all required files
-            checkmark_count = sum(1 for call in print_calls if "✅" in call)
-            assert checkmark_count >= 7  # At least 7 required files + commands
-
-    @patch("builtins.print")
-    def test_check_file_integrity_missing_files(self, mock_print):
-        """Test file integrity check with missing files."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Only create some files
-            (self.temp_path / "README.md").touch()
-
-            repo_health.check_file_integrity()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            # Should have at least one missing file
-            missing_count = sum(
-                1 for call in print_calls if "❌" in call and "missing" in call
-            )
-            assert missing_count >= 1
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_python_health_all_good(self, mock_print, mock_run):
-        """Test Python health check when everything is good."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create a test Python file
-            test_py = self.temp_path / "test.py"
-            test_py.write_text("print('hello')")
-
-            # Mock py_compile success and ruff success
-            mock_run.side_effect = [
-                (0, "", ""),  # py_compile success
-                (0, "", ""),  # ruff check success
-            ]
-
-            repo_health.check_python_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any(
-                "Python files compile successfully" in call for call in print_calls
-            )
-            assert any("No ruff linting issues" in call for call in print_calls)
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_python_health_compile_errors(self, mock_print, mock_run):
-        """Test Python health check with compilation errors."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create a test Python file
-            test_py = self.temp_path / "test.py"
-            test_py.write_text("invalid python syntax !!!")
-
-            # Mock py_compile failure
-            mock_run.return_value = (1, "", "SyntaxError: invalid syntax")
-
-            repo_health.check_python_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Compilation error" in call for call in print_calls)
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_test_health_success(self, mock_print, mock_run):
-        """Test test health check when tests pass."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create tests directory with test files
-            tests_dir = self.temp_path / "tests"
-            tests_dir.mkdir()
-            (tests_dir / "test_example.py").touch()
-            (tests_dir / "test_another.py").touch()
-
-            # Mock successful test run
-            mock_run.return_value = (0, "OK", "")
-
-            repo_health.check_test_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Found 2 test files" in call for call in print_calls)
-            assert any("All tests passing" in call for call in print_calls)
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_test_health_failures(self, mock_print, mock_run):
-        """Test test health check when tests fail."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            tests_dir = self.temp_path / "tests"
-            tests_dir.mkdir()
-            (tests_dir / "test_example.py").touch()
-
-            # Mock failed test run
-            mock_run.return_value = (1, "", "FAILED (failures=1)")
-
-            repo_health.check_test_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Test failures" in call for call in print_calls)
-
-    @patch("builtins.print")
-    def test_check_test_health_no_tests(self, mock_print):
-        """Test test health check when no tests directory exists."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            repo_health.check_test_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No tests directory" in call for call in print_calls)
-
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_csv_health_success(self, mock_print, mock_run):
-        """Test CSV health check when validation passes."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create CSV directory and files
-            csv_dir = self.temp_path / "01-ops" / "life-os" / "data" / "canonical"
-            csv_dir.mkdir(parents=True)
-            (csv_dir / "test1.csv").touch()
-            (csv_dir / "test2.csv").touch()
-
-            # Create validation script
-            validation_script = (
-                self.temp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
-            )
-            validation_script.parent.mkdir(parents=True, exist_ok=True)
-            validation_script.touch()
-
-            # Mock successful validation
-            mock_run.return_value = (0, "", "")
-
-            repo_health.check_csv_health()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Found 2 CSV files" in call for call in print_calls)
-            assert any("CSV validation passed" in call for call in print_calls)
-
-    @patch("builtins.print")
-    def test_check_security_clean(self, mock_print):
-        """Test security check with no issues."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            repo_health.check_security()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any(
-                "No obvious security issues found" in call for call in print_calls
-            )
-
-    @patch("builtins.print")
-    def test_check_security_with_issues(self, mock_print):
-        """Test security check with security issues."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create potential security issues
-            (self.temp_path / ".env").touch()
-            (self.temp_path / "private.key").touch()
-
-            repo_health.check_security()
-
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            # Should detect environment file and private key
-            assert any("Environment file found" in call for call in print_calls)
-            assert any("Potential private key" in call for call in print_calls)
-
-    @patch("repo_health.check_git_status")
-    @patch("repo_health.check_file_integrity")
-    @patch("repo_health.check_python_health")
-    @patch("repo_health.check_test_health")
-    @patch("repo_health.check_csv_health")
-    @patch("repo_health.check_security")
-    @patch("builtins.print")
-    def test_main_function(
-        self,
-        mock_print,
-        mock_security,
-        mock_csv,
-        mock_test,
-        mock_python,
-        mock_file,
-        mock_git,
+def test_run_command_timeout(tmp_path: Path):
+    """Test command timeout handling (covers line 29)."""
+    result_code, _stdout, stderr = repo_health.run_command(
+        ["sleep", "60"],
+        cwd=tmp_path,
+    )
+    # run_command uses timeout=30 by default; we pass a 60s sleep
+    # but we need to actually trigger timeout — use a shorter approach
+    with patch(
+        "subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd=["sleep"], timeout=30),
     ):
-        """Test main function orchestrates all checks."""
-        repo_health.main()
+        result_code, _stdout, stderr = repo_health.run_command(["sleep", "60"])
+        assert result_code == 1
+        assert "timed out" in stderr
 
-        # Verify all check functions were called
-        mock_git.assert_called_once()
-        mock_file.assert_called_once()
-        mock_python.assert_called_once()
-        mock_test.assert_called_once()
-        mock_csv.assert_called_once()
-        mock_security.assert_called_once()
 
-        # Verify header and footer are printed
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_git_status_clean_repo(mock_print, mock_run, tmp_path: Path):
+    """Test git status check for clean repository."""
+    # Mock git directory exists
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        (tmp_path / ".git").mkdir()
+
+        # Mock git status with clean working tree
+        mock_run.side_effect = [
+            (0, "", ""),  # git status --porcelain (clean)
+            (
+                0,
+                "origin\thttps://github.com/test/repo.git (fetch)\n",
+                "",
+            ),  # git remote -v
+        ]
+
+        repo_health.check_git_status()
+
+        # Verify print calls
         print_calls = [call[0][0] for call in mock_print.call_args_list]
-        assert any("Life-OS Repository Health Check" in call for call in print_calls)
-        assert any("Health check complete!" in call for call in print_calls)
+        assert any("No uncommitted changes" in call for call in print_calls)
+        assert any("Remote origin configured" in call for call in print_calls)
 
-    def test_run_command_timeout(self):
-        """Test command timeout handling (covers line 29)."""
-        result_code, _stdout, stderr = repo_health.run_command(
-            ["sleep", "60"],
-            cwd=self.temp_path,
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_git_status_dirty_repo(mock_print, mock_run, tmp_path: Path):
+    """Test git status check for repository with changes."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        (tmp_path / ".git").mkdir()
+
+        # Mock git status with uncommitted changes
+        mock_run.side_effect = [
+            (0, "M file1.txt\n?? file2.txt\n", ""),  # git status --porcelain
+            (
+                0,
+                "origin\thttps://github.com/test/repo.git (fetch)\n",
+                "",
+            ),  # git remote -v
+        ]
+
+        repo_health.check_git_status()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Uncommitted changes: 2 files" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_git_status_not_git_repo(mock_print, tmp_path: Path):
+    """Test git status check when not in a git repository."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        repo_health.check_git_status()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Not a git repository" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_file_integrity_all_present(mock_print, tmp_path: Path):
+    """Test file integrity check when all required files are present."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create required files
+        (tmp_path / "README.md").touch()
+        (tmp_path / "CLAUDE.md").touch()
+        (tmp_path / "Makefile").touch()
+        (tmp_path / "requirements.txt").touch()
+        (tmp_path / ".gitignore").touch()
+
+        # Create config directory and files
+        config_dir = tmp_path / "01-ops" / "life-os" / "config"
+        config_dir.mkdir(parents=True)
+        (config_dir / "profile.example.json").touch()
+        (config_dir / "calendar_feeds.example.json").touch()
+
+        # Create commands directory
+        cmd_dir = tmp_path / ".claude" / "commands"
+        cmd_dir.mkdir(parents=True)
+        (cmd_dir / "test1.md").touch()
+        (cmd_dir / "test2.md").touch()
+
+        repo_health.check_file_integrity()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        # Should have checkmarks for all required files
+        checkmark_count = sum(1 for call in print_calls if "✅" in call)
+        assert checkmark_count >= 7  # At least 7 required files + commands
+
+
+@patch("builtins.print")
+def test_check_file_integrity_missing_files(mock_print, tmp_path: Path):
+    """Test file integrity check with missing files."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Only create some files
+        (tmp_path / "README.md").touch()
+
+        repo_health.check_file_integrity()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        # Should have at least one missing file
+        missing_count = sum(
+            1 for call in print_calls if "❌" in call and "missing" in call
         )
-        # run_command uses timeout=30 by default; we pass a 60s sleep
-        # but we need to actually trigger timeout — use a shorter approach
-        with patch(
-            "subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd=["sleep"], timeout=30),
-        ):
-            result_code, _stdout, stderr = repo_health.run_command(["sleep", "60"])
-            assert result_code == 1
-            assert "timed out" in stderr
+        assert missing_count >= 1
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_git_status_failed(self, mock_print, mock_run):
-        """Test git status when git command fails (covers line 52)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            (self.temp_path / ".git").mkdir()
-            mock_run.side_effect = [
-                (1, "", "fatal: not a git repository"),  # git status fails
-                (0, "origin\thttps://github.com/test/repo.git (fetch)\n", ""),
-            ]
-            repo_health.check_git_status()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("Git status check failed" in call for call in print_calls)
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_git_status_no_remote(self, mock_print, mock_run):
-        """Test git status when no remote origin exists (covers line 59)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            (self.temp_path / ".git").mkdir()
-            mock_run.side_effect = [
-                (0, "", ""),  # git status clean
-                (0, "", ""),  # git remote -v returns nothing
-            ]
-            repo_health.check_git_status()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No remote origin found" in call for call in print_calls)
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_all_good(mock_print, mock_run, tmp_path: Path):
+    """Test Python health check when everything is good."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create a test Python file
+        test_py = tmp_path / "test.py"
+        test_py.write_text("print('hello')")
 
-    @patch("builtins.print")
-    def test_check_python_health_no_python_files(self, mock_print):
-        """Test python health check with no .py files (covers lines 101-102)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            repo_health.check_python_health()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No Python files found" in call for call in print_calls)
+        # Mock py_compile success and ruff success
+        mock_run.side_effect = [
+            (0, "", ""),  # py_compile success
+            (0, "", ""),  # ruff check success
+        ]
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_python_health_skips_git_files(self, mock_print, mock_run):
-        """Test python health check skips .git directory files (covers line 107)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            # Create a python file inside .git (should be skipped)
-            git_dir = self.temp_path / ".git" / "hooks"
-            git_dir.mkdir(parents=True)
-            (git_dir / "pre-commit.py").touch()
-            # Create a real python file
-            (self.temp_path / "real.py").write_text("x = 1")
+        repo_health.check_python_health()
 
-            mock_run.side_effect = [
-                (0, "", ""),  # py_compile for real.py
-                (0, "", ""),  # ruff check
-            ]
-            repo_health.check_python_health()
-            # Only real.py should be compiled, not .git file
-            # run_command should be called twice: once for py_compile, once for ruff
-            assert mock_run.call_count == 2
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Python files compile successfully" in call for call in print_calls)
+        assert any("No ruff linting issues" in call for call in print_calls)
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_python_health_ruff_not_available(self, mock_print, mock_run):
-        """Test python health when ruff is not installed (covers line 126)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            (self.temp_path / "test.py").write_text("x = 1")
-            mock_run.side_effect = [
-                (0, "", ""),  # py_compile success
-                (1, "", "No module named 'ruff'"),  # ruff not available
-            ]
-            repo_health.check_python_health()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("ruff not available" in call for call in print_calls)
 
-    @patch("builtins.print")
-    def test_check_csv_health_no_directory(self, mock_print):
-        """Test CSV health when data directory doesn't exist (covers lines 168-169)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            repo_health.check_csv_health()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("CSV data directory not found" in call for call in print_calls)
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_compile_errors(mock_print, mock_run, tmp_path: Path):
+    """Test Python health check with compilation errors."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create a test Python file
+        test_py = tmp_path / "test.py"
+        test_py.write_text("invalid python syntax !!!")
 
-    @patch("repo_health.run_command")
-    @patch("builtins.print")
-    def test_check_csv_health_validation_fails(self, mock_print, mock_run):
-        """Test CSV health when validation script fails (covers line 184)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            csv_dir = self.temp_path / "01-ops" / "life-os" / "data" / "canonical"
-            csv_dir.mkdir(parents=True)
-            (csv_dir / "test.csv").touch()
-            validation_script = (
-                self.temp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
-            )
-            validation_script.parent.mkdir(parents=True, exist_ok=True)
-            validation_script.touch()
-            mock_run.return_value = (1, "", "Validation failed")
-            repo_health.check_csv_health()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("CSV validation failed" in call for call in print_calls)
+        # Mock py_compile failure
+        mock_run.return_value = (1, "", "SyntaxError: invalid syntax")
 
-    @patch("builtins.print")
-    def test_check_csv_health_no_csv_files(self, mock_print):
-        """Test CSV health when no CSV files exist (covers line 186)."""
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            csv_dir = self.temp_path / "01-ops" / "life-os" / "data" / "canonical"
-            csv_dir.mkdir(parents=True)
-            repo_health.check_csv_health()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("No CSV files found" in call for call in print_calls)
+        repo_health.check_python_health()
 
-    @patch("builtins.print")
-    def test_check_security_world_writable(self, mock_print):
-        """Test security check detects world-writable files (covers lines 224-226)."""
-        import os
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Compilation error" in call for call in print_calls)
 
-        with patch.object(repo_health, "REPO_ROOT", self.temp_path):
-            scripts_dir = self.temp_path / "01-ops" / "life-os" / "scripts"
-            scripts_dir.mkdir(parents=True)
-            # Make world-writable
-            os.chmod(str(scripts_dir), 0o777)
-            repo_health.check_security()
-            print_calls = [call[0][0] for call in mock_print.call_args_list]
-            assert any("World-writable" in call for call in print_calls)
-            # Clean up
-            os.chmod(str(scripts_dir), 0o755)
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_test_health_success(mock_print, mock_run, tmp_path: Path):
+    """Test test health check when tests pass."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create tests directory with test files
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_example.py").touch()
+        (tests_dir / "test_another.py").touch()
+
+        # Mock successful test run
+        mock_run.return_value = (0, "OK", "")
+
+        repo_health.check_test_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Found 2 test files" in call for call in print_calls)
+        assert any("All tests passing" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_test_health_failures(mock_print, mock_run, tmp_path: Path):
+    """Test test health check when tests fail."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_example.py").touch()
+
+        # Mock failed test run
+        mock_run.return_value = (1, "", "FAILED (failures=1)")
+
+        repo_health.check_test_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Test failures" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_test_health_no_tests(mock_print, tmp_path: Path):
+    """Test test health check when no tests directory exists."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        repo_health.check_test_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("No tests directory" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_csv_health_success(mock_print, mock_run, tmp_path: Path):
+    """Test CSV health check when validation passes."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create CSV directory and files
+        csv_dir = tmp_path / "01-ops" / "life-os" / "data" / "canonical"
+        csv_dir.mkdir(parents=True)
+        (csv_dir / "test1.csv").touch()
+        (csv_dir / "test2.csv").touch()
+
+        # Create validation script
+        validation_script = (
+            tmp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+        )
+        validation_script.parent.mkdir(parents=True, exist_ok=True)
+        validation_script.touch()
+
+        # Mock successful validation
+        mock_run.return_value = (0, "", "")
+
+        repo_health.check_csv_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Found 2 CSV files" in call for call in print_calls)
+        assert any("CSV validation passed" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_security_clean(mock_print, tmp_path: Path):
+    """Test security check with no issues."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        repo_health.check_security()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("No obvious security issues found" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_security_with_issues(mock_print, tmp_path: Path):
+    """Test security check with security issues."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create potential security issues
+        (tmp_path / ".env").touch()
+        (tmp_path / "private.key").touch()
+
+        repo_health.check_security()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        # Should detect environment file and private key
+        assert any("Environment file found" in call for call in print_calls)
+        assert any("Potential private key" in call for call in print_calls)
+
+
+@patch("repo_health.check_git_status")
+@patch("repo_health.check_file_integrity")
+@patch("repo_health.check_python_health")
+@patch("repo_health.check_test_health")
+@patch("repo_health.check_csv_health")
+@patch("repo_health.check_security")
+@patch("builtins.print")
+def test_main_function(
+    mock_print,
+    mock_security,
+    mock_csv,
+    mock_test,
+    mock_python,
+    mock_file,
+    mock_git,
+):
+    """Test main function orchestrates all checks."""
+    repo_health.main()
+
+    # Verify all check functions were called
+    mock_git.assert_called_once()
+    mock_file.assert_called_once()
+    mock_python.assert_called_once()
+    mock_test.assert_called_once()
+    mock_csv.assert_called_once()
+    mock_security.assert_called_once()
+
+    # Verify header and footer are printed
+    print_calls = [call[0][0] for call in mock_print.call_args_list]
+    assert any("Life-OS Repository Health Check" in call for call in print_calls)
+    assert any("Health check complete!" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_git_status_failed(mock_print, mock_run, tmp_path: Path):
+    """Test git status when git command fails (covers line 52)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        (tmp_path / ".git").mkdir()
+        mock_run.side_effect = [
+            (1, "", "fatal: not a git repository"),  # git status fails
+            (0, "origin\thttps://github.com/test/repo.git (fetch)\n", ""),
+        ]
+        repo_health.check_git_status()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Git status check failed" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_git_status_no_remote(mock_print, mock_run, tmp_path: Path):
+    """Test git status when no remote origin exists (covers line 59)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        (tmp_path / ".git").mkdir()
+        mock_run.side_effect = [
+            (0, "", ""),  # git status clean
+            (0, "", ""),  # git remote -v returns nothing
+        ]
+        repo_health.check_git_status()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("No remote origin found" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_python_health_no_python_files(mock_print, tmp_path: Path):
+    """Test python health check with no .py files (covers lines 101-102)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        repo_health.check_python_health()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("No Python files found" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_skips_git_files(mock_print, mock_run, tmp_path: Path):
+    """Test python health check skips .git directory files (covers line 107)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Create a python file inside .git (should be skipped)
+        git_dir = tmp_path / ".git" / "hooks"
+        git_dir.mkdir(parents=True)
+        (git_dir / "pre-commit.py").touch()
+        # Create a real python file
+        (tmp_path / "real.py").write_text("x = 1")
+
+        mock_run.side_effect = [
+            (0, "", ""),  # py_compile for real.py
+            (0, "", ""),  # ruff check
+        ]
+        repo_health.check_python_health()
+        # Only real.py should be compiled, not .git file
+        # run_command should be called twice: once for py_compile, once for ruff
+        assert mock_run.call_count == 2
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_ruff_not_available(mock_print, mock_run, tmp_path: Path):
+    """Test python health when ruff is not installed (covers line 126)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        (tmp_path / "test.py").write_text("x = 1")
+        mock_run.side_effect = [
+            (0, "", ""),  # py_compile success
+            (1, "", "No module named 'ruff'"),  # ruff not available
+        ]
+        repo_health.check_python_health()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("ruff not available" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_csv_health_no_directory(mock_print, tmp_path: Path):
+    """Test CSV health when data directory doesn't exist (covers lines 168-169)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        repo_health.check_csv_health()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("CSV data directory not found" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_csv_health_validation_fails(mock_print, mock_run, tmp_path: Path):
+    """Test CSV health when validation script fails (covers line 184)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        csv_dir = tmp_path / "01-ops" / "life-os" / "data" / "canonical"
+        csv_dir.mkdir(parents=True)
+        (csv_dir / "test.csv").touch()
+        validation_script = (
+            tmp_path / "01-ops" / "life-os" / "scripts" / "validate_repo.py"
+        )
+        validation_script.parent.mkdir(parents=True, exist_ok=True)
+        validation_script.touch()
+        mock_run.return_value = (1, "", "Validation failed")
+        repo_health.check_csv_health()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("CSV validation failed" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_csv_health_no_csv_files(mock_print, tmp_path: Path):
+    """Test CSV health when no CSV files exist (covers line 186)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        csv_dir = tmp_path / "01-ops" / "life-os" / "data" / "canonical"
+        csv_dir.mkdir(parents=True)
+        repo_health.check_csv_health()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("No CSV files found" in call for call in print_calls)
+
+
+@patch("builtins.print")
+def test_check_security_world_writable(mock_print, tmp_path: Path):
+    """Test security check detects world-writable files (covers lines 224-226)."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        scripts_dir = tmp_path / "01-ops" / "life-os" / "scripts"
+        scripts_dir.mkdir(parents=True)
+        # Make world-writable
+        os.chmod(str(scripts_dir), 0o777)
+        repo_health.check_security()
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("World-writable" in call for call in print_calls)
+        # Clean up
+        os.chmod(str(scripts_dir), 0o755)
