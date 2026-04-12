@@ -734,3 +734,157 @@ class TestDefensiveExceptionHandlers:
             )
         assert is_valid is True
         assert msg == ""
+
+
+class TestRunFullValidation:
+    """Test run_full_validation() consolidates schema + FK checks."""
+
+    def setup_method(self) -> None:
+        self.temp_dir = tempfile.mkdtemp()
+        self.canonical_dir = Path(self.temp_dir) / "canonical"
+        self.logs_dir = Path(self.temp_dir) / "logs"
+        self.canonical_dir.mkdir(parents=True)
+        self.logs_dir.mkdir(parents=True)
+
+    def _write_valid_files(self) -> None:
+        """Write minimal valid CSV files for all schemas."""
+        (self.canonical_dir / "tasks.csv").write_text(
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "T001,proj1,Do stuff,work,queued,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "projects.csv").write_text(
+            "project_id,area,name,status,start_date,target_date,description,last_updated,notes,active\n"
+            "proj1,work,My project,active,2026-01-01,2026-12-31,Desc,2026-04-06,,true\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "habits.csv").write_text(
+            "habit_id,area,name,frequency,target_per_week,min_value,unit,active,notes,last_updated\n"
+            "H001,health,Exercise,daily,5,30,minutes,true,,2026-04-06\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "goals.csv").write_text(
+            "goal_id,area,title,horizon,target_date,metric_name,metric_target,metric_current,status,last_updated,notes\n"
+            "G001,career,Get promoted,quarter,2026-06-30,level,5,3,active,2026-04-06,\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "calendar_events.csv").write_text(
+            "event_id,date,start_time,end_time,title,location,attendees,source,calendar,notes\n"
+            "E001,2026-04-10,09:00,10:00,Meeting,Office,,google_calendar,Work,\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "time_blocks.csv").write_text(
+            "block_id,date,start,end,title,domain,task_id,source,status,notes\n"
+            "B001,2026-04-10,09:00,10:30,Focus,work,T001,manual,planned,\n",
+            encoding="utf-8",
+        )
+        (self.canonical_dir / "time_logs.csv").write_text(
+            "log_id,date,activity,domain,duration_mins,start_time,end_time,notes,last_updated\n"
+            "L001,2026-04-10,Coding,work,60,09:00,10:00,,\n",
+            encoding="utf-8",
+        )
+        (self.logs_dir / "daily_log.csv").write_text(
+            "date,habit_id,value,notes\n2026-04-10,H001,1,\n",
+            encoding="utf-8",
+        )
+        (self.logs_dir / "activity_log.csv").write_text(
+            "timestamp,event,details\n2026-04-10T09:00:00,start,\n",
+            encoding="utf-8",
+        )
+
+    def test_full_validation_passes_on_valid_data(self) -> None:
+        """run_full_validation returns no errors for valid data."""
+        self._write_valid_files()
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
+            schema_results, fk_errors = validate_csv_integrity.run_full_validation(
+                self.canonical_dir, self.logs_dir
+            )
+        assert fk_errors == []
+        for name, result in schema_results.items():
+            assert result.passed, f"{name} failed: {result.errors}"
+
+    def test_full_validation_catches_fk_error(self) -> None:
+        """run_full_validation detects invalid foreign key references."""
+        self._write_valid_files()
+        # Overwrite tasks to reference a non-existent project
+        (self.canonical_dir / "tasks.csv").write_text(
+            "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes\n"
+            "T001,NOPE,Do stuff,work,queued,P1,30,2026-04-10,high,,manual,,,,,2026-04-06,\n",
+            encoding="utf-8",
+        )
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
+            _schema_results, fk_errors = validate_csv_integrity.run_full_validation(
+                self.canonical_dir, self.logs_dir
+            )
+        assert any("NOPE" in e for e in fk_errors)
+
+    def test_full_validation_returns_schema_errors(self) -> None:
+        """run_full_validation surfaces per-file schema errors."""
+        self._write_valid_files()
+        # Overwrite habits with bad header
+        (self.canonical_dir / "habits.csv").write_text(
+            "wrong,headers\nval1,val2\n",
+            encoding="utf-8",
+        )
+        with (
+            mock.patch.object(
+                validate_csv_integrity, "CANONICAL_DIR", self.canonical_dir
+            ),
+            mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir),
+        ):
+            schema_results, _fk_errors = validate_csv_integrity.run_full_validation(
+                self.canonical_dir, self.logs_dir
+            )
+        assert not schema_results["habits.csv"].passed
+
+
+class TestForeignKeysWithCache:
+    """Test validate_foreign_keys with pre-loaded row_cache."""
+
+    def setup_method(self) -> None:
+        self.temp_dir = tempfile.mkdtemp()
+        self.canonical_dir = Path(self.temp_dir) / "canonical"
+        self.logs_dir = Path(self.temp_dir) / "logs"
+        self.canonical_dir.mkdir(parents=True)
+        self.logs_dir.mkdir(parents=True)
+
+    def test_uses_cache_instead_of_disk(self) -> None:
+        """When row_cache has data, files are not re-read from disk."""
+        # Do NOT write any files — the cache should be sufficient
+        cache = {
+            "projects.csv": [{"project_id": "P1", "area": "work", "name": "Test"}],
+            "tasks.csv": [{"task_id": "T1", "project_id": "P1", "title": "Do"}],
+            "habits.csv": [{"habit_id": "H1", "area": "health", "name": "Run"}],
+            "time_blocks.csv": [{"block_id": "B1", "task_id": "T1"}],
+            "daily_log.csv": [{"date": "2026-04-10", "habit_id": "H1", "value": "1"}],
+        }
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(
+                self.canonical_dir, row_cache=cache
+            )
+        assert errors == []
+
+    def test_cache_detects_fk_violations(self) -> None:
+        """FK violations are detected even when using cached rows."""
+        cache = {
+            "projects.csv": [{"project_id": "P1"}],
+            "tasks.csv": [{"task_id": "T1", "project_id": "MISSING"}],
+            "habits.csv": [],
+            "time_blocks.csv": [],
+            "daily_log.csv": [],
+        }
+        with mock.patch.object(validate_csv_integrity, "LOGS_DIR", self.logs_dir):
+            errors = validate_csv_integrity.validate_foreign_keys(
+                self.canonical_dir, row_cache=cache
+            )
+        assert any("MISSING" in e for e in errors)
