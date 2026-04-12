@@ -121,12 +121,23 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
+mypy_path = "01-ops/life-os/scripts"
+explicit_package_bases = true
+
 # Note: mypy only checks 01-ops/life-os/scripts/, not tests/
 # If tests are added to mypy scope later, restore this override:
 # [[tool.mypy.overrides]]
 # module = "tests.*"
 # disallow_untyped_defs = false
 # disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "google.auth.*",
+    "google_auth_oauthlib.*",
+    "googleapiclient.*",
+]
+ignore_missing_imports = true
 
 # Pytest configuration
 [tool.pytest.ini_options]

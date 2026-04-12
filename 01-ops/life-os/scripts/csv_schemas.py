@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import cached_property
 from pathlib import Path
 
 
@@ -32,17 +33,10 @@ class CSVSchema:
         """Return list of column names in order."""
         return [col.name for col in self.columns]
 
-    @property
+    @cached_property
     def column_map(self) -> dict[str, ColumnSchema]:
         """Return a cached name→ColumnSchema mapping for O(1) lookups."""
-        try:
-            return self._column_map  # type: ignore[has-type]
-        except AttributeError:
-            # Build once, cache on instance (dataclass __dict__ is mutable)
-            object.__setattr__(
-                self, "_column_map", {col.name: col for col in self.columns}
-            )
-            return self._column_map  # type: ignore[has-type]
+        return {col.name: col for col in self.columns}
 
     def get_column(self, name: str) -> ColumnSchema | None:
         """Look up a column schema by name."""
