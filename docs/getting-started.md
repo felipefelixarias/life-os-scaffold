@@ -43,6 +43,52 @@ make lint
 
 These checks verify the CSV schemas, docs links, command references, and the Python calendar helper.
 
+## Development Setup
+
+If you plan to contribute code, use the full development environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt   # includes base requirements + linting, type-checking, security tools
+```
+
+Or use the convenience target:
+
+```bash
+make dev-setup
+```
+
+### Running Quality Checks Locally
+
+These are the same checks that CI runs on every pull request:
+
+```bash
+make test          # pytest (unit + validation tests)
+make lint          # repo structure & doc-link checks
+ruff check .       # linting
+ruff format --check .  # formatting
+mypy 01-ops/life-os/scripts/  # type checking
+```
+
+Run them all at once with:
+
+```bash
+make dev-check     # test + lint + csv-check + health
+```
+
+### CI Pipeline
+
+Every push and pull request to `main` triggers a [GitHub Actions workflow](../.github/workflows/ci.yml) that runs:
+
+| Job | What it checks |
+|-----|---------------|
+| **test** | `pytest` with coverage (≥90% required) |
+| **lint** | `ruff` formatting/linting + `mypy` type checks |
+| **security** | `bandit` scan for medium/high severity issues |
+
+Fix any CI failures before requesting review.
+
 ## Google Calendar (optional)
 
 If you haven't already installed the dependencies:
