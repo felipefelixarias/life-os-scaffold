@@ -95,6 +95,30 @@ python3 -m pytest tests/test_repo_validation.py -v
 make gcal-test
 ```
 
+### Google Calendar Integration Tests
+
+`tests/test_gcal_integration.py` exercises the real Google Calendar API. It is
+**opt-in** and skipped in CI. To run it locally:
+
+1. Authenticate `gcalcli` once so `~/.gcalcli_oauth` exists:
+   ```bash
+   gcalcli list
+   ```
+2. Create a **dedicated test calendar** in Google Calendar (do NOT point these
+   tests at your primary calendar — `clear_life_os_events()` will remove every
+   event tagged `[life-os]` on the target date).
+3. Copy the test calendar's ID (Settings → Integrate calendar → Calendar ID)
+   and run:
+   ```bash
+   LIFE_OS_GCAL_INTEGRATION=1 \
+   LIFE_OS_GCAL_TEST_CALENDAR_ID=<your-test-calendar-id> \
+   pytest tests/test_gcal_integration.py -v
+   ```
+
+Without both env vars set, every test in the file is skipped, so leaving the
+suite enabled in CI is safe. To run only the mock-based unit tests locally, use
+`pytest -m "not integration"`.
+
 ## Submitting Changes
 
 1. **Create a pull request** with:

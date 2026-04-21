@@ -45,7 +45,7 @@ The Life-OS Scaffold is a comprehensive personal life management system that pro
 - [x] Modernize test assertions to pytest style (PT009 ruff rule)
 - [x] Add comprehensive type hints to remaining modules
 - [x] Implement automated security scanning in CI
-- [ ] Add integration tests for Google Calendar API
+- [x] Add integration tests for Google Calendar API
 
 ### Medium Priority
 - [ ] Refactor CSV handling for better performance
