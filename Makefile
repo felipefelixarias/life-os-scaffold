@@ -12,10 +12,13 @@ setup: ## Copy example configs and get started
 
 test: ## Run repo validation and unit tests
 	@python3 $(LIFE_OS)/scripts/validate_repo.py
-	@python3 -m pytest tests/ -q
+	@python3 -m pytest tests/ -q --cov-fail-under=90
 
-lint: ## Run lightweight lint checks for docs and scaffold integrity
+lint: ## Run lint checks (ruff, mypy, scaffold integrity)
 	@python3 $(LIFE_OS)/scripts/validate_repo.py --lint
+	@ruff format --check .
+	@ruff check .
+	@mypy 01-ops/life-os/scripts/
 
 clean: ## Remove generated Python cache files
 	@find . -type d -name '__pycache__' -prune -exec rm -rf {} +
