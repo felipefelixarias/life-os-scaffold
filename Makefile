@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health habit-stats refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -38,6 +38,9 @@ deps-check: ## Check Python dependencies and security status
 
 health: ## Comprehensive repository health check
 	@python3 $(LIFE_OS)/scripts/repo_health.py
+
+habit-stats: ## Show habit streaks, adherence, and activity summary
+	@python3 $(LIFE_OS)/scripts/habit_analytics.py
 
 refresh-examples: ## Refresh CSV files with fresh example data
 	@python3 $(LIFE_OS)/scripts/refresh_example_data.py
