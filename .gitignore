@@ -51,6 +51,7 @@ node_modules/
 # User data (keep schemas, ignore personal data)
 # Default: protect user's personal data from being tracked
 01-ops/life-os/data/canonical/*.csv
+01-ops/life-os/data/feeds/
 01-ops/life-os/logs/*.csv
 01-ops/life-os/outputs/
 
