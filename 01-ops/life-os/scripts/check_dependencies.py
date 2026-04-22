@@ -14,6 +14,9 @@ REQUIREMENTS_FILE = REPO_ROOT / "requirements.txt"
 # Security version constants
 REQUESTS_MIN_MAJOR_VERSION = 2
 REQUESTS_MIN_MINOR_VERSION = 31
+# urllib3 2.2.2 fixes CVE-2024-37891 (proxy authorization leak)
+URLLIB3_MIN_MAJOR_VERSION = 2
+URLLIB3_MIN_MINOR_VERSION = 2
 
 
 def get_installed_packages() -> dict[str, str]:
@@ -63,19 +66,22 @@ def _normalize_package_name(pkg_name: str) -> str:
 
 def _check_security_vulnerabilities(pkg_name: str, version: str) -> str | None:
     """Check if a package version has known security vulnerabilities."""
-    if pkg_name.lower() not in ["requests", "urllib3"] or not version.startswith("2."):
+    min_versions = {
+        "requests": (REQUESTS_MIN_MAJOR_VERSION, REQUESTS_MIN_MINOR_VERSION),
+        "urllib3": (URLLIB3_MIN_MAJOR_VERSION, URLLIB3_MIN_MINOR_VERSION),
+    }
+    pkg = pkg_name.lower()
+    if pkg not in min_versions or not version.startswith("2."):
         return None
 
     try:
         major, minor = map(int, version.split(".")[:2])
-        is_old_major = major < REQUESTS_MIN_MAJOR_VERSION
-        is_old_minor = (
-            major == REQUESTS_MIN_MAJOR_VERSION and minor < REQUESTS_MIN_MINOR_VERSION
-        )
-        if pkg_name.lower() == "requests" and (is_old_major or is_old_minor):
-            return f"{pkg_name} {version} may have security vulnerabilities"
     except ValueError:
         return None
+
+    min_major, min_minor = min_versions[pkg]
+    if major < min_major or (major == min_major and minor < min_minor):
+        return f"{pkg_name} {version} may have security vulnerabilities"
 
     return None
 

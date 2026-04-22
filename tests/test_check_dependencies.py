@@ -140,15 +140,15 @@ def test_check_package_availability_all_installed(
     mock_get,
 ):
     """Test check when all packages are installed."""
-    mock_parse.return_value = ["requests>=2.31.0", "urllib3==2.0.4"]
-    mock_get.return_value = {"requests": "2.31.0", "urllib3": "2.0.4"}
+    mock_parse.return_value = ["requests>=2.31.0", "urllib3==2.2.2"]
+    mock_get.return_value = {"requests": "2.31.0", "urllib3": "2.2.2"}
 
     check_dependencies.check_package_availability()
 
     # Verify success messages were printed
     print_calls = [call[0][0] for call in mock_print.call_args_list]
     assert "✅ requests: 2.31.0" in print_calls
-    assert "✅ urllib3: 2.0.4" in print_calls
+    assert "✅ urllib3: 2.2.2" in print_calls
     assert "\n✅ All dependencies look good!" in print_calls
 
 
@@ -269,3 +269,38 @@ class TestSecurityVulnerabilities:
             "requests", "2.abc.0"
         )
         assert result is None
+
+    def test_old_urllib3_flags_vulnerability(self) -> None:
+        """urllib3 2.0.x is vulnerable to CVE-2024-37891 and should warn."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "2.0.4")
+        assert result == "urllib3 2.0.4 may have security vulnerabilities"
+
+    def test_urllib3_just_below_threshold_flags_vulnerability(self) -> None:
+        """urllib3 2.1.x is still below the 2.2 cutoff and should warn."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "2.1.0")
+        assert result == "urllib3 2.1.0 may have security vulnerabilities"
+
+    def test_urllib3_at_threshold_passes(self) -> None:
+        """urllib3 2.2.x meets the CVE-2024-37891 fix threshold."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "2.2.2")
+        assert result is None
+
+    def test_urllib3_above_threshold_passes(self) -> None:
+        """urllib3 2.3+ passes the security check."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "2.3.0")
+        assert result is None
+
+    def test_urllib3_legacy_v1_returns_none(self) -> None:
+        """urllib3 1.26.x does not start with '2.' — gate preserves existing behavior."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "1.26.0")
+        assert result is None
+
+    def test_urllib3_unparseable_version_returns_none(self) -> None:
+        """urllib3 with an unparseable 2.x version should return None, not crash."""
+        result = check_dependencies._check_security_vulnerabilities("urllib3", "2.x.0")
+        assert result is None
+
+    def test_uppercase_package_name_is_normalized(self) -> None:
+        """Package name comparison should be case-insensitive."""
+        result = check_dependencies._check_security_vulnerabilities("URLLIB3", "2.0.4")
+        assert result == "URLLIB3 2.0.4 may have security vulnerabilities"
