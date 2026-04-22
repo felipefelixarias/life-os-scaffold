@@ -307,31 +307,101 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                     f"  Actual:   {headers}"
                 )
 
-            # Track data for validation
-            seen_ids: set[str] = set()
+            # Build header→index lookup once, and resolve per-check plans
+            # outside the hot row loop.  This replaces the previous pattern of
+            # rebuilding a row-keyed dict on every row and doing repeated
+            # string-keyed lookups in each of the ~8 per-row validation passes.
+            header_idx: dict[str, int] = {h: i for i, h in enumerate(headers)}
+
             id_field = ID_FIELDS.get(filename)
-            required_fields = REQUIRED_FIELDS.get(filename, set())
-            enum_fields = ENUM_FIELDS.get(filename, {})
-            date_fields = DATE_FIELDS.get(filename, set())
-            time_fields = TIME_FIELDS.get(filename, set())
-            numeric_fields = NUMERIC_FIELDS.get(filename, {})
-            time_range_fields = TIME_RANGE_FIELDS.get(filename, {})
-            duration_fields = DURATION_CONSISTENCY_FIELDS.get(filename, {})
-            date_range_fields = DATE_RANGE_FIELDS.get(filename, {})
+            id_idx = header_idx.get(id_field) if id_field else None
+
+            required_plan: list[tuple[int, str]] = [
+                (header_idx[f], f)
+                for f in REQUIRED_FIELDS.get(filename, set())
+                if f in header_idx
+            ]
+            # Keep the original allowed-values list for byte-identical error
+            # messages; use a set for fast membership checks in the hot path.
+            enum_plan: list[tuple[int, str, list[str], set[str]]] = [
+                (header_idx[f], f, allowed, set(allowed))
+                for f, allowed in ENUM_FIELDS.get(filename, {}).items()
+                if f in header_idx
+            ]
+            date_plan: list[tuple[int, str]] = [
+                (header_idx[f], f)
+                for f in DATE_FIELDS.get(filename, set())
+                if f in header_idx
+            ]
+            time_plan: list[tuple[int, str]] = [
+                (header_idx[f], f)
+                for f in TIME_FIELDS.get(filename, set())
+                if f in header_idx
+            ]
+            numeric_plan: list[
+                tuple[int, str, int | float | None, int | float | None, bool]
+            ] = []
+            for field_name, constraints in NUMERIC_FIELDS.get(filename, {}).items():
+                if field_name not in header_idx:
+                    continue
+                min_val_raw = constraints.get("min")
+                max_val_raw = constraints.get("max")
+                numeric_plan.append(
+                    (
+                        header_idx[field_name],
+                        field_name,
+                        None if min_val_raw is None else cast(int | float, min_val_raw),
+                        None if max_val_raw is None else cast(int | float, max_val_raw),
+                        constraints.get("type") == "int",
+                    )
+                )
+
+            time_range_plan: tuple[int, int] | None = None
+            trf = TIME_RANGE_FIELDS.get(filename, {})
+            if trf:
+                sf = trf.get("start")
+                ef = trf.get("end")
+                if sf and ef and sf in header_idx and ef in header_idx:
+                    time_range_plan = (header_idx[sf], header_idx[ef])
+
+            duration_plan: tuple[int, int, int] | None = None
+            drf = DURATION_CONSISTENCY_FIELDS.get(filename, {})
+            if drf:
+                sf = drf.get("start_time")
+                ef = drf.get("end_time")
+                duf = drf.get("duration")
+                if (
+                    sf
+                    and ef
+                    and duf
+                    and sf in header_idx
+                    and ef in header_idx
+                    and duf in header_idx
+                ):
+                    duration_plan = (header_idx[sf], header_idx[ef], header_idx[duf])
+
+            date_range_plan: tuple[int, int, str, str] | None = None
+            dr_fields = DATE_RANGE_FIELDS.get(filename, {})
+            if dr_fields:
+                sf = dr_fields.get("start")
+                ef = dr_fields.get("end")
+                if sf and ef and sf in header_idx and ef in header_idx:
+                    date_range_plan = (header_idx[sf], header_idx[ef], sf, ef)
+
+            seen_ids: set[str] = set()
+            header_len = len(headers)
 
             # Validate data rows
             for row_num, row in enumerate(reader, start=2):
-                if len(row) != len(headers):
+                if len(row) != header_len:
                     result.add_error(
-                        f"{filename}: Row {row_num} has {len(row)} columns, expected {len(headers)}"
+                        f"{filename}: Row {row_num} has {len(row)} columns, expected {header_len}"
                     )
                     continue
 
-                row_data = dict(zip(headers, row, strict=False))
-
                 # Check for duplicate IDs
-                if id_field and id_field in row_data:
-                    id_value = row_data[id_field]
+                if id_idx is not None:
+                    id_value = row[id_idx]
                     if id_value in seen_ids:
                         result.add_error(
                             f"{filename}: Duplicate ID '{id_value}' found at row {row_num}"
@@ -339,67 +409,47 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                     seen_ids.add(id_value)
 
                 # Check required fields
-                for field in required_fields:
-                    if field in row_data and not row_data[field].strip():
+                for idx, field in required_plan:
+                    if not row[idx].strip():
                         result.add_error(
                             f"{filename}: Required field '{field}' is empty at row {row_num}"
                         )
 
                 # Check enum values
-                for field, allowed_values in enum_fields.items():
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and row_data[field] not in allowed_values
-                    ):
+                for idx, field, allowed_values, allowed_set in enum_plan:
+                    val = row[idx]
+                    if val.strip() and val not in allowed_set:
                         result.add_error(
-                            f"{filename}: Invalid value '{row_data[field]}' for field '{field}' at row {row_num}. "
+                            f"{filename}: Invalid value '{val}' for field '{field}' at row {row_num}. "
                             f"Allowed values: {allowed_values}"
                         )
 
                 # Check date formats
-                for field in date_fields:
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and not validate_date_format(row_data[field])
-                    ):
+                for idx, field in date_plan:
+                    val = row[idx]
+                    if val.strip() and not validate_date_format(val):
                         result.add_error(
-                            f"{filename}: Invalid date format '{row_data[field]}' for field '{field}' at row {row_num}"
+                            f"{filename}: Invalid date format '{val}' for field '{field}' at row {row_num}"
                         )
 
                 # Check time formats
-                for field in time_fields:
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and not validate_time_format(row_data[field])
-                    ):
+                for idx, field in time_plan:
+                    val = row[idx]
+                    if val.strip() and not validate_time_format(val):
                         result.add_error(
-                            f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}"
+                            f"{filename}: Invalid time format '{val}' for field '{field}' at row {row_num}"
                         )
 
                 # Check numeric fields
-                for field, constraints in numeric_fields.items():
-                    if field in row_data and row_data[field].strip():
-                        min_val_raw = constraints.get("min")
-                        max_val_raw = constraints.get("max")
-                        min_val = (
-                            None
-                            if min_val_raw is None
-                            else cast(int | float, min_val_raw)
-                        )
-                        max_val = (
-                            None
-                            if max_val_raw is None
-                            else cast(int | float, max_val_raw)
-                        )
+                for idx, field, min_val, max_val, is_int in numeric_plan:
+                    val = row[idx]
+                    if val.strip():
                         is_valid, error_msg = validate_numeric_field(
-                            row_data[field],
+                            val,
                             field,
                             min_val=min_val,
                             max_val=max_val,
-                            is_integer=constraints.get("type") == "int",
+                            is_integer=is_int,
                         )
                         if not is_valid:
                             result.add_error(
@@ -407,65 +457,32 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                             )
 
                 # Check time ranges (start < end)
-                if time_range_fields:
-                    start_field = time_range_fields.get("start")
-                    end_field = time_range_fields.get("end")
-                    if (
-                        start_field
-                        and end_field
-                        and start_field in row_data
-                        and end_field in row_data
-                    ):
-                        is_valid, error_msg = validate_time_range(
-                            row_data[start_field], row_data[end_field]
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
+                if time_range_plan is not None:
+                    is_valid, error_msg = validate_time_range(
+                        row[time_range_plan[0]], row[time_range_plan[1]]
+                    )
+                    if not is_valid:
+                        result.add_error(f"{filename}: {error_msg} at row {row_num}")
 
                 # Check duration consistency
-                if duration_fields:
-                    start_field = duration_fields.get("start_time")
-                    end_field = duration_fields.get("end_time")
-                    duration_field = duration_fields.get("duration")
-                    if all(
-                        f is not None and f in row_data
-                        for f in [start_field, end_field, duration_field]
-                    ):
-                        # Type checking: at this point we know all fields are not None
-                        assert start_field is not None
-                        assert end_field is not None
-                        assert duration_field is not None
-                        is_valid, error_msg = validate_duration_consistency(
-                            row_data[start_field],
-                            row_data[end_field],
-                            row_data[duration_field],
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
+                if duration_plan is not None:
+                    is_valid, error_msg = validate_duration_consistency(
+                        row[duration_plan[0]],
+                        row[duration_plan[1]],
+                        row[duration_plan[2]],
+                    )
+                    if not is_valid:
+                        result.add_error(f"{filename}: {error_msg} at row {row_num}")
 
                 # Check date ranges (start <= end)
-                if date_range_fields:
-                    start_field = date_range_fields.get("start")
-                    end_field = date_range_fields.get("end")
-                    if (
-                        start_field
-                        and end_field
-                        and start_field in row_data
-                        and end_field in row_data
-                    ):
-                        is_valid, error_msg = validate_date_range(
-                            row_data[start_field],
-                            row_data[end_field],
-                            (start_field, end_field),
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
+                if date_range_plan is not None:
+                    is_valid, error_msg = validate_date_range(
+                        row[date_range_plan[0]],
+                        row[date_range_plan[1]],
+                        (date_range_plan[2], date_range_plan[3]),
+                    )
+                    if not is_valid:
+                        result.add_error(f"{filename}: {error_msg} at row {row_num}")
 
     except UnicodeDecodeError as e:
         result.add_error(f"{filename}: Encoding error - {e}")
