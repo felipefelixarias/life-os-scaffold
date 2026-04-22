@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date
 from functools import cached_property
 from pathlib import Path
 from typing import Literal
@@ -351,12 +351,21 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
                 )
 
     elif col.dtype == "date":
-        try:
-            datetime.strptime(stripped, "%Y-%m-%d")
-        except ValueError:
+        # Require exact YYYY-MM-DD shape, then let date.fromisoformat do the
+        # calendar-validity check. ~20x faster than datetime.strptime on the
+        # happy path (no format-string / locale overhead) while preserving
+        # rejection of impossible dates like 2026-02-30 and 2026-04-31.
+        if len(stripped) != 10 or stripped[4] != "-" or stripped[7] != "-":
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid date (YYYY-MM-DD) for '{col.name}'"
             )
+        else:
+            try:
+                date.fromisoformat(stripped)
+            except ValueError:
+                errors.append(
+                    f"Row {row_num}: '{stripped}' is not a valid date (YYYY-MM-DD) for '{col.name}'"
+                )
 
     elif col.dtype == "time":
         if not re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", stripped):

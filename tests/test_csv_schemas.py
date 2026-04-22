@@ -217,6 +217,44 @@ def test_invalid_date_format_fails() -> None:
         assert any("date" in e.lower() and "04/10/2026" in e for e in errors)
 
 
+def test_calendar_invalid_date_fails() -> None:
+    """Syntactically well-formed but impossible calendar dates are flagged.
+
+    Locks in the fromisoformat-based calendar validation so a future
+    regex-only simplification can't silently accept 2026-02-30.
+    """
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "tasks.csv",
+            [
+                "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
+                "T001,,Write tests,work,queued,P1,30,2026-02-30,high,,manual,,,,,2026-04-06,",
+                "T002,,Write more tests,work,queued,P1,30,2026-04-31,high,,manual,,,,,2026-04-06,",
+                "T003,,Leap day in non-leap year,work,queued,P1,30,2025-02-29,high,,manual,,,,,2026-04-06,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["tasks"])
+        assert any("2026-02-30" in e for e in errors)
+        assert any("2026-04-31" in e for e in errors)
+        assert any("2025-02-29" in e for e in errors)
+
+
+def test_leap_year_date_accepted() -> None:
+    """Valid leap-year dates are accepted (2024-02-29 is a real date)."""
+    with tempfile.TemporaryDirectory() as d:
+        p = _write_csv(
+            Path(d),
+            "tasks.csv",
+            [
+                "task_id,project_id,title,domain,status,priority,effort_mins,due_date,energy,context,source,next_step,scheduled_date,scheduled_start,scheduled_end,last_updated,notes",
+                "T001,,Leap day,work,queued,P1,30,2024-02-29,high,,manual,,,,,2026-04-06,",
+            ],
+        )
+        errors = validate_csv(p, SCHEMAS["tasks"])
+        assert errors == []
+
+
 # ---------------------------------------------------------------------------
 # Nullable field accepts empty
 # ---------------------------------------------------------------------------
