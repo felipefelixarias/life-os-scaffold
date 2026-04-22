@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added `export_data.py`: exports every canonical CSV to JSON or Markdown with schema-typed values (ints/floats/bools no longer stringified); wired up as `make export-json` / `make export-markdown`
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency
