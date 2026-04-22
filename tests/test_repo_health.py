@@ -221,6 +221,12 @@ def test_check_test_health_success(mock_print, mock_run, tmp_path: Path):
 
         repo_health.check_test_health()
 
+        # Verify pytest is invoked (not unittest discover), since the suite is
+        # pytest-style — the previous unittest call silently collected 0 tests.
+        invoked_cmd = mock_run.call_args[0][0]
+        assert "pytest" in invoked_cmd
+        assert "unittest" not in invoked_cmd
+
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         assert any("Found 2 test files" in call for call in print_calls)
         assert any("All tests passing" in call for call in print_calls)
@@ -235,13 +241,34 @@ def test_check_test_health_failures(mock_print, mock_run, tmp_path: Path):
         tests_dir.mkdir()
         (tests_dir / "test_example.py").touch()
 
-        # Mock failed test run
-        mock_run.return_value = (1, "", "FAILED (failures=1)")
+        # Mock failed test run — pytest writes its summary to stdout
+        mock_run.return_value = (1, "1 failed, 2 passed in 0.10s", "")
 
         repo_health.check_test_health()
 
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         assert any("Test failures" in call for call in print_calls)
+        assert any("1 failed, 2 passed" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_test_health_pytest_not_available(mock_print, mock_run, tmp_path: Path):
+    """Test test health check degrades gracefully when pytest is not installed."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test_example.py").touch()
+
+        # Simulate `python -m pytest` failing because the module isn't installed.
+        mock_run.return_value = (1, "", "No module named 'pytest'")
+
+        repo_health.check_test_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("pytest not available" in call for call in print_calls)
+        # Should NOT be reported as a test failure when pytest itself is missing.
+        assert not any("Test failures" in call for call in print_calls)
 
 
 @patch("builtins.print")
