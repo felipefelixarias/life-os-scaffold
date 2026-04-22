@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples backup backup-list backup-prune dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -41,6 +41,15 @@ health: ## Comprehensive repository health check
 
 refresh-examples: ## Refresh CSV files with fresh example data
 	@python3 $(LIFE_OS)/scripts/refresh_example_data.py
+
+backup: ## Snapshot canonical data + logs + config to $(LIFE_OS)/backups/
+	@python3 $(LIFE_OS)/scripts/backup.py create
+
+backup-list: ## List existing backup archives
+	@python3 $(LIFE_OS)/scripts/backup.py list
+
+backup-prune: ## Delete older backups beyond KEEP=10 (override via KEEP=N)
+	@python3 $(LIFE_OS)/scripts/backup.py prune --keep $${KEEP:-10}
 
 dev-check: ## Run all development checks (test, lint, csv, health)
 	@echo "Running comprehensive development checks..."

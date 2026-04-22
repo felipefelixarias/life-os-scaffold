@@ -63,6 +63,7 @@ make csv-check        # Analyze CSV data files
 make deps-check       # Check Python dependencies
 make health           # Comprehensive health check
 make refresh-examples # Refresh CSV files with example data
+make backup           # Snapshot personal data to 01-ops/life-os/backups/
 ```
 
 - `make test` runs repo validation plus Python unit tests
@@ -71,6 +72,7 @@ make refresh-examples # Refresh CSV files with example data
 - `make deps-check` checks Python dependencies and security status
 - `make health` runs comprehensive repository health check
 - `make refresh-examples` refreshes CSV files with current example data for testing/onboarding
+- `make backup` creates a timestamped `.tar.gz` of canonical CSVs, logs, and config — run `backup.py list / restore / prune` for the full workflow
 
 💡 **Having dependency issues?** See [`VIRTUAL_ENV_SETUP.md`](VIRTUAL_ENV_SETUP.md) for detailed Python environment setup instructions.
 

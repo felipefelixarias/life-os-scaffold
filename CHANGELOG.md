@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added automated backup/restore utility (`01-ops/life-os/scripts/backup.py`) with `make backup`, `make backup-list`, and `make backup-prune` targets — creates checksummed tar.gz snapshots of canonical CSVs, logs, and config with safe restore and retention pruning.
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency

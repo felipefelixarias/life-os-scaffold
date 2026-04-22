@@ -53,6 +53,7 @@ node_modules/
 01-ops/life-os/data/canonical/*.csv
 01-ops/life-os/logs/*.csv
 01-ops/life-os/outputs/
+01-ops/life-os/backups/
 
 # Configuration files with personal information
 01-ops/life-os/config/profile.json
