@@ -16,7 +16,11 @@ _scripts_dir = str(Path(__file__).resolve().parent)
 if _scripts_dir not in sys.path:
     sys.path.insert(0, _scripts_dir)
 
-from csv_schemas import SCHEMAS, validate_csv  # noqa: E402
+from csv_schemas import SCHEMAS, validate_csv, validate_parsed_csv  # noqa: E402
+
+# Parsed CSV payload: (header-or-None, data-rows, read-error-or-None).
+# A read error implies the header is None and rows is empty.
+ParsedCSV = tuple[list[str] | None, list[list[str]], str | None]
 
 # Configure basic logging
 logger = logging.getLogger(__name__)
@@ -82,18 +86,53 @@ def validate_required_paths() -> list[str]:
     return errors
 
 
-def validate_csv_headers() -> list[str]:
-    """Validate CSV file headers for basic integrity and formatting."""
+def _read_csv(csv_path: Path) -> ParsedCSV:
+    """Read a CSV file once, returning (header, data_rows, error_message).
+
+    On success: ``(header, rows, None)``. Empty files return ``(None, [], None)``
+    so callers can distinguish "no header" from "read failed". On failure,
+    returns ``(None, [], error_message)``.
+    """
+    try:
+        with csv_path.open(newline="", encoding="utf-8") as handle:
+            reader = csv.reader(handle)
+            header = next(reader, None)
+            rows = list(reader) if header is not None else []
+    except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
+        return None, [], f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}"
+    return header, rows, None
+
+
+def load_parsed_csvs(paths: list[Path]) -> dict[Path, ParsedCSV]:
+    """Read each CSV once and return a path→(header, rows, error) cache.
+
+    Used by ``main()`` so that header, structural, and schema validation all
+    operate on the same parsed data instead of re-reading each file.
+    """
+    return {path: _read_csv(path) for path in paths}
+
+
+def _get_parsed(csv_path: Path, parsed: dict[Path, ParsedCSV] | None) -> ParsedCSV:
+    """Return parsed CSV data from the cache, or read it on demand."""
+    if parsed is not None and csv_path in parsed:
+        return parsed[csv_path]
+    return _read_csv(csv_path)
+
+
+def validate_csv_headers(
+    parsed: dict[Path, ParsedCSV] | None = None,
+) -> list[str]:
+    """Validate CSV file headers for basic integrity and formatting.
+
+    When ``parsed`` is provided, reuses those pre-read results instead of
+    re-opening each file. Callers that invoke this in isolation can omit it.
+    """
     errors = []
     for csv_path in csv_files():
-        try:
-            with csv_path.open(newline="", encoding="utf-8") as handle:
-                reader = csv.reader(handle)
-                header = next(reader, None)
-        except (FileNotFoundError, PermissionError, UnicodeDecodeError) as e:
-            errors.append(
-                f"Cannot read CSV file {csv_path.relative_to(REPO_ROOT)}: {e}",
-            )
+        header, _rows, read_error = _get_parsed(csv_path, parsed)
+
+        if read_error:
+            errors.append(read_error)
             continue
 
         if not header:
@@ -123,50 +162,52 @@ def validate_csv_headers() -> list[str]:
     return errors
 
 
-def validate_csv_structure() -> list[str]:
-    """Validate CSV file structure for consistency."""
+def validate_csv_structure(
+    parsed: dict[Path, ParsedCSV] | None = None,
+) -> list[str]:
+    """Validate CSV file structure for consistency.
+
+    When ``parsed`` is provided, reuses those pre-read results. Header/read
+    errors are intentionally ignored here because ``validate_csv_headers``
+    already reports them.
+    """
     errors = []
+    max_lines_to_check = 1000  # Limit for performance on large files
     for csv_path in csv_files():
-        try:
-            with csv_path.open(newline="", encoding="utf-8") as handle:
-                reader = csv.reader(handle)
-                header = next(reader, None)
-                if not header:
-                    continue
+        header, rows, read_error = _get_parsed(csv_path, parsed)
+        if read_error or not header:
+            continue
 
-                header_count = len(header)
-                line_num = 2  # Start after header
-                max_lines_to_check = 1000  # Limit for performance on large files
+        header_count = len(header)
+        for row_idx, row in enumerate(rows):
+            if row_idx >= max_lines_to_check:
+                logger.info(
+                    f"Checked first {max_lines_to_check} rows of {csv_path.relative_to(REPO_ROOT)}",
+                )
+                break
 
-                for row_idx, row in enumerate(reader):
-                    if len(row) != header_count:
-                        errors.append(
-                            f"CSV row mismatch at line {line_num} in {csv_path.relative_to(REPO_ROOT)}: "
-                            f"expected {header_count} columns, got {len(row)}",
-                        )
-                        break  # Stop after first mismatch to avoid noise
-                    line_num += 1
-
-                    # Performance optimization: don't check infinite rows
-                    if row_idx >= max_lines_to_check:
-                        logger.info(
-                            f"Checked first {max_lines_to_check} rows of {csv_path.relative_to(REPO_ROOT)}",
-                        )
-                        break
-
-        except (FileNotFoundError, PermissionError, UnicodeDecodeError):
-            # Already handled in validate_csv_headers
-            pass
+            if len(row) != header_count:
+                errors.append(
+                    f"CSV row mismatch at line {row_idx + 2} in {csv_path.relative_to(REPO_ROOT)}: "
+                    f"expected {header_count} columns, got {len(row)}",
+                )
+                break  # Stop after first mismatch to avoid noise
 
     return errors
 
 
-def validate_csv_schemas() -> list[str]:
+def validate_csv_schemas(
+    parsed: dict[Path, ParsedCSV] | None = None,
+) -> list[str]:
     """Validate CSV files against expected schemas and data quality.
 
-    Delegates to csv_schemas.validate_csv() — the single source of truth for
-    schema definitions, type checking (enum, date, time, int, float, bool),
-    required-field enforcement, and unique-ID validation.
+    Delegates to csv_schemas.validate_parsed_csv() — the single source of
+    truth for schema definitions, type checking (enum, date, time, int,
+    float, bool), required-field enforcement, and unique-ID validation.
+
+    When ``parsed`` is provided, the already-read header and rows are passed
+    straight to ``validate_parsed_csv``; otherwise the file-based
+    ``validate_csv`` wrapper reads it from disk.
     """
     errors: list[str] = []
 
@@ -176,7 +217,16 @@ def validate_csv_schemas() -> list[str]:
             continue
 
         schema = SCHEMAS[stem]
-        csv_errors = validate_csv(csv_path, schema)
+
+        if parsed is not None and csv_path in parsed:
+            header, rows, read_error = parsed[csv_path]
+            if read_error:
+                # validate_csv_headers already surfaces read errors.
+                continue
+            csv_errors = validate_parsed_csv(header, rows, schema)
+        else:
+            csv_errors = validate_csv(csv_path, schema)
+
         for err in csv_errors:
             errors.append(f"{err} in {csv_path.relative_to(REPO_ROOT)}")
 
@@ -261,9 +311,14 @@ def main() -> int:
 
     errors = []
     errors.extend(validate_required_paths())
-    errors.extend(validate_csv_headers())
-    errors.extend(validate_csv_structure())
-    errors.extend(validate_csv_schemas())
+
+    # Read each CSV once and share the parsed data across header, structural,
+    # and schema validation so the pipeline does a single I/O pass per file.
+    parsed_csvs = load_parsed_csvs(csv_files())
+
+    errors.extend(validate_csv_headers(parsed=parsed_csvs))
+    errors.extend(validate_csv_structure(parsed=parsed_csvs))
+    errors.extend(validate_csv_schemas(parsed=parsed_csvs))
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())
