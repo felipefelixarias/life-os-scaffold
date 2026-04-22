@@ -275,8 +275,175 @@ def validate_date_range(
     return True, ""
 
 
-def validate_csv_schema(file_path: Path) -> ValidationResult:
-    """Validate CSV file schema and data integrity."""
+def _validate_rows_against_schema(
+    result: ValidationResult,
+    filename: str,
+    headers: list[str],
+    data_rows: list[list[str]],
+    expected_headers: list[str],
+) -> None:
+    """Run all schema/data checks against already-parsed headers and rows.
+
+    Shared between ``validate_csv_schema`` (reads from disk) and
+    ``run_full_validation`` (reuses rows read once for both schema and FK
+    phases). Mutates ``result`` in place.
+    """
+    if headers != expected_headers:
+        result.add_error(
+            f"{filename}: Schema mismatch\n"
+            f"  Expected: {expected_headers}\n"
+            f"  Actual:   {headers}"
+        )
+
+    seen_ids: set[str] = set()
+    id_field = ID_FIELDS.get(filename)
+    required_fields = REQUIRED_FIELDS.get(filename, set())
+    enum_fields = ENUM_FIELDS.get(filename, {})
+    date_fields = DATE_FIELDS.get(filename, set())
+    time_fields = TIME_FIELDS.get(filename, set())
+    numeric_fields = NUMERIC_FIELDS.get(filename, {})
+    time_range_fields = TIME_RANGE_FIELDS.get(filename, {})
+    duration_fields = DURATION_CONSISTENCY_FIELDS.get(filename, {})
+    date_range_fields = DATE_RANGE_FIELDS.get(filename, {})
+
+    for row_num, row in enumerate(data_rows, start=2):
+        if len(row) != len(headers):
+            result.add_error(
+                f"{filename}: Row {row_num} has {len(row)} columns, expected {len(headers)}"
+            )
+            continue
+
+        row_data = dict(zip(headers, row, strict=False))
+
+        if id_field and id_field in row_data:
+            id_value = row_data[id_field]
+            if id_value in seen_ids:
+                result.add_error(
+                    f"{filename}: Duplicate ID '{id_value}' found at row {row_num}"
+                )
+            seen_ids.add(id_value)
+
+        for field in required_fields:
+            if field in row_data and not row_data[field].strip():
+                result.add_error(
+                    f"{filename}: Required field '{field}' is empty at row {row_num}"
+                )
+
+        for field, allowed_values in enum_fields.items():
+            if (
+                field in row_data
+                and row_data[field].strip()
+                and row_data[field] not in allowed_values
+            ):
+                result.add_error(
+                    f"{filename}: Invalid value '{row_data[field]}' for field '{field}' at row {row_num}. "
+                    f"Allowed values: {allowed_values}"
+                )
+
+        for field in date_fields:
+            if (
+                field in row_data
+                and row_data[field].strip()
+                and not validate_date_format(row_data[field])
+            ):
+                result.add_error(
+                    f"{filename}: Invalid date format '{row_data[field]}' for field '{field}' at row {row_num}"
+                )
+
+        for field in time_fields:
+            if (
+                field in row_data
+                and row_data[field].strip()
+                and not validate_time_format(row_data[field])
+            ):
+                result.add_error(
+                    f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}"
+                )
+
+        for field, constraints in numeric_fields.items():
+            if field in row_data and row_data[field].strip():
+                min_val_raw = constraints.get("min")
+                max_val_raw = constraints.get("max")
+                min_val = (
+                    None if min_val_raw is None else cast(int | float, min_val_raw)
+                )
+                max_val = (
+                    None if max_val_raw is None else cast(int | float, max_val_raw)
+                )
+                is_valid, error_msg = validate_numeric_field(
+                    row_data[field],
+                    field,
+                    min_val=min_val,
+                    max_val=max_val,
+                    is_integer=constraints.get("type") == "int",
+                )
+                if not is_valid:
+                    result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+        if time_range_fields:
+            start_field = time_range_fields.get("start")
+            end_field = time_range_fields.get("end")
+            if (
+                start_field
+                and end_field
+                and start_field in row_data
+                and end_field in row_data
+            ):
+                is_valid, error_msg = validate_time_range(
+                    row_data[start_field], row_data[end_field]
+                )
+                if not is_valid:
+                    result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+        if duration_fields:
+            start_field = duration_fields.get("start_time")
+            end_field = duration_fields.get("end_time")
+            duration_field = duration_fields.get("duration")
+            if all(
+                f is not None and f in row_data
+                for f in [start_field, end_field, duration_field]
+            ):
+                assert start_field is not None
+                assert end_field is not None
+                assert duration_field is not None
+                is_valid, error_msg = validate_duration_consistency(
+                    row_data[start_field],
+                    row_data[end_field],
+                    row_data[duration_field],
+                )
+                if not is_valid:
+                    result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+        if date_range_fields:
+            start_field = date_range_fields.get("start")
+            end_field = date_range_fields.get("end")
+            if (
+                start_field
+                and end_field
+                and start_field in row_data
+                and end_field in row_data
+            ):
+                is_valid, error_msg = validate_date_range(
+                    row_data[start_field],
+                    row_data[end_field],
+                    (start_field, end_field),
+                )
+                if not is_valid:
+                    result.add_error(f"{filename}: {error_msg} at row {row_num}")
+
+
+def validate_csv_schema(
+    file_path: Path,
+    *,
+    parsed: tuple[list[str] | None, list[list[str]]] | None = None,
+) -> ValidationResult:
+    """Validate CSV file schema and data integrity.
+
+    When ``parsed`` is provided as ``(headers, data_rows)``, uses the
+    pre-parsed data instead of reopening ``file_path``. This lets callers
+    such as :func:`run_full_validation` share a single parsed copy between
+    schema validation and foreign-key checks.
+    """
     result = ValidationResult(file_path)
     filename = file_path.name
 
@@ -290,6 +457,16 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
 
     expected_headers = EXPECTED_SCHEMAS[filename]
 
+    if parsed is not None:
+        headers, data_rows = parsed
+        if not headers:
+            result.add_error(f"{filename}: File is empty or has no headers")
+            return result
+        _validate_rows_against_schema(
+            result, filename, headers, data_rows, expected_headers
+        )
+        return result
+
     try:
         with file_path.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
@@ -299,179 +476,17 @@ def validate_csv_schema(file_path: Path) -> ValidationResult:
                 result.add_error(f"{filename}: File is empty or has no headers")
                 return result
 
-            # Check schema compliance
-            if headers != expected_headers:
-                result.add_error(
-                    f"{filename}: Schema mismatch\n"
-                    f"  Expected: {expected_headers}\n"
-                    f"  Actual:   {headers}"
-                )
-
-            # Track data for validation
-            seen_ids: set[str] = set()
-            id_field = ID_FIELDS.get(filename)
-            required_fields = REQUIRED_FIELDS.get(filename, set())
-            enum_fields = ENUM_FIELDS.get(filename, {})
-            date_fields = DATE_FIELDS.get(filename, set())
-            time_fields = TIME_FIELDS.get(filename, set())
-            numeric_fields = NUMERIC_FIELDS.get(filename, {})
-            time_range_fields = TIME_RANGE_FIELDS.get(filename, {})
-            duration_fields = DURATION_CONSISTENCY_FIELDS.get(filename, {})
-            date_range_fields = DATE_RANGE_FIELDS.get(filename, {})
-
-            # Validate data rows
-            for row_num, row in enumerate(reader, start=2):
-                if len(row) != len(headers):
-                    result.add_error(
-                        f"{filename}: Row {row_num} has {len(row)} columns, expected {len(headers)}"
-                    )
-                    continue
-
-                row_data = dict(zip(headers, row, strict=False))
-
-                # Check for duplicate IDs
-                if id_field and id_field in row_data:
-                    id_value = row_data[id_field]
-                    if id_value in seen_ids:
-                        result.add_error(
-                            f"{filename}: Duplicate ID '{id_value}' found at row {row_num}"
-                        )
-                    seen_ids.add(id_value)
-
-                # Check required fields
-                for field in required_fields:
-                    if field in row_data and not row_data[field].strip():
-                        result.add_error(
-                            f"{filename}: Required field '{field}' is empty at row {row_num}"
-                        )
-
-                # Check enum values
-                for field, allowed_values in enum_fields.items():
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and row_data[field] not in allowed_values
-                    ):
-                        result.add_error(
-                            f"{filename}: Invalid value '{row_data[field]}' for field '{field}' at row {row_num}. "
-                            f"Allowed values: {allowed_values}"
-                        )
-
-                # Check date formats
-                for field in date_fields:
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and not validate_date_format(row_data[field])
-                    ):
-                        result.add_error(
-                            f"{filename}: Invalid date format '{row_data[field]}' for field '{field}' at row {row_num}"
-                        )
-
-                # Check time formats
-                for field in time_fields:
-                    if (
-                        field in row_data
-                        and row_data[field].strip()
-                        and not validate_time_format(row_data[field])
-                    ):
-                        result.add_error(
-                            f"{filename}: Invalid time format '{row_data[field]}' for field '{field}' at row {row_num}"
-                        )
-
-                # Check numeric fields
-                for field, constraints in numeric_fields.items():
-                    if field in row_data and row_data[field].strip():
-                        min_val_raw = constraints.get("min")
-                        max_val_raw = constraints.get("max")
-                        min_val = (
-                            None
-                            if min_val_raw is None
-                            else cast(int | float, min_val_raw)
-                        )
-                        max_val = (
-                            None
-                            if max_val_raw is None
-                            else cast(int | float, max_val_raw)
-                        )
-                        is_valid, error_msg = validate_numeric_field(
-                            row_data[field],
-                            field,
-                            min_val=min_val,
-                            max_val=max_val,
-                            is_integer=constraints.get("type") == "int",
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
-
-                # Check time ranges (start < end)
-                if time_range_fields:
-                    start_field = time_range_fields.get("start")
-                    end_field = time_range_fields.get("end")
-                    if (
-                        start_field
-                        and end_field
-                        and start_field in row_data
-                        and end_field in row_data
-                    ):
-                        is_valid, error_msg = validate_time_range(
-                            row_data[start_field], row_data[end_field]
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
-
-                # Check duration consistency
-                if duration_fields:
-                    start_field = duration_fields.get("start_time")
-                    end_field = duration_fields.get("end_time")
-                    duration_field = duration_fields.get("duration")
-                    if all(
-                        f is not None and f in row_data
-                        for f in [start_field, end_field, duration_field]
-                    ):
-                        # Type checking: at this point we know all fields are not None
-                        assert start_field is not None
-                        assert end_field is not None
-                        assert duration_field is not None
-                        is_valid, error_msg = validate_duration_consistency(
-                            row_data[start_field],
-                            row_data[end_field],
-                            row_data[duration_field],
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
-
-                # Check date ranges (start <= end)
-                if date_range_fields:
-                    start_field = date_range_fields.get("start")
-                    end_field = date_range_fields.get("end")
-                    if (
-                        start_field
-                        and end_field
-                        and start_field in row_data
-                        and end_field in row_data
-                    ):
-                        is_valid, error_msg = validate_date_range(
-                            row_data[start_field],
-                            row_data[end_field],
-                            (start_field, end_field),
-                        )
-                        if not is_valid:
-                            result.add_error(
-                                f"{filename}: {error_msg} at row {row_num}"
-                            )
-
+            data_rows = list(reader)
     except UnicodeDecodeError as e:
         result.add_error(f"{filename}: Encoding error - {e}")
+        return result
     except Exception as e:
         result.add_error(f"{filename}: Unexpected error - {e}")
+        return result
 
+    _validate_rows_against_schema(
+        result, filename, headers, data_rows, expected_headers
+    )
     return result
 
 
@@ -560,16 +575,36 @@ def validate_foreign_keys(
     return errors
 
 
+def _read_csv_once(
+    file_path: Path,
+) -> tuple[list[str] | None, list[list[str]], str | None]:
+    """Read a CSV once, returning ``(headers, data_rows, error_message)``.
+
+    On read failure returns ``(None, [], message)``; empty files return
+    ``(None, [], None)`` so callers can distinguish "couldn't open" from
+    "opened but had no header".
+    """
+    try:
+        with file_path.open(newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            headers = next(reader, None)
+            data_rows = list(reader) if headers is not None else []
+    except UnicodeDecodeError as e:
+        return None, [], f"{file_path.name}: Encoding error - {e}"
+    except (OSError, csv.Error) as e:
+        return None, [], f"{file_path.name}: Unexpected error - {e}"
+    return headers, data_rows, None
+
+
 def run_full_validation(
     canonical_dir: Path, logs_dir: Path
 ) -> tuple[dict[str, ValidationResult], list[str]]:
-    """Run schema validation and FK checks, reading each CSV file at most once.
+    """Run schema validation and FK checks, reading each CSV file exactly once.
 
-    This is the preferred entry-point for programmatic use.  It reads every
-    canonical/log CSV once into memory and then feeds the cached rows into
-    both ``validate_csv_schema`` (per-file schema checks) and
-    ``validate_foreign_keys`` (cross-file reference checks), eliminating the
-    duplicate reads that occur when those two functions are called separately.
+    This is the preferred entry-point for programmatic use. Each canonical/log
+    CSV is read once into memory; the parsed rows are then fed into
+    ``validate_csv_schema`` (per-file schema checks) and, where applicable,
+    into ``validate_foreign_keys`` (cross-file reference checks).
 
     Returns:
         A tuple of (schema_results, fk_errors) where *schema_results* maps
@@ -577,9 +612,7 @@ def run_full_validation(
         list of foreign-key error strings.
     """
     schema_results: dict[str, ValidationResult] = {}
-    row_cache: dict[str, list[dict[str, str]]] = {}
 
-    # Determine which files to validate
     all_files: list[Path] = []
     for filename in EXPECTED_SCHEMAS:
         if filename in ("daily_log.csv", "activity_log.csv"):
@@ -587,23 +620,36 @@ def run_full_validation(
         else:
             all_files.append(canonical_dir / filename)
 
-    # Build the row cache first (single read per file).  Derive the set of
-    # FK-involved files from the schema rather than hardcoding them.
+    # Identify FK-involved files so we only materialize dict rows for those.
     fk_files: set[str] = set()
     for fk in get_foreign_keys():
         fk_files.add(f"{fk.source_file}.csv")
         fk_files.add(f"{fk.target_file}.csv")
-    for file_path in all_files:
-        if file_path.name in fk_files and file_path.exists():
-            rows = _load_csv_rows(file_path, [], file_path.name)
-            row_cache[file_path.name] = rows
 
-    # Phase 1: per-file schema validation
-    for file_path in all_files:
-        result = validate_csv_schema(file_path)
-        schema_results[file_path.name] = result
+    row_cache: dict[str, list[dict[str, str]]] = {}
 
-    # Phase 2: FK validation using cached rows (no redundant disk reads)
+    for file_path in all_files:
+        if not file_path.exists():
+            schema_results[file_path.name] = validate_csv_schema(file_path)
+            continue
+
+        headers, data_rows, read_err = _read_csv_once(file_path)
+
+        if read_err is not None:
+            result = ValidationResult(file_path)
+            result.add_error(read_err)
+            schema_results[file_path.name] = result
+            continue
+
+        schema_results[file_path.name] = validate_csv_schema(
+            file_path, parsed=(headers, data_rows)
+        )
+
+        if file_path.name in fk_files and headers is not None:
+            row_cache[file_path.name] = [
+                dict(zip(headers, row, strict=False)) for row in data_rows
+            ]
+
     fk_errors = validate_foreign_keys(canonical_dir, row_cache=row_cache)
 
     return schema_results, fk_errors
@@ -614,24 +660,14 @@ def main() -> None:
     print("🔍 CSV Data Integrity Validation")
     print("=" * 60)
 
-    all_files = []
-
-    # Canonical data files
-    for filename in EXPECTED_SCHEMAS:
-        if filename in ["daily_log.csv", "activity_log.csv"]:
-            all_files.append(LOGS_DIR / filename)
-        else:
-            all_files.append(CANONICAL_DIR / filename)
-
     total_errors = 0
     total_warnings = 0
 
-    # Validate each file
-    for file_path in all_files:
-        result = validate_csv_schema(file_path)
+    schema_results, foreign_key_errors = run_full_validation(CANONICAL_DIR, LOGS_DIR)
 
+    for _filename, result in schema_results.items():
         status_icon = "✅" if result.passed else "❌"
-        print(f"\n{status_icon} {file_path.relative_to(REPO_ROOT)}")
+        print(f"\n{status_icon} {result.file_path.relative_to(REPO_ROOT)}")
 
         if result.errors:
             for error in result.errors:
@@ -646,10 +682,7 @@ def main() -> None:
         if result.passed and not result.warnings:
             print("   ✅ Schema and data validation passed")
 
-    # Validate foreign key references
     print("\n🔗 Foreign Key Validation")
-    foreign_key_errors = validate_foreign_keys(CANONICAL_DIR)
-
     if foreign_key_errors:
         for error in foreign_key_errors:
             print(f"   🔴 ERROR: {error}")
