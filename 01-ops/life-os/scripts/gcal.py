@@ -7,8 +7,11 @@ import datetime as dt
 import json
 import logging
 import pickle
+import random
+import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # Configure logging
@@ -31,6 +34,15 @@ MAX_OAUTH_TOKEN_SIZE = 50 * 1024  # 50KB
 OAUTH_TOKEN_PATH = Path.home() / ".gcalcli_oauth"
 PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "profile.json"
 LIFE_OS_TAG = "[life-os]"
+
+# Retry policy for transient Google Calendar API errors.
+# 429 = rate limit; 500/502/503/504 = server/gateway errors.
+RETRYABLE_HTTP_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+MAX_RETRIES = 3
+RETRY_INITIAL_DELAY_SEC = 1.0
+RETRY_MAX_DELAY_SEC = 32.0
+
+_T = TypeVar("_T")
 
 
 def _load_timezone() -> str:
@@ -165,6 +177,62 @@ def _is_http_error_status(exc: Exception, status: int) -> bool:
         return False
 
 
+def _is_retryable_http_error(exc: Exception) -> bool:
+    """Return whether the exception is a transient Google API HttpError worth retrying."""
+    try:
+        from googleapiclient.errors import HttpError
+
+        if not isinstance(exc, HttpError):
+            return False
+        return exc.resp.status in RETRYABLE_HTTP_STATUS_CODES
+    except ImportError:
+        return False
+
+
+def _compute_retry_delay(attempt: int) -> float:
+    """Return exponential backoff delay in seconds with bounded jitter.
+
+    attempt is 0-indexed: attempt 0 waits ~RETRY_INITIAL_DELAY_SEC, attempt 1
+    waits ~2x that, capped at RETRY_MAX_DELAY_SEC. Jitter adds up to 25% on
+    top to avoid thundering-herd retries. Not used for crypto, so the
+    standard PRNG is fine here.
+    """
+    base = min(RETRY_INITIAL_DELAY_SEC * (2**attempt), RETRY_MAX_DELAY_SEC)
+    jitter_fraction = random.uniform(0, 0.25)  # noqa: S311
+    return float(base + base * jitter_fraction)
+
+
+def _execute_with_retry(  # noqa: UP047 - Python 3.11 compatibility
+    request_callable: Callable[[], _T],
+    action_desc: str,
+    max_retries: int = MAX_RETRIES,
+) -> _T:
+    """Execute a Google API request, retrying on transient HTTP errors.
+
+    Retries up to max_retries times with exponential backoff on 429/5xx errors.
+    Non-retryable errors (404, 403, auth failures, etc.) are re-raised immediately
+    so callers can apply their own handling.
+    """
+    attempt = 0
+    while True:
+        try:
+            return request_callable()
+        except Exception as exc:
+            if attempt >= max_retries or not _is_retryable_http_error(exc):
+                raise
+            delay = _compute_retry_delay(attempt)
+            logger.warning(
+                "Transient error while %s (attempt %d/%d), retrying in %.2fs: %s",
+                action_desc,
+                attempt + 1,
+                max_retries,
+                delay,
+                exc,
+            )
+            time.sleep(delay)
+            attempt += 1
+
+
 def _parse_block_time(date: dt.date, time_str: str, field_name: str) -> dt.datetime:
     """Parse HH:MM or HH:MM:SS block times for a specific date."""
     try:
@@ -183,7 +251,10 @@ def list_calendars() -> list[dict[str, Any]]:
     """List all calendars accessible by the authenticated user."""
     try:
         service = get_service()
-        result = service.calendarList().list().execute()
+        result = _execute_with_retry(
+            lambda: service.calendarList().list().execute(),
+            "fetching calendar list",
+        )
         return result.get("items", [])  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while fetching calendar list")
@@ -209,21 +280,29 @@ def get_agenda(
 
         service = get_service()
         events = []
-        page_token = None
+        page_token: str | None = None
 
         while True:
-            result = (
-                service.events()
-                .list(
-                    calendarId=calendar_id,
-                    timeMin=time_min,
-                    timeMax=time_max,
-                    timeZone=tz,
-                    singleEvents=True,
-                    orderBy="startTime",
-                    pageToken=page_token,
+
+            def _fetch_page(token: str | None = page_token) -> dict[str, Any]:
+                response: dict[str, Any] = (
+                    service.events()
+                    .list(
+                        calendarId=calendar_id,
+                        timeMin=time_min,
+                        timeMax=time_max,
+                        timeZone=tz,
+                        singleEvents=True,
+                        orderBy="startTime",
+                        pageToken=token,
+                    )
+                    .execute()
                 )
-                .execute()
+                return response
+
+            result = _execute_with_retry(
+                _fetch_page,
+                f"fetching events for {start_date}",
             )
 
             events.extend(result.get("items", []))
@@ -268,7 +347,12 @@ def create_event(
             body["reminders"] = reminders
 
         service = get_service()
-        event = service.events().insert(calendarId=calendar_id, body=body).execute()
+        event = _execute_with_retry(
+            lambda: (
+                service.events().insert(calendarId=calendar_id, body=body).execute()
+            ),
+            f"creating event '{summary}'",
+        )
         return event["id"]  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while creating event '%s'", summary)
@@ -289,7 +373,12 @@ def update_event(
     """Update an existing event. Pass fields to update as kwargs."""
     try:
         service = get_service()
-        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+        event = _execute_with_retry(
+            lambda: (
+                service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+            ),
+            f"fetching event {event_id}",
+        )
 
         tz = _load_timezone()
         for key, value in kwargs.items():
@@ -298,10 +387,13 @@ def update_event(
             else:
                 event[key] = value
 
-        updated = (
-            service.events()
-            .update(calendarId=calendar_id, eventId=event_id, body=event)
-            .execute()
+        updated = _execute_with_retry(
+            lambda: (
+                service.events()
+                .update(calendarId=calendar_id, eventId=event_id, body=event)
+                .execute()
+            ),
+            f"updating event {event_id}",
         )
         return updated  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):
@@ -319,7 +411,14 @@ def delete_event(event_id: str, calendar_id: str = "primary") -> None:
     """Delete an event by ID."""
     try:
         service = get_service()
-        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+        _execute_with_retry(
+            lambda: (
+                service.events()
+                .delete(calendarId=calendar_id, eventId=event_id)
+                .execute()
+            ),
+            f"deleting event {event_id}",
+        )
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while deleting event %s", event_id)
     except Exception as e:
@@ -345,18 +444,21 @@ def search_events(
         time_max = _rfc3339(end_date)
 
         service = get_service()
-        result = (
-            service.events()
-            .list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                timeZone=tz,
-                q=query,
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            .execute()
+        result = _execute_with_retry(
+            lambda: (
+                service.events()
+                .list(
+                    calendarId=calendar_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    timeZone=tz,
+                    q=query,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            ),
+            f"searching events for '{query}'",
         )
         return result.get("items", [])  # type: ignore[no-any-return]
     except (FileNotFoundError, PermissionError):

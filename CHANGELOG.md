@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- gcal.py: retry transient 429/5xx HTTP errors with exponential backoff + jitter on all read/write API calls
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency
