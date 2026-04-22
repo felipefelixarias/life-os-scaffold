@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added `fetch_calendar_feeds.py` to download external iCal (.ics) subscriptions declared in `calendar_feeds.json` (Outlook, iCloud, CalDAV, meetup.com, etc.), plus a `make feeds-fetch` target. Atomic writes, http(s)-only scheme guard, 50 MiB size cap, per-feed timeouts. 100% test coverage.
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency

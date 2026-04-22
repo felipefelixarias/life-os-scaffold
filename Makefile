@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test feeds-fetch csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -29,6 +29,9 @@ gcal-agenda: ## Show today's Google Calendar agenda
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."
+
+feeds-fetch: ## Download enabled iCal feeds from calendar_feeds.json
+	@python3 $(LIFE_OS)/scripts/fetch_calendar_feeds.py
 
 csv-check: ## Analyze CSV data files and show statistics
 	@python3 $(LIFE_OS)/scripts/check_csv_data.py
