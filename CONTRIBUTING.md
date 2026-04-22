@@ -151,8 +151,9 @@ suite enabled in CI is safe. To run only the mock-based unit tests locally, use
 
 ## Code of Conduct
 
-- Be respectful and constructive in discussions
-- Focus on the technical aspects of contributions
-- Help create a welcoming environment for all contributors
+This project follows the [Code of Conduct](CODE_OF_CONDUCT.md) — be
+respectful, focus on the technical substance of contributions, and help
+keep the project welcoming. To report an incident, see the "Reporting"
+section in [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 Thanks for helping make life-os better! 🚀
