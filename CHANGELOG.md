@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added auto-generated CSV schema reference at `docs/csv-schemas-reference.md`, derived from `csv_schemas.py`. New `make docs-schemas` regenerates it; `make docs-schemas-check` (and a pytest case) fail when the doc and schemas drift apart.
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency

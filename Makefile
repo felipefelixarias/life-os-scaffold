@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples docs-schemas docs-schemas-check dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -41,6 +41,13 @@ health: ## Comprehensive repository health check
 
 refresh-examples: ## Refresh CSV files with fresh example data
 	@python3 $(LIFE_OS)/scripts/refresh_example_data.py
+
+docs-schemas: ## Regenerate docs/csv-schemas-reference.md from csv_schemas.py
+	@python3 $(LIFE_OS)/scripts/generate_schema_docs.py
+	@echo "✅ Regenerated docs/csv-schemas-reference.md"
+
+docs-schemas-check: ## Fail if docs/csv-schemas-reference.md is out of sync
+	@python3 $(LIFE_OS)/scripts/generate_schema_docs.py --check
 
 dev-check: ## Run all development checks (test, lint, csv, health)
 	@echo "Running comprehensive development checks..."
