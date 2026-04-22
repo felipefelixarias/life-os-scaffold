@@ -807,3 +807,199 @@ class TestHttpErrorPaths:
 
         mock_logger.warning.assert_called_once()
         assert "not found" in mock_logger.warning.call_args[0][0].lower()
+
+
+class TestRetryBehavior:
+    """Tests for retry/backoff on transient Google Calendar API errors."""
+
+    def setup_method(self):
+        self._original_http_error = sys.modules["googleapiclient.errors"].HttpError
+
+        class MockHttpError(Exception):
+            def __init__(self, resp, content=b""):
+                self.resp = resp
+                self.content = content
+                super().__init__(str(content))
+
+        sys.modules["googleapiclient.errors"].HttpError = MockHttpError
+        self._MockHttpError = MockHttpError
+
+    def teardown_method(self):
+        sys.modules["googleapiclient.errors"].HttpError = self._original_http_error
+
+    def _http_error(self, status):
+        resp = mock.Mock()
+        resp.status = status
+        return self._MockHttpError(resp, b"error")
+
+    def test_is_retryable_http_error_true_for_retryable_statuses(self):
+        for status in (429, 500, 502, 503, 504):
+            assert gcal._is_retryable_http_error(self._http_error(status)) is True
+
+    def test_is_retryable_http_error_false_for_non_retryable(self):
+        for status in (400, 401, 403, 404):
+            assert gcal._is_retryable_http_error(self._http_error(status)) is False
+
+    def test_is_retryable_http_error_false_for_non_http_exceptions(self):
+        assert gcal._is_retryable_http_error(ValueError("bad input")) is False
+        assert gcal._is_retryable_http_error(RuntimeError("boom")) is False
+
+    def test_is_retryable_http_error_handles_missing_dependency(self):
+        with mock.patch.dict(sys.modules, {"googleapiclient.errors": None}):
+            assert gcal._is_retryable_http_error(RuntimeError("boom")) is False
+
+    def test_compute_retry_delay_grows_exponentially(self):
+        with mock.patch("random.uniform", return_value=0.0):
+            assert gcal._compute_retry_delay(0) == gcal.RETRY_INITIAL_DELAY_SEC
+            assert gcal._compute_retry_delay(1) == gcal.RETRY_INITIAL_DELAY_SEC * 2
+            assert gcal._compute_retry_delay(2) == gcal.RETRY_INITIAL_DELAY_SEC * 4
+
+    def test_compute_retry_delay_capped_at_max(self):
+        with mock.patch("random.uniform", return_value=0.0):
+            # With initial=1s and max=32s, attempt 10 would be 1024s uncapped.
+            assert gcal._compute_retry_delay(10) == gcal.RETRY_MAX_DELAY_SEC
+
+    def test_compute_retry_delay_adds_jitter(self):
+        # Jitter tops out at 25% of base delay.
+        with mock.patch("random.uniform", return_value=0.25):
+            assert gcal._compute_retry_delay(0) == gcal.RETRY_INITIAL_DELAY_SEC * 1.25
+
+    def test_execute_with_retry_returns_immediately_on_success(self):
+        call = mock.Mock(return_value="ok")
+        with mock.patch("time.sleep") as mock_sleep:
+            result = gcal._execute_with_retry(call, "fetching thing")
+        assert result == "ok"
+        assert call.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_execute_with_retry_retries_on_transient_error_then_succeeds(self):
+        call = mock.Mock(side_effect=[self._http_error(503), "ok"])
+        with (
+            mock.patch("time.sleep") as mock_sleep,
+            mock.patch("random.uniform", return_value=0.0),
+        ):
+            result = gcal._execute_with_retry(call, "fetching thing")
+        assert result == "ok"
+        assert call.call_count == 2
+        mock_sleep.assert_called_once()
+
+    def test_execute_with_retry_gives_up_after_max_retries(self):
+        call = mock.Mock(side_effect=self._http_error(503))
+        with (
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+            pytest.raises(self._MockHttpError),
+        ):
+            gcal._execute_with_retry(call, "fetching thing")
+        # Initial attempt + MAX_RETRIES additional
+        assert call.call_count == gcal.MAX_RETRIES + 1
+
+    def test_execute_with_retry_does_not_retry_non_retryable_error(self):
+        call = mock.Mock(side_effect=self._http_error(404))
+        with (
+            mock.patch("time.sleep") as mock_sleep,
+            pytest.raises(self._MockHttpError),
+        ):
+            gcal._execute_with_retry(call, "fetching thing")
+        assert call.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_execute_with_retry_does_not_retry_plain_exception(self):
+        call = mock.Mock(side_effect=ValueError("bad input"))
+        with (
+            mock.patch("time.sleep") as mock_sleep,
+            pytest.raises(ValueError, match="bad input"),
+        ):
+            gcal._execute_with_retry(call, "fetching thing")
+        assert call.call_count == 1
+        mock_sleep.assert_not_called()
+
+    def test_execute_with_retry_respects_custom_max_retries(self):
+        call = mock.Mock(side_effect=self._http_error(503))
+        with (
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+            pytest.raises(self._MockHttpError),
+        ):
+            gcal._execute_with_retry(call, "fetching thing", max_retries=1)
+        assert call.call_count == 2
+
+    def test_execute_with_retry_logs_each_retry(self):
+        call = mock.Mock(side_effect=[self._http_error(429), "ok"])
+        with (
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+            mock.patch.object(gcal, "logger") as mock_logger,
+        ):
+            gcal._execute_with_retry(call, "fetching thing")
+        mock_logger.warning.assert_called_once()
+        msg = mock_logger.warning.call_args[0][0]
+        assert "Transient error" in msg
+        assert "retrying" in msg.lower()
+
+    def test_list_calendars_recovers_from_transient_503(self):
+        """Integration: list_calendars returns data after a 503 retry."""
+        mock_service = mock.Mock()
+        mock_service.calendarList.return_value.list.return_value.execute.side_effect = [
+            self._http_error(503),
+            {"items": [{"id": "cal1"}]},
+        ]
+        with (
+            mock.patch.object(gcal, "get_service", return_value=mock_service),
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+        ):
+            result = gcal.list_calendars()
+        assert result == [{"id": "cal1"}]
+
+    def test_list_calendars_returns_empty_after_exhausting_retries(self):
+        """After retries exhausted on 5xx, outer except returns []."""
+        mock_service = mock.Mock()
+        mock_service.calendarList.return_value.list.return_value.execute.side_effect = (
+            self._http_error(503)
+        )
+        with (
+            mock.patch.object(gcal, "get_service", return_value=mock_service),
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+            mock.patch.object(gcal, "_log_google_api_error"),
+        ):
+            result = gcal.list_calendars()
+        assert result == []
+
+    def test_create_event_recovers_from_transient_500(self):
+        """Integration: create_event succeeds after one 500 retry."""
+        mock_service = mock.Mock()
+        mock_service.events.return_value.insert.return_value.execute.side_effect = [
+            self._http_error(500),
+            {"id": "evt-123"},
+        ]
+        with (
+            mock.patch.object(gcal, "get_service", return_value=mock_service),
+            mock.patch.object(gcal, "_load_timezone", return_value="UTC"),
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+        ):
+            result = gcal.create_event(
+                "Test",
+                dt.datetime(2026, 1, 15, 10, 0),
+                dt.datetime(2026, 1, 15, 11, 0),
+            )
+        assert result == "evt-123"
+
+    def test_delete_event_retries_on_transient_and_then_404(self):
+        """delete_event retries a 503, and a final 404 is treated as already-deleted."""
+        mock_service = mock.Mock()
+        mock_service.events.return_value.delete.return_value.execute.side_effect = [
+            self._http_error(503),
+            self._http_error(404),
+        ]
+        with (
+            mock.patch.object(gcal, "get_service", return_value=mock_service),
+            mock.patch("time.sleep"),
+            mock.patch("random.uniform", return_value=0.0),
+            mock.patch.object(gcal, "logger") as mock_logger,
+        ):
+            gcal.delete_event("evt-abc")
+        # One warning for the retry, one for the 404 "already deleted"
+        assert mock_logger.warning.call_count == 2
