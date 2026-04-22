@@ -415,33 +415,37 @@ def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
                 if missing:
                     return errors
 
-            # Build column lookup from actual header
-            col_lookup: dict[str, ColumnSchema] = {}
-            for h in header:
+            # Pre-compute the per-cell validation plan once, indexed by column
+            # position, so the row loop can skip the dict(zip(...)) allocation
+            # and per-cell col_lookup.get() — both otherwise O(columns) per row.
+            col_plan: list[tuple[int, ColumnSchema]] = []
+            id_idx = -1
+            for idx, h in enumerate(header):
                 col = schema.get_column(h)
                 if col is not None:
-                    col_lookup[h] = col
+                    col_plan.append((idx, col))
+                if schema.id_column is not None and h == schema.id_column:
+                    id_idx = idx
 
             seen_ids: set[str] = set()
+            header_len = len(header)
 
             for row_num, row in enumerate(reader, start=2):
-                if len(row) != len(header):
+                if len(row) != header_len:
                     errors.append(
-                        f"Row {row_num}: expected {len(header)} columns, got {len(row)}"
+                        f"Row {row_num}: expected {header_len} columns, got {len(row)}"
                     )
                     continue
 
-                row_data = dict(zip(header, row, strict=False))
-
-                # Per-field validation
-                for h, val in row_data.items():
-                    col = col_lookup.get(h)
-                    if col is not None:
-                        errors.extend(_validate_value(val, col, row_num))
+                # Per-field validation via pre-computed indices
+                for idx, col in col_plan:
+                    cell_errors = _validate_value(row[idx], col, row_num)
+                    if cell_errors:
+                        errors.extend(cell_errors)
 
                 # Unique ID check
-                if schema.id_column and schema.id_column in row_data:
-                    id_val = row_data[schema.id_column].strip()
+                if id_idx >= 0:
+                    id_val = row[id_idx].strip()
                     if id_val:
                         if id_val in seen_ids:
                             errors.append(
