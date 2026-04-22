@@ -1,7 +1,5 @@
 # life-os
 
-[![CI](https://github.com/felipefelixarias/life-os-scaffold/actions/workflows/ci.yml/badge.svg)](https://github.com/felipefelixarias/life-os-scaffold/actions/workflows/ci.yml)
-
 Your life, version-controlled. Powered by [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ## What is this
