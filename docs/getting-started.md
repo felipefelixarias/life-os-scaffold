@@ -61,33 +61,18 @@ make dev-setup
 
 ### Running Quality Checks Locally
 
-These are the same checks that CI runs on every pull request:
+Run these before opening a pull request:
 
 ```bash
-make test          # pytest (unit + validation tests)
-make lint          # repo structure & doc-link checks
-ruff check .       # linting
-ruff format --check .  # formatting
-mypy 01-ops/life-os/scripts/  # type checking
+make test          # pytest with coverage (≥90% required) + repo validation
+make lint          # repo structure & doc-link checks + ruff format/check + mypy
 ```
 
-Run them all at once with:
+Or run them together with the rest of the development checks:
 
 ```bash
 make dev-check     # test + lint + csv-check + health
 ```
-
-### CI Pipeline
-
-Every push and pull request to `main` triggers a [GitHub Actions workflow](../.github/workflows/ci.yml) that runs:
-
-| Job | What it checks |
-|-----|---------------|
-| **test** | `pytest` with coverage (≥90% required) |
-| **lint** | `ruff` formatting/linting + `mypy` type checks |
-| **security** | `bandit` scan for medium/high severity issues |
-
-Fix any CI failures before requesting review.
 
 ## Google Calendar (optional)
 
