@@ -1,0 +1,41 @@
+# Normalize line endings so contributors on different OSes see consistent
+# diffs and editors don't silently rewrite tracked files.
+#
+# Default: detect text vs binary, normalize text to LF in the index, check
+# out as LF in the working tree.
+* text=auto eol=lf
+
+# Source code, configuration, and docs are LF everywhere. Pinning these
+# explicitly avoids any platform-specific guessing on commit.
+*.py        text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.toml      text eol=lf
+*.txt       text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+*.sh        text eol=lf
+Makefile    text eol=lf
+
+# CSV files are written by Python's csv module, which emits CRLF per RFC
+# 4180. Disable text conversion entirely so neither git nor an editor
+# rewrites those line endings on commit/checkout. Diffs still render as
+# text because git auto-detects content; we are only opting out of EOL
+# normalization, not out of text-mode handling.
+*.csv       -text
+
+# Binary assets — never normalize. Add new binary types here when the
+# repo starts tracking them.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.tar       binary
+*.woff      binary
+*.woff2     binary
