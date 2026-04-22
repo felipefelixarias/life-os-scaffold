@@ -2,6 +2,13 @@
 
 This document defines the structure and purpose of all CSV files in the life-os canonical data directory.
 
+> For the always-current machine-derived contract — every column's type, enum
+> values, numeric range, and foreign-key target — see
+> [`csv-schemas-reference.md`](csv-schemas-reference.md). That file is generated
+> from `01-ops/life-os/scripts/csv_schemas.py` and kept in sync by
+> `make docs-schemas-check`. Use this document for prose, examples, and best
+> practices.
+
 ## File Locations
 
 **Canonical data files:** `01-ops/life-os/data/canonical/`
