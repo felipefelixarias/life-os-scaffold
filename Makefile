@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install time-stats
 
 LIFE_OS := 01-ops/life-os
 
@@ -77,6 +77,9 @@ security: ## Run security checks with bandit and safety
 
 type-check: ## Run type checking with mypy
 	@source venv/bin/activate && mypy 01-ops/life-os/scripts/ || echo "⚠️  Type checking completed with issues"
+
+time-stats: ## Show per-domain time tracking analytics
+	@python3 $(LIFE_OS)/scripts/time_analytics.py
 
 quality: ## Run all quality checks (format, security, type-check, lint)
 	@echo "Running comprehensive quality checks..."
