@@ -60,6 +60,8 @@ You talk to Claude. Claude reads your files, follows the command specs in `.clau
 make test             # Run tests and validation
 make lint             # Check scaffold integrity
 make csv-check        # Analyze CSV data files
+make export-json      # Export canonical CSVs to JSON
+make export-markdown  # Export canonical CSVs to Markdown
 make deps-check       # Check Python dependencies
 make health           # Comprehensive health check
 make refresh-examples # Refresh CSV files with example data
@@ -68,6 +70,7 @@ make refresh-examples # Refresh CSV files with example data
 - `make test` runs repo validation plus Python unit tests
 - `make lint` checks scaffold integrity, command references, relative markdown links, and trailing whitespace
 - `make csv-check` analyzes CSV data files and shows statistics (useful during development)
+- `make export-json` / `make export-markdown` export every canonical table to `01-ops/life-os/outputs/exports/` with schema-typed values
 - `make deps-check` checks Python dependencies and security status
 - `make health` runs comprehensive repository health check
 - `make refresh-examples` refreshes CSV files with current example data for testing/onboarding

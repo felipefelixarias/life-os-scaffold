@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check export-json export-markdown deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -32,6 +32,12 @@ gcal-test: ## Test Google Calendar connection
 
 csv-check: ## Analyze CSV data files and show statistics
 	@python3 $(LIFE_OS)/scripts/check_csv_data.py
+
+export-json: ## Export canonical CSV data to JSON under outputs/exports/
+	@python3 $(LIFE_OS)/scripts/export_data.py --format json
+
+export-markdown: ## Export canonical CSV data to Markdown under outputs/exports/
+	@python3 $(LIFE_OS)/scripts/export_data.py --format markdown
 
 deps-check: ## Check Python dependencies and security status
 	@python3 $(LIFE_OS)/scripts/check_dependencies.py
