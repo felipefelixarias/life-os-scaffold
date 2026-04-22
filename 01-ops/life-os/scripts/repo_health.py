@@ -13,7 +13,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 COMMAND_NOT_FOUND_EXIT_CODE = 127
 
 
-def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
+def run_command(
+    cmd: list[str], cwd: Path = REPO_ROOT, timeout: int = 30
+) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
         result = subprocess.run(  # nosec B603
@@ -21,7 +23,7 @@ def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
             cwd=cwd,
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=timeout,
             check=False,  # We handle return codes manually
         )
         return result.returncode, result.stdout, result.stderr
@@ -148,14 +150,23 @@ def check_test_health() -> None:
     test_files = list(test_dir.glob("test_*.py"))
     print(f"📁 Found {len(test_files)} test files")
 
-    # Run tests
-    exit_code, _stdout, stderr = run_command(
-        [sys.executable, "-m", "unittest", "discover", "-s", "tests"],
+    # Run tests with pytest. The suite uses pytest-style module-level
+    # ``test_*`` functions and fixtures (e.g. ``tmp_path``), so
+    # ``unittest discover`` would collect zero tests and silently exit 0.
+    # The default 30s timeout isn't enough for a real pytest run on this repo.
+    exit_code, stdout, stderr = run_command(
+        [sys.executable, "-m", "pytest", "tests/", "-q", "--no-cov"],
+        timeout=300,
     )
     if exit_code == 0:
         print("✅ All tests passing")
+    elif (
+        exit_code == COMMAND_NOT_FOUND_EXIT_CODE or "No module named 'pytest'" in stderr
+    ):
+        print("⚠️  pytest not available (install with: pip install -e '.[dev]')")
     else:
-        print(f"❌ Test failures: {stderr}")
+        summary = stdout.strip().splitlines()[-1] if stdout.strip() else stderr.strip()
+        print(f"❌ Test failures: {summary}")
 
 
 def check_csv_health() -> None:
