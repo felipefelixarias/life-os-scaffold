@@ -10,6 +10,10 @@ from functools import cached_property
 from pathlib import Path
 from typing import Literal
 
+# Pre-compiled at import time so per-cell validation avoids re-parsing the
+# regex pattern on every row; noticeable when validating larger CSV datasets.
+_TIME_RE = re.compile(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
+
 
 @dataclass
 class ColumnSchema:
@@ -359,7 +363,7 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
             )
 
     elif col.dtype == "time":
-        if not re.match(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$", stripped):
+        if not _TIME_RE.match(stripped):
             errors.append(
                 f"Row {row_num}: '{stripped}' is not a valid time (HH:MM) for '{col.name}'"
             )
@@ -379,6 +383,72 @@ def _validate_value(value: str, col: ColumnSchema, row_num: int) -> list[str]:
     return errors
 
 
+def validate_parsed_csv(
+    header: list[str] | None,
+    rows: list[list[str]],
+    schema: CSVSchema,
+) -> list[str]:
+    """Validate already-parsed CSV data against a schema.
+
+    Callers that have already read a CSV file (for example to perform header
+    or structural checks) can pass the parsed data here to avoid a redundant
+    disk read. See ``validate_csv`` for the file-path convenience wrapper.
+    """
+    errors: list[str] = []
+
+    if header is None:
+        errors.append("File is empty (no header row)")
+        return errors
+
+    expected = schema.column_names
+    if header != expected:
+        missing = set(expected) - set(header)
+        extra = set(header) - set(expected)
+        parts = [f"Header mismatch for '{schema.name}'"]
+        if missing:
+            parts.append(f"missing columns: {sorted(missing)}")
+        if extra:
+            parts.append(f"unexpected columns: {sorted(extra)}")
+        if not missing and not extra:
+            parts.append(f"column order differs: got {header}, expected {expected}")
+        errors.append("; ".join(parts))
+        if missing:
+            return errors
+
+    col_lookup: dict[str, ColumnSchema] = {}
+    for h in header:
+        col = schema.get_column(h)
+        if col is not None:
+            col_lookup[h] = col
+
+    seen_ids: set[str] = set()
+
+    for row_num, row in enumerate(rows, start=2):
+        if len(row) != len(header):
+            errors.append(
+                f"Row {row_num}: expected {len(header)} columns, got {len(row)}"
+            )
+            continue
+
+        row_data = dict(zip(header, row, strict=False))
+
+        for h, val in row_data.items():
+            col = col_lookup.get(h)
+            if col is not None:
+                errors.extend(_validate_value(val, col, row_num))
+
+        if schema.id_column and schema.id_column in row_data:
+            id_val = row_data[schema.id_column].strip()
+            if id_val:
+                if id_val in seen_ids:
+                    errors.append(
+                        f"Row {row_num}: duplicate {schema.id_column} '{id_val}'"
+                    )
+                seen_ids.add(id_val)
+
+    return errors
+
+
 def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
     """Validate a CSV file against its schema. Returns list of errors."""
     errors: list[str] = []
@@ -391,69 +461,15 @@ def validate_csv(filepath: Path, schema: CSVSchema) -> list[str]:
         with filepath.open(newline="", encoding="utf-8") as f:
             reader = csv.reader(f)
             header = next(reader, None)
-
-            if header is None:
-                errors.append("File is empty (no header row)")
-                return errors
-
-            # Validate headers
-            expected = schema.column_names
-            if header != expected:
-                missing = set(expected) - set(header)
-                extra = set(header) - set(expected)
-                parts = [f"Header mismatch for '{schema.name}'"]
-                if missing:
-                    parts.append(f"missing columns: {sorted(missing)}")
-                if extra:
-                    parts.append(f"unexpected columns: {sorted(extra)}")
-                if not missing and not extra:
-                    parts.append(
-                        f"column order differs: got {header}, expected {expected}"
-                    )
-                errors.append("; ".join(parts))
-                # If columns don't match at all, we can't reliably validate rows
-                if missing:
-                    return errors
-
-            # Build column lookup from actual header
-            col_lookup: dict[str, ColumnSchema] = {}
-            for h in header:
-                col = schema.get_column(h)
-                if col is not None:
-                    col_lookup[h] = col
-
-            seen_ids: set[str] = set()
-
-            for row_num, row in enumerate(reader, start=2):
-                if len(row) != len(header):
-                    errors.append(
-                        f"Row {row_num}: expected {len(header)} columns, got {len(row)}"
-                    )
-                    continue
-
-                row_data = dict(zip(header, row, strict=False))
-
-                # Per-field validation
-                for h, val in row_data.items():
-                    col = col_lookup.get(h)
-                    if col is not None:
-                        errors.extend(_validate_value(val, col, row_num))
-
-                # Unique ID check
-                if schema.id_column and schema.id_column in row_data:
-                    id_val = row_data[schema.id_column].strip()
-                    if id_val:
-                        if id_val in seen_ids:
-                            errors.append(
-                                f"Row {row_num}: duplicate {schema.id_column} '{id_val}'"
-                            )
-                        seen_ids.add(id_val)
-
+            rows = list(reader) if header is not None else []
     except UnicodeDecodeError as e:
         errors.append(f"Encoding error: {e}")
+        return errors
     except csv.Error as e:
         errors.append(f"CSV parsing error: {e}")
+        return errors
 
+    errors.extend(validate_parsed_csv(header, rows, schema))
     return errors
 
 
