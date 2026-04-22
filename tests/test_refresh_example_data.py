@@ -1,11 +1,20 @@
 import csv
+import sys
 import tempfile
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = REPO_ROOT / "01-ops" / "life-os" / "scripts" / "refresh_example_data.py"
+SCRIPTS_DIR = REPO_ROOT / "01-ops" / "life-os" / "scripts"
+
+_SCHEMAS_SPEC = spec_from_file_location("csv_schemas", SCRIPTS_DIR / "csv_schemas.py")
+csv_schemas = module_from_spec(_SCHEMAS_SPEC)
+assert _SCHEMAS_SPEC.loader is not None
+sys.modules["csv_schemas"] = csv_schemas
+_SCHEMAS_SPEC.loader.exec_module(csv_schemas)
+
+MODULE_PATH = SCRIPTS_DIR / "refresh_example_data.py"
 SPEC = spec_from_file_location("life_os_refresh_example_data", MODULE_PATH)
 refresh_example_data = module_from_spec(SPEC)
 assert SPEC.loader is not None
@@ -112,6 +121,41 @@ def test_refresh_log_csvs_creates_log_files() -> None:
             with csv_path.open("r", newline="", encoding="utf-8") as f:
                 lines = f.readlines()
             assert len(lines) >= 2, f"{filename} should have header + data"
+
+
+def test_refresh_outputs_validate_against_schemas() -> None:
+    """Refreshed CSVs must match csv_schemas (headers, enums, types).
+
+    Guards against silent drift between hardcoded headers/example rows in
+    refresh_example_data.py and the canonical schemas in csv_schemas.py.
+    Without this test, ``make refresh-examples`` could overwrite canonical
+    files with schema-violating data.
+    """
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        data_dir = root / "01-ops" / "life-os" / "data" / "canonical"
+        logs_dir = root / "01-ops" / "life-os" / "logs"
+
+        with (
+            mock.patch.object(refresh_example_data, "REPO_ROOT", root),
+            mock.patch.object(refresh_example_data, "DATA_DIR", data_dir),
+            mock.patch.object(refresh_example_data, "LOGS_DIR", logs_dir),
+            mock.patch("builtins.print"),
+        ):
+            refresh_example_data.refresh_canonical_csvs()
+            refresh_example_data.refresh_log_csvs()
+
+        all_errors: list[str] = []
+        for name, schema in csv_schemas.SCHEMAS.items():
+            errors = csv_schemas.validate_csv(data_dir / f"{name}.csv", schema)
+            all_errors.extend(f"{name}.csv: {e}" for e in errors)
+        for name, schema in csv_schemas.LOG_SCHEMAS.items():
+            errors = csv_schemas.validate_csv(logs_dir / f"{name}.csv", schema)
+            all_errors.extend(f"{name}.csv: {e}" for e in errors)
+
+        assert not all_errors, "Refreshed CSVs failed schema validation:\n" + "\n".join(
+            all_errors
+        )
 
 
 def test_main_runs_all_refresh_functions() -> None:

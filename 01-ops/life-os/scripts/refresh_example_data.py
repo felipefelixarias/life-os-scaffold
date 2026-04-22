@@ -42,9 +42,9 @@ def refresh_canonical_csvs() -> None:
         DATA_DIR / "tasks.csv",
         [
             "task_id",
+            "project_id",
             "title",
             "domain",
-            "project_id",
             "status",
             "priority",
             "effort_mins",
@@ -62,11 +62,11 @@ def refresh_canonical_csvs() -> None:
         [
             [
                 "example_task",
+                "",
                 "Review quarterly goals",
                 "planning",
-                "",
                 "queued",
-                "medium",
+                "P2",
                 "30",
                 "",
                 "medium",
@@ -333,7 +333,7 @@ def refresh_log_csvs() -> None:
     # Activity log CSV
     write_csv_with_example(
         LOGS_DIR / "activity_log.csv",
-        ["timestamp", "activity", "notes"],
+        ["timestamp", "event", "details"],
         [
             [
                 f"{today.isoformat()}T09:00:00Z",
