@@ -1,57 +1,81 @@
 # Changelog
 
+All notable changes to this project are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
 ## [Unreleased]
-- Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
-- Fixed trailing whitespace in documentation files
-- Enhanced test assertions and code style consistency
-- Improved CSV validation with proper strict parameter for zip operations
-- f0376cb Add missing docstrings to validation functions
-- 4ec606b Merge pull request #30 from felipefelixarias/agent/code-quality-improvements
-- 0bd7aa2 Fix missing newline at end of file
-- af0b5d3 Improve code quality and performance across Python modules
-- 195df1e Merge pull request #29 from felipefelixarias/agent/tsk-ee48-continuously-improve-this-repo
-- de8d766 Refactor and improve code quality across repository
-- 0363e44 Merge pull request #28 from felipefelixarias/agent/tsk-3e50-continuously-improve-this-repo
-- 192c351 Add future annotations import to scripts __init__.py
-- e499026 Fix ruff linting issues
-- 8aa9cc7 Merge pull request #27 from felipefelixarias/agent/tsk-9f96-continuously-improve-this-repo
-- 76edb1f Enhance .gitignore with additional Python patterns
-- 3f6f593 Add comprehensive test coverage for CSV utilities
-- 36ac9d5 Performance improvements in health check and Google Calendar scripts
-- 0cd66b9 Merge pull request #26 from felipefelixarias/agent/add-versioning
-- 4977c0c Add CHANGELOG.md and NEXT_VERSION.md for release tracking
-- d840b25 Merge pull request #25 from felipefelixarias/agent/improve-april-2
-- 53db5e3 Continuous improvement: enhance development tools and performance
-- 4c1c240 Merge pull request #24 from felipefelixarias/agent/tsk-80f1-improve-life-os
-- 529a885 Refresh CSV files with improved example data
-- 645fb27 Update Makefile and README with new development tools
-- 4084890 Add comprehensive development and maintenance utilities
-- 0a34d06 Merge branch 'main' of https://github.com/felipefelixarias/life-os-scaffold
-- ebe3ae8 Merge pull request #23 from felipefelixarias/agent/tsk-e169-improve-continuous
-- ec0eed0 Add csv-check make target and update documentation
-- 50ec781 Update requirements.txt with better version constraints
-- 5c5bed6 Add CSV data analysis utility for development
-- 796db3d Improve CSV validation performance and logging
-- c91c8de Enhance security in gcal.py OAuth token handling
-- 34a9152 Add example data to CSV files for better onboarding
-- 1cb30a9 Merge pull request #22 from felipefelixarias/agent/codex-cycle-471
-- b17e1ad Codex cycle 471
-- 18155f0 Merge pull request #19 from felipefelixarias/agent/improve
-- f27fdf4 Add essential project documentation
-- 6d66248 Improve code organization: Add __init__.py files to modules
-- d046502 Merge pull request #18 from felipefelixarias/agent/improve
-- 3319dce Improve code quality: Add missing type annotations
-- 2e3fb32 Fix critical bug: Add missing LIFE_OS_TAG constant
-- d00921d Merge pull request #17 from felipefelixarias/agent/codex-cycle-305
-- 5687bf7 Codex cycle 305
-- 84aad1a Merge pull request #15 from felipefelixarias/agent/codex-cycle-303
-- 31a44ab Codex cycle 303
-- d1b84b7 Merge pull request #13 from felipefelixarias/agent/improve
-- 527081f Fix documentation issues and inconsistencies
-- bfe31d3 Improve error handling and logging in gcal.py
-- 47afe99 Resolve merge conflicts and preserve enhanced CSV validation
-- 4592c3b Comprehensive life-os-scaffold improvements and data quality enhancements
-- e37d8ef Merge pull request #4 from felipefelixarias/agent/improve
+
+Scheduled for the upcoming 0.2.0 release. Grouped by Keep-a-Changelog category;
+commits accumulated on `main` since the 0.1.0 tag (2026-03-09).
+
+### Added
+- Declarative CSV schema validation covering every canonical data file, with a
+  single source-of-truth module (`01-ops/life-os/scripts/csv_schemas.py`) and
+  100% line coverage on its tests.
+- Declarative foreign-key schemas so cross-file relationships (tasks ↔ goals,
+  time_logs ↔ tasks, etc.) validate against a single definition rather than
+  ad-hoc per-script logic.
+- Configuration file validation schemas for `config/profile.json` and
+  `config/calendar_feeds.json`, plus a `validate_config.py` entry point.
+- Opt-in integration tests for the Google Calendar API
+  (`tests/test_gcal_integration.py`) — gated behind
+  `@pytest.mark.integration`, `LIFE_OS_GCAL_INTEGRATION=1`,
+  `LIFE_OS_GCAL_TEST_CALENDAR_ID`, and a present `~/.gcalcli_oauth` so CI
+  auto-skips with zero config.
+- Contributor development setup guide (`CONTRIBUTING.md` expansions) and a CI
+  status badge in `README.md`.
+- Pre-commit hooks (`ruff`, `black`, `mypy`, `bandit`) and a
+  `requirements-dev.txt` capturing the dev toolchain.
+- Development utilities: `check_csv_data.py` CSV inspector, `repo_health.py`
+  health check, and a `csv-check` Make target.
+
+### Changed
+- Consolidated CSV schema definitions, numeric constraints, and time-field
+  rules into `csv_schemas.py`; `validate_repo.py` and `validate_csv_integrity.py`
+  now delegate to the shared schema rather than duplicating rules.
+- Optimized CSV validation with pre-compiled regex patterns, cached reads, and
+  O(1) lookups; eliminated duplicate CSV reads in foreign-key validation.
+- Modernized the test suite: migrated fixtures to pytest `tmp_path`, converted
+  unittest-style assertions to pytest idioms, and reorganized test modules.
+- Hardened `gcal.py`: improved OAuth token handling, narrowed exception scopes,
+  added structured logging for API errors.
+- Aligned canonical CSV schemas (`tasks`, `habits`, `time_logs`, `goals`,
+  enums for priority/status/source/domain/frequency) with the documented
+  schemas in `docs/csv-schemas.md`.
+- Aligned `make lint` and `make test` targets with the checks formerly run in
+  CI, so local runs mirror the gate the maintainer uses before tagging.
+- Raised the Python requirement to 3.12+ in both `README.md` and
+  `pyproject.toml` (matching the already-in-use 3.12 classifier).
+
+### Fixed
+- Broken file-path references in `.claude/commands/*.md` and other command
+  files; added `check_command_paths.py` to guard against regressions.
+- Habits schema required/type mismatches and incorrect frequency enum values
+  in `docs/customization.md`.
+- Missing `workday_start` / `workday_end` profile fields in
+  `docs/customization.md`.
+- CSV data quality issues in canonical example files.
+- Proper exit codes and narrower exception handling in CLI scripts
+  (`validate_repo.py`, `check_csv_data.py`, `check_dependencies.py`).
+- Critical bug: restored the missing `LIFE_OS_TAG` constant used by
+  `gcal.clear_life_os_events()`.
+- `/improve` command now uses the full path for the outputs directory instead
+  of a relative path that broke when invoked from subdirectories.
+
+### Removed
+- GitHub Actions workflows (`.github/workflows/`). CI was disabled because
+  transient failures were generating noisy "failing-CI" email notifications;
+  the previously-CI-enforced checks (mypy, ruff, bandit, pytest with coverage)
+  now run via `make lint` and `make test` locally and in pre-commit. No
+  project-level check was dropped — only the hosted runner was removed.
+
+### Testing
+- Core module coverage: 87% → 94% → 97% → 99% → **100%** on
+  `csv_schemas.py` and `gcal.py`; repo-wide coverage at ~99%.
+- 373+ test cases across unit and (opt-in) integration suites.
 
 ## [0.1.0] - 2026-03-31
-- Initial release
+
+- Initial release.
