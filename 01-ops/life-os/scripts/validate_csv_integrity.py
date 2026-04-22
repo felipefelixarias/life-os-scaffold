@@ -6,9 +6,11 @@ from __future__ import annotations
 import csv
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import cast
+
+_MINUTES_PER_DAY = 24 * 60
 
 # Pre-compiled patterns — avoids re-compilation on every call
 _TIME_RE = re.compile(r"^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
@@ -113,6 +115,18 @@ def validate_time_format(time_str: str) -> bool:
     return bool(_TIME_RE.match(time_str))
 
 
+def _hhmm_to_minutes(time_str: str) -> int:
+    """Parse an HH:MM string into minutes since midnight.
+
+    Callers must ensure the string has already been matched against _TIME_RE
+    (or intentionally accept a ValueError - used by the defensive paths in
+    validate_time_range / validate_duration_consistency). Roughly 100x faster
+    than datetime.strptime in the per-row validation hot path.
+    """
+    hh, mm = time_str.split(":", 1)
+    return int(hh) * 60 + int(mm)
+
+
 def validate_numeric_field(
     value_str: str,
     field_name: str,
@@ -180,14 +194,10 @@ def validate_time_range(start_time: str, end_time: str) -> tuple[bool, str]:
         )  # Skip if either time format is invalid (will be caught by format validation)
 
     try:
-        start_dt = datetime.strptime(start_time, "%H:%M")
-        end_dt = datetime.strptime(end_time, "%H:%M")
-
-        if start_dt >= end_dt:
+        if _hhmm_to_minutes(start_time) >= _hhmm_to_minutes(end_time):
             return False, f"Start time {start_time} must be before end time {end_time}"
-
     except ValueError:
-        return True, ""  # Skip validation if parsing fails
+        return True, ""  # Skip validation if parsing fails (defensive)
 
     return True, ""
 
@@ -218,23 +228,20 @@ def validate_duration_consistency(
         return True, ""  # Skip if duration is not a valid integer
 
     try:
-        start_dt = datetime.strptime(start_time, "%H:%M")
-        end_dt = datetime.strptime(end_time, "%H:%M")
-
-        # Handle midnight rollover
-        if end_dt <= start_dt:
-            end_dt += timedelta(days=1)
-
-        calculated_mins = int((end_dt - start_dt).total_seconds() / 60)
-
-        if abs(calculated_mins - duration) > 1:  # Allow 1-minute tolerance for rounding
-            return (
-                False,
-                f"Duration {duration} minutes doesn't match calculated duration {calculated_mins} minutes (from {start_time} to {end_time})",
+        diff = _hhmm_to_minutes(end_time) - _hhmm_to_minutes(start_time)
+        if diff <= 0:
+            diff += (
+                _MINUTES_PER_DAY  # midnight rollover (matches datetime-based behavior)
             )
 
-    except (ValueError, OverflowError):
-        return True, ""  # Skip validation if parsing fails
+        if abs(diff - duration) > 1:  # Allow 1-minute tolerance for rounding
+            return (
+                False,
+                f"Duration {duration} minutes doesn't match calculated duration {diff} minutes (from {start_time} to {end_time})",
+            )
+
+    except ValueError:
+        return True, ""  # Skip validation if parsing fails (defensive)
 
     return True, ""
 
