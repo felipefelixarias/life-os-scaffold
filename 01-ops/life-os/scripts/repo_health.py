@@ -101,20 +101,33 @@ def check_python_health() -> None:
         print("⚠️  No Python files found")
         return
 
+    # Compile each file in-process — shelling out to `python -m py_compile`
+    # once per file adds ~15ms of interpreter startup overhead per call, which
+    # dominated the health check runtime at 27+ source files.
     compile_errors = 0
+    checked = 0
     for py_file in python_files:
         if ".git" in str(py_file):
             continue
+        checked += 1
 
-        exit_code, _, stderr = run_command(
-            [sys.executable, "-m", "py_compile", str(py_file)],
-        )
-        if exit_code != 0:
-            print(f"❌ Compilation error in {py_file.relative_to(REPO_ROOT)}: {stderr}")
+        try:
+            source = py_file.read_bytes()
+        except OSError as exc:
+            print(f"❌ Cannot read {py_file.relative_to(REPO_ROOT)}: {exc}")
+            compile_errors += 1
+            continue
+
+        try:
+            # ValueError covers source containing null bytes, SyntaxError
+            # covers normal parse failures.
+            compile(source, str(py_file), "exec")
+        except (SyntaxError, ValueError) as exc:
+            print(f"❌ Compilation error in {py_file.relative_to(REPO_ROOT)}: {exc}")
             compile_errors += 1
 
     if compile_errors == 0:
-        print(f"✅ All {len(python_files)} Python files compile successfully")
+        print(f"✅ All {checked} Python files compile successfully")
 
     # Check for ruff if available
     exit_code, stdout, stderr = run_command(
