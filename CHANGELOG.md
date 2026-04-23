@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Added `01-ops/life-os/scripts/export_ical.py`: stdlib-only RFC 5545 iCalendar exporter for `time_blocks.csv` and `calendar_events.csv`, with date-range filtering and a `make export-ical` target. Complements PR #99's iCal import direction and gives users a portable `.ics` they can subscribe to from any calendar client.
 - Code quality improvements: Fixed 24 ruff linting issues including deprecated type imports, nested if statements, unused imports, and missing newlines
 - Fixed trailing whitespace in documentation files
 - Enhanced test assertions and code style consistency

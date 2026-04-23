@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install export-ical
 
 LIFE_OS := 01-ops/life-os
 
@@ -41,6 +41,10 @@ health: ## Comprehensive repository health check
 
 refresh-examples: ## Refresh CSV files with fresh example data
 	@python3 $(LIFE_OS)/scripts/refresh_example_data.py
+
+export-ical: ## Export canonical CSV data to iCalendar (writes $(LIFE_OS)/outputs/life-os.ics)
+	@mkdir -p $(LIFE_OS)/outputs
+	@python3 $(LIFE_OS)/scripts/export_ical.py --source both --output $(LIFE_OS)/outputs/life-os.ics
 
 dev-check: ## Run all development checks (test, lint, csv, health)
 	@echo "Running comprehensive development checks..."
