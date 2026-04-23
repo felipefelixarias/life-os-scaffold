@@ -174,11 +174,8 @@ def test_check_python_health_all_good(mock_print, mock_run, tmp_path: Path):
         test_py = tmp_path / "test.py"
         test_py.write_text("print('hello')")
 
-        # Mock py_compile success and ruff success
-        mock_run.side_effect = [
-            (0, "", ""),  # py_compile success
-            (0, "", ""),  # ruff check success
-        ]
+        # Compilation is in-process; only ruff still goes through run_command.
+        mock_run.return_value = (0, "", "")  # ruff check success
 
         repo_health.check_python_health()
 
@@ -192,12 +189,12 @@ def test_check_python_health_all_good(mock_print, mock_run, tmp_path: Path):
 def test_check_python_health_compile_errors(mock_print, mock_run, tmp_path: Path):
     """Test Python health check with compilation errors."""
     with patch.object(repo_health, "REPO_ROOT", tmp_path):
-        # Create a test Python file
+        # Create a test Python file with a real syntax error
         test_py = tmp_path / "test.py"
-        test_py.write_text("invalid python syntax !!!")
+        test_py.write_text("def broken(:\n    pass\n")
 
-        # Mock py_compile failure
-        mock_run.return_value = (1, "", "SyntaxError: invalid syntax")
+        # ruff still runs even when compile fails.
+        mock_run.return_value = (0, "", "")
 
         repo_health.check_python_health()
 
@@ -385,21 +382,46 @@ def test_check_python_health_no_python_files(mock_print, tmp_path: Path):
 def test_check_python_health_skips_git_files(mock_print, mock_run, tmp_path: Path):
     """Test python health check skips .git directory files (covers line 107)."""
     with patch.object(repo_health, "REPO_ROOT", tmp_path):
-        # Create a python file inside .git (should be skipped)
+        # Create a python file inside .git with a syntax error (should be skipped)
         git_dir = tmp_path / ".git" / "hooks"
         git_dir.mkdir(parents=True)
-        (git_dir / "pre-commit.py").touch()
+        (git_dir / "pre-commit.py").write_text("def broken(:\n")
         # Create a real python file
         (tmp_path / "real.py").write_text("x = 1")
 
-        mock_run.side_effect = [
-            (0, "", ""),  # py_compile for real.py
-            (0, "", ""),  # ruff check
-        ]
+        # Compilation is in-process; only ruff still goes through run_command.
+        mock_run.return_value = (0, "", "")
         repo_health.check_python_health()
-        # Only real.py should be compiled, not .git file
-        # run_command should be called twice: once for py_compile, once for ruff
-        assert mock_run.call_count == 2
+        # run_command is called exactly once (for ruff). Only real.py should be
+        # compiled — the .git file must be skipped, so there must be no
+        # "Compilation error" line even though the .git file has bad syntax.
+        assert mock_run.call_count == 1
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert not any("Compilation error" in call for call in print_calls)
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_unreadable_file(mock_print, mock_run, tmp_path: Path):
+    """A file we cannot read is reported as a compile error, not crashed on."""
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        bad = tmp_path / "bad.py"
+        bad.write_text("x = 1")
+        mock_run.return_value = (0, "", "")
+
+        # Force read_bytes() to raise OSError on the one source file.
+        real_read = Path.read_bytes
+
+        def selective_read(self: Path) -> bytes:
+            if self.name == "bad.py":
+                raise OSError("simulated I/O error")
+            return real_read(self)
+
+        with patch.object(Path, "read_bytes", selective_read):
+            repo_health.check_python_health()
+
+        print_calls = [call[0][0] for call in mock_print.call_args_list]
+        assert any("Cannot read" in call for call in print_calls)
 
 
 @patch("repo_health.run_command")
@@ -408,10 +430,8 @@ def test_check_python_health_ruff_not_available(mock_print, mock_run, tmp_path: 
     """Test python health when ruff is not installed (covers line 126)."""
     with patch.object(repo_health, "REPO_ROOT", tmp_path):
         (tmp_path / "test.py").write_text("x = 1")
-        mock_run.side_effect = [
-            (0, "", ""),  # py_compile success
-            (1, "", "No module named 'ruff'"),  # ruff not available
-        ]
+        # Compilation is in-process; only ruff still goes through run_command.
+        mock_run.return_value = (1, "", "No module named 'ruff'")
         repo_health.check_python_health()
         print_calls = [call[0][0] for call in mock_print.call_args_list]
         assert any("ruff not available" in call for call in print_calls)
