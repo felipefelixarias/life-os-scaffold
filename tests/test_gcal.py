@@ -298,6 +298,36 @@ class TestGcalCalendarOperations:
         call_args = mock_events.list.call_args
         assert call_args.kwargs["q"] == "meeting"
 
+    def test_search_events_handles_pagination(self):
+        """search_events must follow nextPageToken so large result sets aren't truncated."""
+        mock_events = mock.Mock()
+
+        page_tokens_seen: list[str | None] = []
+
+        def mock_list(**kwargs):
+            page_tokens_seen.append(kwargs.get("pageToken"))
+            m = mock.Mock()
+            if len(page_tokens_seen) == 1:
+                m.execute.return_value = {
+                    "items": [{"id": "e1"}, {"id": "e2"}],
+                    "nextPageToken": "token2",
+                }
+            else:
+                m.execute.return_value = {"items": [{"id": "e3"}]}
+            return m
+
+        mock_events.list.side_effect = mock_list
+        self.mock_service.events.return_value = mock_events
+
+        result = gcal.search_events(
+            "meeting",
+            dt.date(2026, 1, 15),
+            dt.date(2026, 1, 16),
+        )
+
+        assert [e["id"] for e in result] == ["e1", "e2", "e3"]
+        assert page_tokens_seen == [None, "token2"]
+
 
 class TestGcalUtility:
     def test_format_event_line_formats_event_with_time(self):
