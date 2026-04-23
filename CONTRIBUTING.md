@@ -108,16 +108,23 @@ make gcal-test
    tests at your primary calendar — `clear_life_os_events()` will remove every
    event tagged `[life-os]` on the target date).
 3. Copy the test calendar's ID (Settings → Integrate calendar → Calendar ID)
-   and run:
+   and export it, then invoke the dedicated make target:
+   ```bash
+   export LIFE_OS_GCAL_TEST_CALENDAR_ID=<your-test-calendar-id>
+   make gcal-integration-test
+   ```
+   The make target sets `LIFE_OS_GCAL_INTEGRATION=1` for you and fails fast with
+   a helpful message if the calendar ID or OAuth token is missing. Equivalent
+   raw invocation:
    ```bash
    LIFE_OS_GCAL_INTEGRATION=1 \
    LIFE_OS_GCAL_TEST_CALENDAR_ID=<your-test-calendar-id> \
    pytest tests/test_gcal_integration.py -v
    ```
 
-Without both env vars set, every test in the file is skipped, so leaving the
-suite enabled in CI is safe. To run only the mock-based unit tests locally, use
-`pytest -m "not integration"`.
+Without both env vars set, every test in the file is skipped by default, so
+routine `make test` runs stay safe and offline. To run only the mock-based unit
+tests locally, use `pytest -m "not integration"`.
 
 ## Submitting Changes
 
