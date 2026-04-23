@@ -12,6 +12,29 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # Exit code constants
 COMMAND_NOT_FOUND_EXIT_CODE = 127
 
+# Directories to skip when walking the repo for Python sources.
+# Mirrors the standard Python/tooling dirs ignored by .gitignore so that
+# local virtualenvs, build outputs, and tool caches don't blow up
+# `make health` (a .venv alone can add thousands of files).
+SKIP_DIRS = frozenset(
+    {
+        ".git",
+        "venv",
+        ".venv",
+        "env",
+        "ENV",
+        "__pycache__",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".pytest_cache",
+        ".tox",
+        "build",
+        "dist",
+        "htmlcov",
+        "node_modules",
+    }
+)
+
 
 def run_command(cmd: list[str], cwd: Path = REPO_ROOT) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
@@ -96,16 +119,17 @@ def check_python_health() -> None:
     print("-" * 40)
 
     # Check if Python files compile
-    python_files = list(REPO_ROOT.glob("**/*.py"))
+    python_files = [
+        p
+        for p in REPO_ROOT.glob("**/*.py")
+        if not SKIP_DIRS.intersection(p.relative_to(REPO_ROOT).parts)
+    ]
     if not python_files:
         print("⚠️  No Python files found")
         return
 
     compile_errors = 0
     for py_file in python_files:
-        if ".git" in str(py_file):
-            continue
-
         exit_code, _, stderr = run_command(
             [sys.executable, "-m", "py_compile", str(py_file)],
         )

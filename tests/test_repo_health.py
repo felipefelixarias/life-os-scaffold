@@ -383,7 +383,7 @@ def test_check_python_health_no_python_files(mock_print, tmp_path: Path):
 @patch("repo_health.run_command")
 @patch("builtins.print")
 def test_check_python_health_skips_git_files(mock_print, mock_run, tmp_path: Path):
-    """Test python health check skips .git directory files (covers line 107)."""
+    """Test python health check skips .git directory files."""
     with patch.object(repo_health, "REPO_ROOT", tmp_path):
         # Create a python file inside .git (should be skipped)
         git_dir = tmp_path / ".git" / "hooks"
@@ -400,6 +400,43 @@ def test_check_python_health_skips_git_files(mock_print, mock_run, tmp_path: Pat
         # Only real.py should be compiled, not .git file
         # run_command should be called twice: once for py_compile, once for ruff
         assert mock_run.call_count == 2
+
+
+@patch("repo_health.run_command")
+@patch("builtins.print")
+def test_check_python_health_skips_venv_and_cache_dirs(
+    mock_print, mock_run, tmp_path: Path
+):
+    """Python health must skip gitignored dirs (venv, build caches) so a local
+    .venv doesn't balloon ``make health`` into thousands of subprocess calls.
+    """
+    with patch.object(repo_health, "REPO_ROOT", tmp_path):
+        # Gitignored dirs that should be skipped
+        for skip_dir in (".venv", "venv", "build", "__pycache__", ".mypy_cache"):
+            skipped = tmp_path / skip_dir / "nested"
+            skipped.mkdir(parents=True)
+            (skipped / "should_not_compile.py").write_text("x = 1")
+
+        # Real project file that should still be compiled
+        real = tmp_path / "01-ops" / "life-os" / "scripts"
+        real.mkdir(parents=True)
+        (real / "real_script.py").write_text("x = 1")
+
+        mock_run.side_effect = [
+            (0, "", ""),  # py_compile for real_script.py
+            (0, "", ""),  # ruff check
+        ]
+        repo_health.check_python_health()
+
+        # Only the one real file should be compiled → 1 py_compile + 1 ruff = 2
+        assert mock_run.call_count == 2
+        compile_calls = [
+            call
+            for call in mock_run.call_args_list
+            if len(call.args) > 0 and "py_compile" in call.args[0]
+        ]
+        assert len(compile_calls) == 1
+        assert "real_script.py" in compile_calls[0].args[0][-1]
 
 
 @patch("repo_health.run_command")
