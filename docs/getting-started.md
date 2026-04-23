@@ -59,6 +59,8 @@ Or use the convenience target:
 make dev-setup
 ```
 
+If `pip install` fails with an `externally-managed-environment` error (common on modern Debian/Ubuntu), create and activate a venv first — the `.venv` step above isolates pip from the system Python and avoids that error. If a venv isn't an option, `pip install --user -r requirements.txt` is a fallback.
+
 ### Running Quality Checks Locally
 
 These are the same checks that CI runs on every pull request:
