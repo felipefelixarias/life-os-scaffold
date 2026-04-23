@@ -500,34 +500,42 @@ class TestGcalErrorHandling:
 
     def test_update_event_returns_updated_event(self):
         mock_events = mock.Mock()
-        existing = {"id": "e1", "summary": "Old"}
-        mock_get = mock.Mock()
-        mock_get.execute.return_value = existing
-        mock_events.get.return_value = mock_get
-        mock_update = mock.Mock()
-        mock_update.execute.return_value = {"id": "e1", "summary": "New"}
-        mock_events.update.return_value = mock_update
+        mock_patch = mock.Mock()
+        mock_patch.execute.return_value = {"id": "e1", "summary": "New"}
+        mock_events.patch.return_value = mock_patch
         self.mock_service.events.return_value = mock_events
 
         result = gcal.update_event("e1", summary="New")
         assert result["summary"] == "New"
+        mock_events.get.assert_not_called()
+        assert mock_events.patch.call_args.kwargs["body"] == {"summary": "New"}
 
     def test_update_event_handles_datetime_kwargs(self):
         mock_events = mock.Mock()
-        existing = {"id": "e1", "summary": "Event"}
-        mock_get = mock.Mock()
-        mock_get.execute.return_value = existing
-        mock_events.get.return_value = mock_get
-        mock_update = mock.Mock()
-        mock_update.execute.return_value = existing
-        mock_events.update.return_value = mock_update
+        mock_patch = mock.Mock()
+        mock_patch.execute.return_value = {"id": "e1"}
+        mock_events.patch.return_value = mock_patch
         self.mock_service.events.return_value = mock_events
 
         new_start = dt.datetime(2026, 1, 15, 14, 0)
         gcal.update_event("e1", start=new_start)
 
-        call_body = mock_events.update.call_args.kwargs["body"]
+        call_body = mock_events.patch.call_args.kwargs["body"]
         assert "dateTime" in call_body["start"]
+        assert "end" not in call_body
+
+    def test_update_event_sends_only_supplied_fields(self):
+        mock_events = mock.Mock()
+        mock_patch = mock.Mock()
+        mock_patch.execute.return_value = {"id": "e1"}
+        mock_events.patch.return_value = mock_patch
+        self.mock_service.events.return_value = mock_events
+
+        gcal.update_event("e1", summary="New", location="Room 2")
+
+        mock_events.get.assert_not_called()
+        call_body = mock_events.patch.call_args.kwargs["body"]
+        assert call_body == {"summary": "New", "location": "Room 2"}
 
     def test_update_event_returns_empty_on_auth_error(self):
         with mock.patch.object(gcal, "get_service", side_effect=PermissionError):
