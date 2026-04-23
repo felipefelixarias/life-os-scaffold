@@ -386,6 +386,9 @@ class TestRepoValidation:
             mock.patch.object(validate_repo, "validate_csv_structure", return_value=[]),
             mock.patch.object(validate_repo, "validate_csv_schemas", return_value=[]),
             mock.patch.object(
+                validate_repo, "validate_config_examples", return_value=[]
+            ),
+            mock.patch.object(
                 validate_repo, "validate_markdown_links", return_value=[]
             ),
             mock.patch.object(
@@ -409,6 +412,9 @@ class TestRepoValidation:
             mock.patch.object(validate_repo, "validate_csv_headers", return_value=[]),
             mock.patch.object(validate_repo, "validate_csv_structure", return_value=[]),
             mock.patch.object(validate_repo, "validate_csv_schemas", return_value=[]),
+            mock.patch.object(
+                validate_repo, "validate_config_examples", return_value=[]
+            ),
             mock.patch.object(
                 validate_repo, "validate_markdown_links", return_value=[]
             ),
@@ -621,6 +627,53 @@ class TestRepoValidation:
                 errors = validate_repo.validate_csv_schemas()
 
             assert any("9am" in e and "time" in e.lower() for e in errors)
+
+    def test_validate_config_examples_passes_on_real_configs(self) -> None:
+        """Checked-in example configs must validate cleanly against their schemas."""
+        errors = validate_repo.validate_config_examples()
+        assert errors == []
+
+    def test_validate_config_examples_detects_invalid_profile(self) -> None:
+        """An example profile missing a required field should surface an error."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_dir = root / "01-ops" / "life-os" / "config"
+            config_dir.mkdir(parents=True)
+            (config_dir / "profile.example.json").write_text(
+                '{"owner": "x"}', encoding="utf-8"
+            )
+            (config_dir / "calendar_feeds.example.json").write_text(
+                '{"feeds": []}', encoding="utf-8"
+            )
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                errors = validate_repo.validate_config_examples()
+
+        assert errors
+        assert any("profile.example.json" in e for e in errors)
+
+    def test_validate_config_examples_detects_invalid_calendar_feeds(self) -> None:
+        """A malformed calendar_feeds example should surface an error."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config_dir = root / "01-ops" / "life-os" / "config"
+            config_dir.mkdir(parents=True)
+            (config_dir / "calendar_feeds.example.json").write_text(
+                '{"feeds": [{"name": "x"}]}', encoding="utf-8"
+            )
+            # Use the real profile.example.json so we only see feed errors.
+            real_profile = (
+                REPO_ROOT / "01-ops" / "life-os" / "config" / "profile.example.json"
+            )
+            (config_dir / "profile.example.json").write_text(
+                real_profile.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+
+            with mock.patch.object(validate_repo, "REPO_ROOT", root):
+                errors = validate_repo.validate_config_examples()
+
+        assert errors
+        assert any("calendar_feeds.example.json" in e for e in errors)
 
     def test_validate_csv_schemas_handles_missing_files(self) -> None:
         """Test that schema validation handles missing files gracefully."""

@@ -16,6 +16,11 @@ _scripts_dir = str(Path(__file__).resolve().parent)
 if _scripts_dir not in sys.path:
     sys.path.insert(0, _scripts_dir)
 
+from config_schemas import (  # noqa: E402
+    CALENDAR_FEEDS_SCHEMA,
+    PROFILE_SCHEMA,
+    validate_config,
+)
 from csv_schemas import SCHEMAS, validate_csv  # noqa: E402
 
 # Configure basic logging
@@ -183,6 +188,27 @@ def validate_csv_schemas() -> list[str]:
     return errors
 
 
+def validate_config_examples() -> list[str]:
+    """Validate checked-in example JSON configs against their declared schemas.
+
+    Catches drift between ``*.example.json`` and the schema definitions in
+    ``config_schemas.py`` — a gap that unit tests with synthetic data don't
+    cover.
+    """
+    config_dir = REPO_ROOT / "01-ops" / "life-os" / "config"
+    targets = (
+        ("profile.example.json", PROFILE_SCHEMA),
+        ("calendar_feeds.example.json", CALENDAR_FEEDS_SCHEMA),
+    )
+    errors: list[str] = []
+    for filename, schema in targets:
+        filepath = config_dir / filename
+        rel = filepath.relative_to(REPO_ROOT)
+        for err in validate_config(filepath, schema):
+            errors.append(f"{err} in {rel}")
+    return errors
+
+
 def validate_markdown_links() -> list[str]:
     """Validate that all relative links in markdown files resolve to existing files."""
     errors = []
@@ -264,6 +290,7 @@ def main() -> int:
     errors.extend(validate_csv_headers())
     errors.extend(validate_csv_structure())
     errors.extend(validate_csv_schemas())
+    errors.extend(validate_config_examples())
     errors.extend(validate_markdown_links())
     errors.extend(validate_command_references())
     errors.extend(validate_command_coverage())
