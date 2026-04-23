@@ -100,7 +100,7 @@ def test_process_large_csv_with_sampling() -> None:
     stats = {"rows": 0, "has_data": False, "sample_row": None}
     result = check_csv_data._process_large_csv(reader, stats)
 
-    assert "large file in sampling", str(result["rows"])
+    assert "large file, sampling" in str(result["rows"])
     assert result["has_data"]
     assert result["sample_row"] is not None
 

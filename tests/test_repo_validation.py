@@ -81,7 +81,8 @@ class TestRepoValidation:
 
         assert len(errors) == 1
         assert "CSV row mismatch" in errors[0]
-        assert "expected 3 columns in got 2", errors[0]
+        assert "expected 3 columns" in errors[0]
+        assert "got 2" in errors[0]
 
     def test_csv_schema_validation_detects_unexpected_columns(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
