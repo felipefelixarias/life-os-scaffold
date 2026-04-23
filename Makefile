@@ -1,4 +1,4 @@
-.PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
+.PHONY: help setup test lint clean gcal-agenda gcal-test gcal-integration-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
 
@@ -29,6 +29,20 @@ gcal-agenda: ## Show today's Google Calendar agenda
 
 gcal-test: ## Test Google Calendar connection
 	@gcalcli list 2>/dev/null && echo "Google Calendar connected!" || echo "Not connected. Run 'gcalcli list' to authenticate."
+
+gcal-integration-test: ## Run opt-in Google Calendar integration tests (needs LIFE_OS_GCAL_TEST_CALENDAR_ID)
+	@if [ -z "$$LIFE_OS_GCAL_TEST_CALENDAR_ID" ]; then \
+		echo "ERROR: LIFE_OS_GCAL_TEST_CALENDAR_ID is not set."; \
+		echo "Set it to a DEDICATED test calendar ID — do NOT use your primary calendar."; \
+		echo "  export LIFE_OS_GCAL_TEST_CALENDAR_ID=<calendar-id>"; \
+		echo "See CONTRIBUTING.md 'Google Calendar Integration Tests' for setup details."; \
+		exit 1; \
+	fi
+	@if [ ! -f "$$HOME/.gcalcli_oauth" ]; then \
+		echo "ERROR: ~/.gcalcli_oauth not found. Run 'gcalcli list' to authenticate first."; \
+		exit 1; \
+	fi
+	@LIFE_OS_GCAL_INTEGRATION=1 python3 -m pytest tests/test_gcal_integration.py -v --no-cov
 
 csv-check: ## Analyze CSV data files and show statistics
 	@python3 $(LIFE_OS)/scripts/check_csv_data.py
