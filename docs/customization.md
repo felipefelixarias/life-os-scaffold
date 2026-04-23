@@ -152,17 +152,42 @@ Templates are markdown files used for recurring documents (sprints, check-ins). 
 
 ## Calendar Feeds
 
-If you have ICS feed URLs (from Google Calendar, Outlook, etc.), create a `01-ops/life-os/config/calendar_feeds.json` file for automatic import:
+If you have ICS feed URLs (from Google Calendar, Outlook, etc.), create
+`01-ops/life-os/config/calendar_feeds.json` (or `make setup` copies
+`calendar_feeds.example.json` for you) so life-os can pull external calendars:
 
 ```json
-[
-  {
-    "name": "Work",
-    "url": "https://calendar.google.com/calendar/ical/YOUR_ID/basic.ics",
-    "color": "blue"
-  }
-]
+{
+  "feeds": [
+    {
+      "name": "personal",
+      "enabled": true,
+      "url": "https://calendar.google.com/calendar/ical/YOUR_ID/basic.ics",
+      "output_file": "personal.ics",
+      "timeout_seconds": 30
+    },
+    {
+      "name": "work",
+      "enabled": false,
+      "url": "https://outlook.office365.com/owa/calendar/YOUR_ID/calendar.ics",
+      "output_file": "work.ics",
+      "timeout_seconds": 30
+    }
+  ]
+}
 ```
+
+- `name` — short label shown in logs.
+- `enabled` — only `true` feeds are fetched.
+- `url` — must start with `http://` or `https://`.
+- `output_file` — plain filename (no path separators); written under
+  `01-ops/life-os/data/feeds/`.
+- `timeout_seconds` — fetch timeout in seconds, 1–300.
+
+The file is validated against `config_schemas.CALENDAR_FEEDS_SCHEMA` at load
+time, so typos surface immediately instead of failing silently during a fetch.
+See [docs/google-calendar.md](google-calendar.md) for the full fetcher
+workflow.
 
 ## Adding a New Domain
 

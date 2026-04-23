@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 from importlib.util import module_from_spec, spec_from_file_location
@@ -563,3 +564,31 @@ def test_dict_field_reports_child_errors() -> None:
         path = _write_json({"settings": {}}, Path(tmp))
         errors = validate_config(path, schema)
         assert any("key" in e and "required" in e for e in errors)
+
+
+def test_customization_md_calendar_feeds_example_validates() -> None:
+    """The calendar_feeds.json example in docs/customization.md must match the
+    live schema. Past versions of this doc showed a root-level array with a
+    ``color`` field that failed validate_config, so users who copied the
+    example got an invalid config. This test keeps the example in sync.
+    """
+    doc_path = REPO_ROOT / "docs" / "customization.md"
+    doc = doc_path.read_text(encoding="utf-8")
+
+    match = re.search(
+        r"## Calendar Feeds.*?```json\n(?P<body>.*?)\n```",
+        doc,
+        re.DOTALL,
+    )
+    assert match, "Calendar Feeds JSON example not found in docs/customization.md"
+
+    example = json.loads(match.group("body"))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_json(example, Path(tmp), "calendar_feeds.json")
+        errors = validate_config(path, CALENDAR_FEEDS_SCHEMA)
+
+    assert errors == [], (
+        "docs/customization.md calendar_feeds example failed schema validation: "
+        f"{errors}"
+    )
