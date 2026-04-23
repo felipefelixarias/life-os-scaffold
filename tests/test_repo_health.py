@@ -38,7 +38,7 @@ def test_run_command_not_found():
         ["nonexistent_command_12345"],
     )
     assert result_code == 1
-    assert "" in stderr  # Should have error message
+    assert "nonexistent_command_12345" in stderr
 
 
 def test_run_command_timeout(tmp_path: Path):
