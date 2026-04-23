@@ -1,3 +1,9 @@
+# Several recipes use bashisms (`source venv/bin/activate`) that are not
+# available in dash, which is /bin/sh on Debian/Ubuntu. Pin the shell to bash
+# so `make dev-setup`, `make format`, `make security`, etc. work on those
+# systems instead of failing with `source: not found`.
+SHELL := /bin/bash
+
 .PHONY: help setup test lint clean gcal-agenda gcal-test csv-check deps-check health refresh-examples dev-setup format security type-check dev-install pre-commit-install
 
 LIFE_OS := 01-ops/life-os
@@ -65,9 +71,9 @@ pre-commit-install: ## Install pre-commit hooks
 	@source venv/bin/activate && pre-commit install
 	@echo "✅ Pre-commit hooks installed!"
 
-format: ## Format code with black and isort
-	@source venv/bin/activate && black .
-	@source venv/bin/activate && isort .
+format: ## Format code with ruff (formatter + import sort / lint autofix)
+	@source venv/bin/activate && ruff format .
+	@source venv/bin/activate && ruff check --fix .
 	@echo "✅ Code formatted!"
 
 security: ## Run security checks with bandit and safety
