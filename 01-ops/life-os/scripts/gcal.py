@@ -345,20 +345,30 @@ def search_events(
         time_max = _rfc3339(end_date)
 
         service = get_service()
-        result = (
-            service.events()
-            .list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                timeZone=tz,
-                q=query,
-                singleEvents=True,
-                orderBy="startTime",
+        events: list[dict[str, Any]] = []
+        page_token: str | None = None
+
+        while True:
+            result = (
+                service.events()
+                .list(
+                    calendarId=calendar_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    timeZone=tz,
+                    q=query,
+                    singleEvents=True,
+                    orderBy="startTime",
+                    pageToken=page_token,
+                )
+                .execute()
             )
-            .execute()
-        )
-        return result.get("items", [])  # type: ignore[no-any-return]
+
+            events.extend(result.get("items", []))
+            page_token = result.get("nextPageToken")
+            if not page_token:
+                break
+        return events
     except (FileNotFoundError, PermissionError):
         logger.exception("Authentication error while searching events for '%s'", query)
         return []
