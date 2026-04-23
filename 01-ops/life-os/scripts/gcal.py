@@ -286,21 +286,25 @@ def update_event(
     calendar_id: str = "primary",
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Update an existing event. Pass fields to update as kwargs."""
-    try:
-        service = get_service()
-        event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+    """Partially update an existing event. Pass fields to update as kwargs.
 
+    Uses ``events.patch`` so only the supplied fields are sent, which halves the
+    API calls versus a get+update round-trip and avoids clobbering fields that
+    were changed concurrently by another client.
+    """
+    try:
         tz = _load_timezone()
+        body: dict[str, Any] = {}
         for key, value in kwargs.items():
             if key in ("start", "end") and isinstance(value, dt.datetime):
-                event[key] = {"dateTime": value.isoformat(), "timeZone": tz}
+                body[key] = {"dateTime": value.isoformat(), "timeZone": tz}
             else:
-                event[key] = value
+                body[key] = value
 
+        service = get_service()
         updated = (
             service.events()
-            .update(calendarId=calendar_id, eventId=event_id, body=event)
+            .patch(calendarId=calendar_id, eventId=event_id, body=body)
             .execute()
         )
         return updated  # type: ignore[no-any-return]
