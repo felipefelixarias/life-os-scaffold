@@ -41,14 +41,8 @@ def test_run_command_not_found():
     assert "" in stderr  # Should have error message
 
 
-def test_run_command_timeout(tmp_path: Path):
+def test_run_command_timeout():
     """Test command timeout handling (covers line 29)."""
-    result_code, _stdout, stderr = repo_health.run_command(
-        ["sleep", "60"],
-        cwd=tmp_path,
-    )
-    # run_command uses timeout=30 by default; we pass a 60s sleep
-    # but we need to actually trigger timeout — use a shorter approach
     with patch(
         "subprocess.run",
         side_effect=subprocess.TimeoutExpired(cmd=["sleep"], timeout=30),
