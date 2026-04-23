@@ -653,7 +653,7 @@ def main() -> None:
     if foreign_key_errors:
         for error in foreign_key_errors:
             print(f"   🔴 ERROR: {error}")
-            total_errors += len(foreign_key_errors)
+        total_errors += len(foreign_key_errors)
     else:
         print("   ✅ All foreign key references are valid")
 

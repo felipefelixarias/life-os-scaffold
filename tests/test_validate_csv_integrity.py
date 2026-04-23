@@ -478,6 +478,38 @@ class TestMainFunction:
         mock_exit.assert_not_called()
         assert any("WARNING" in str(call) for call in mock_print.call_args_list)
 
+    @mock.patch("builtins.print")
+    @mock.patch("sys.exit")
+    @mock.patch.object(validate_csv_integrity, "validate_csv_schema")
+    @mock.patch.object(validate_csv_integrity, "validate_foreign_keys")
+    @mock.patch.object(validate_csv_integrity, "CANONICAL_DIR")
+    @mock.patch.object(validate_csv_integrity, "LOGS_DIR")
+    def test_main_fk_error_count_not_multiplied(
+        self,
+        mock_logs_dir: mock.MagicMock,
+        mock_canonical_dir: mock.MagicMock,
+        mock_validate_foreign_keys: mock.MagicMock,
+        mock_validate_csv_schema: mock.MagicMock,
+        mock_exit: mock.MagicMock,
+        mock_print: mock.MagicMock,
+    ) -> None:
+        """Summary count must not multiply per FK error (regression for n*n bug)."""
+        passing = mock.MagicMock()
+        passing.passed = True
+        passing.errors = []
+        passing.warnings = []
+        passing.relative_to.return_value = Path("test.csv")
+        mock_validate_csv_schema.return_value = passing
+        mock_validate_foreign_keys.return_value = ["fk-err-1", "fk-err-2", "fk-err-3"]
+
+        validate_csv_integrity.main()
+
+        printed = [str(call) for call in mock_print.call_args_list]
+        total_lines = [line for line in printed if "Total errors" in line]
+        assert total_lines, "Expected a 'Total errors' summary line"
+        # 3 FK errors should be counted as 3, not 3*3=9
+        assert "Total errors: 3" in total_lines[0], total_lines[0]
+
 
 class TestDurationConsistency:
     """Test duration consistency validation (covers lines 277, 280, 284-285, 302-303)."""
