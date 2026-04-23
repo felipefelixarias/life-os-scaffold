@@ -15,7 +15,7 @@ git clone https://github.com/felipefelixarias/life-os-scaffold.git life-os
 cd life-os
 
 # Set up Python dependencies (recommended for full functionality)
-# See VIRTUAL_ENV_SETUP.md for detailed instructions
+# See docs/getting-started.md for detailed setup instructions
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -72,7 +72,7 @@ make refresh-examples # Refresh CSV files with example data
 - `make health` runs comprehensive repository health check
 - `make refresh-examples` refreshes CSV files with current example data for testing/onboarding
 
-💡 **Having dependency issues?** See [`VIRTUAL_ENV_SETUP.md`](VIRTUAL_ENV_SETUP.md) for detailed Python environment setup instructions.
+💡 **Having dependency issues?** See [`docs/getting-started.md`](docs/getting-started.md) for Python environment setup, including the `externally-managed-environment` error on Debian/Ubuntu.
 
 ## Commands
 
