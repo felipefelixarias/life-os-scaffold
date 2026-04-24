@@ -325,6 +325,64 @@ class TestGcalDayPlan:
             # body raises before the explicit clear above.
             gcal_module.clear_life_os_events(target_date, calendar_id=test_calendar_id)
 
+    def test_clear_life_os_events_preserves_untagged_events(
+        self,
+        gcal_module: Any,
+        test_calendar_id: str,
+        unique_marker: str,
+        created_event_ids: list[str],
+    ) -> None:
+        """Safety invariant: ``clear_life_os_events`` must delete only events
+        whose description contains ``LIFE_OS_TAG``. A regression to "delete
+        everything in the date range" would wipe the user's personal events
+        on the target date, so this is covered against the real API — not
+        just mocks in ``tests/test_gcal.py``.
+        """
+        target_date = dt.date.today() + dt.timedelta(days=62)
+        tagged_start = dt.datetime.combine(target_date, dt.time(9, 0))
+        tagged_end = tagged_start + dt.timedelta(hours=1)
+        untagged_start = dt.datetime.combine(target_date, dt.time(14, 0))
+        untagged_end = untagged_start + dt.timedelta(hours=1)
+
+        tagged_id = gcal_module.create_event(
+            summary=f"[{unique_marker}] tagged",
+            start_dt=tagged_start,
+            end_dt=tagged_end,
+            description=f"{gcal_module.LIFE_OS_TAG} {unique_marker}",
+            calendar_id=test_calendar_id,
+        )
+        assert tagged_id, "create_event returned empty ID for tagged event"
+        created_event_ids.append(tagged_id)
+
+        untagged_id = gcal_module.create_event(
+            summary=f"[{unique_marker}] untagged-must-survive",
+            start_dt=untagged_start,
+            end_dt=untagged_end,
+            description=f"personal event {unique_marker} (no life-os tag)",
+            calendar_id=test_calendar_id,
+        )
+        assert untagged_id, "create_event returned empty ID for untagged event"
+        created_event_ids.append(untagged_id)
+
+        cleared = gcal_module.clear_life_os_events(
+            target_date, calendar_id=test_calendar_id
+        )
+        assert cleared >= 1, "expected at least the tagged event to be cleared"
+
+        agenda = gcal_module.get_agenda(
+            target_date,
+            target_date + dt.timedelta(days=1),
+            calendar_id=test_calendar_id,
+        )
+        remaining_ids = {ev["id"] for ev in agenda}
+        assert tagged_id not in remaining_ids, (
+            "tagged event should have been cleared by clear_life_os_events"
+        )
+        assert untagged_id in remaining_ids, (
+            "clear_life_os_events deleted an event without the "
+            f"{gcal_module.LIFE_OS_TAG} tag — that would nuke user calendars"
+        )
+
     def test_push_day_plan_replaces_prior_life_os_events(
         self,
         gcal_module: Any,
