@@ -9,15 +9,15 @@ Autonomously scan, prioritize, and clean up the task backlog.
 3. Read `01-ops/life-os/data/canonical/goals.csv` — understand what the user is working toward.
 4. Read `01-ops/life-os/data/canonical/projects.csv` — understand active projects.
 5. **Flag issues:**
-   - **Overdue**: tasks with due_date before today and status != done
+   - **Overdue**: tasks with due_date before today and status not in (`done`, `completed`, `dropped`)
    - **Stale**: tasks with last_updated > 14 days ago and status = queued/in_progress
    - **Orphaned**: tasks whose project_id doesn't match any active project
    - **Duplicate**: tasks with very similar titles
-   - **No due date**: priority 1-2 tasks without a due_date
+   - **No due date**: P1/P2 tasks without a due_date
 6. **Suggest priority adjustments:**
-   - Tasks blocking active goals should be priority 1-2
+   - Tasks blocking active goals should be P1/P2
    - Tasks for deprioritized projects should be lowered or dropped
-   - Quick wins (effort < 30m, priority 2+) that have been sitting for a week — suggest scheduling today
+   - Quick wins (effort < 30m, priority P2 or better) that have been sitting for a week — suggest scheduling today
 7. **Present the triage report** with proposed actions.
 8. Ask the user to approve, modify, or reject the batch.
 9. Apply approved changes to `01-ops/life-os/data/canonical/tasks.csv`.

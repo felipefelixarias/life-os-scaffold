@@ -17,7 +17,7 @@ Generate a full weekly sprint plan with daily themes, task allocation, and habit
    - Count available hours per day (total waking hours minus fixed events minus commute)
    - Identify high-energy windows per day from energy curve
    - Calculate total habit time needed (sum of all weekly targets)
-   - Calculate task time needed (sum of effort_mins for priority 1-2 tasks due this week)
+   - Calculate task time needed (sum of effort_mins for P1/P2 tasks due this week)
 5. **Allocate the week:**
    - Assign tasks to specific days based on due dates, priority, and energy requirements
    - Distribute habits across the week per their frequency targets
